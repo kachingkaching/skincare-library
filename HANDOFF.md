@@ -10,7 +10,7 @@ read what is actually in them, record a routine, and get a skin assessment.
 Vanilla HTML/CSS/JS, no build step, no framework, everything in IndexedDB.
 
 Location: `/Users/ching/Claude Code/Experiments/Skincare library/`
-Not a git repo — there is no history to recover deleted code from.
+Git repo since 13 Aug 2026 (first commit `e647546`); deployed to GitHub Pages.
 
 ## Running it
 

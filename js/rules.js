@@ -41,6 +41,25 @@ export const STEPS = [
 
 export const stepsFor = period => STEPS.filter(s => s.period === period);
 
+/* Days of the week, Monday first. A routine entry carries the days it applies
+   to, so an alternated retinoid is recorded honestly rather than as if it were
+   used nightly — which also stops the conflict rules crying wolf. */
+export const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+export const EVERY_DAY = [0, 1, 2, 3, 4, 5, 6];
+
+export const daysOf = entry =>
+  Array.isArray(entry?.days) && entry.days.length ? entry.days : EVERY_DAY;
+
+export const isEveryDay = entry => daysOf(entry).length === 7;
+
+/* "Mon · Wed · Fri", or "Every day". */
+export function describeDays(entry) {
+  if (isEveryDay(entry)) return 'Every day';
+  const chosen = daysOf(entry);
+  if (!chosen.length) return 'No days';
+  return chosen.slice().sort((a, b) => a - b).map(d => DAYS[d]).join(' · ');
+}
+
 /* ---------- concerns ---------- */
 
 export const CONCERNS = [

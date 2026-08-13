@@ -657,6 +657,116 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
 .profile-name:hover { border-bottom-color: var(--rule); }
 .profile-name:focus { border-bottom-color: var(--ink); outline: none; }
 
+/* ---------- header marks ---------- */
+
+.view-head { position: relative; }
+
+/* Sits with the title, not over it: quiet enough to read as a printer's device. */
+.header-art {
+  width: 88px;
+  height: 52px;
+  flex: 0 0 auto;
+  order: -1;
+  margin-bottom: -6px;
+  fill: none;
+  stroke: var(--ink-muted);
+  stroke-width: 1.1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.55;
+}
+
+.view-head > .page-title { flex: 1 1 auto; }
+
+@media (max-width: 720px) {
+  .header-art { width: 68px; height: 40px; }
+}
+
+/* ---------- the week ---------- */
+
+.week { border-top: 1px solid var(--rule); }
+
+.week-row {
+  display: grid;
+  grid-template-columns: 90px minmax(0, 1fr);
+  gap: 24px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.week-day {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.week-slot { font-size: 14px; line-height: 1.55; }
+
+.week-when {
+  display: inline-block;
+  min-width: 30px;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--ink-muted);
+}
+
+.week-clash .week-day { color: var(--amber); }
+
+.week-warn {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--amber);
+}
+
+/* day toggles on a routine row */
+
+.day-summary { white-space: nowrap; }
+.day-some { color: var(--amber); }
+
+.day-picker { display: inline-flex; align-items: center; gap: 4px; }
+
+.day {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--rule);
+  background: none;
+  border-radius: 0;
+  cursor: pointer;
+  font-size: 10px;
+  letter-spacing: 0;
+  color: var(--ink-muted);
+  transition: background var(--ease), color var(--ease), border-color var(--ease);
+}
+
+.day:hover { border-color: var(--ink); color: var(--ink); }
+.day.is-on { background: var(--ink); border-color: var(--ink); color: var(--bone); }
+
+/* ---------- assessment history ---------- */
+
+.history-item { border-bottom: 1px solid var(--rule); }
+.history-item .history-row { border-bottom: none; }
+.history-row .grow { flex: 1; min-width: 0; }
+
+.history-mark {
+  font-size: 14px;
+  color: var(--ink-muted);
+  min-width: 14px;
+  text-align: right;
+}
+
+.history-body { padding: 8px 0 0; }
+
+.history-photo {
+  background: var(--bone-deep);
+  max-width: 260px;
+  margin-bottom: 32px;
+  overflow: hidden;
+}
+
+.history-photo img { width: 100%; height: auto; }
+
 /* ---------- waiting ---------- */
 
 /* Three dots, for anything that has gone away to think. Sized off the text it
@@ -780,16 +890,55 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
 
 /* ---------- discoveries ---------- */
 
-.picks { border-top: 1px solid var(--rule); }
+.carousel { border-top: 1px solid var(--rule); padding-top: 32px; }
+
+.carousel-track {
+  display: flex;
+  gap: 40px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  padding-bottom: 8px;
+  scrollbar-width: none;
+}
+
+.carousel-track::-webkit-scrollbar { display: none; }
+.carousel-track:focus-visible { outline: 1px solid var(--amber); outline-offset: 6px; }
 
 .pick {
-  padding: 24px 0;
-  border-bottom: 1px solid var(--rule);
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
-  gap: 32px;
-  align-items: start;
+  flex: 0 0 340px;
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
+
+.pick-art { width: 100%; height: auto; display: block; }
+
+.carousel-bar {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding-top: 20px;
+  margin-top: 24px;
+  border-top: 1px solid var(--rule);
+}
+
+.carousel-dots { display: flex; gap: 8px; flex: 1; justify-content: center; }
+
+.carousel-dot {
+  width: 6px;
+  height: 6px;
+  padding: 0;
+  border: 1px solid var(--ink-muted);
+  background: none;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background var(--ease), border-color var(--ease);
+}
+
+.carousel-dot.is-on { background: var(--ink); border-color: var(--ink); }
+.link-btn:disabled { opacity: 0.3; cursor: default; }
 
 .pick-brand {
   font-size: 11px;
@@ -833,7 +982,8 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
   .reading-row { grid-template-columns: 1fr; gap: 4px; }
   .filter-bar { gap: 20px; }
   .colophon { flex-direction: column; gap: 8px; }
-  .pick { grid-template-columns: 1fr; gap: 12px; }
+  .pick { flex-basis: 78vw; }
+  .week-row { grid-template-columns: 1fr; gap: 6px; }
   .chat-panel { left: var(--gutter); right: var(--gutter); width: auto; height: 70vh; }
   .chat-launch { right: var(--gutter); bottom: 20px; }
 }

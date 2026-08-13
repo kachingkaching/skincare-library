@@ -6,7 +6,7 @@
    are the exceptions: images are referenced by id, and the key is a property of
    the machine rather than of a person. */
 
-import { stepsFor } from './rules.js';
+import { stepsFor, EVERY_DAY } from './rules.js';
 
 const DB_NAME = 'skincare';
 const DB_VERSION = 2;
@@ -113,15 +113,23 @@ function migrateEntries(entries, period, byId) {
 
   for (const e of entries || []) {
     if (typeof e === 'string') { legacy.push(e); changed = true; }
-    else if (e && e.productId) kept.push({ step: e.step || null, productId: e.productId });
+    else if (e && e.productId) {
+      // Entries written before the week view applied every day.
+      if (!Array.isArray(e.days)) changed = true;
+      kept.push({
+        step: e.step || null,
+        productId: e.productId,
+        days: Array.isArray(e.days) ? e.days : [...EVERY_DAY]
+      });
+    }
   }
 
   for (const step of stepsFor(period)) {
     const idx = legacy.findIndex(id => byId[id] && step.categories.includes(byId[id].category));
-    if (idx > -1) kept.push({ step: step.key, productId: legacy.splice(idx, 1)[0] });
+    if (idx > -1) kept.push({ step: step.key, productId: legacy.splice(idx, 1)[0], days: [...EVERY_DAY] });
   }
   // Anything that matched no step still belongs to the person; keep it unplaced.
-  for (const id of legacy) if (byId[id]) kept.push({ step: null, productId: id });
+  for (const id of legacy) if (byId[id]) kept.push({ step: null, productId: id, days: [...EVERY_DAY] });
 
   return { entries: kept, changed };
 }

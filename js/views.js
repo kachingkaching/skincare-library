@@ -6,7 +6,10 @@ import {
   TAG_LABEL, ACTIVE_TAGS, FLAG_TAGS,
   lookup, parseIngredients, tagsFor
 } from './ingredients.js';
-import { CATEGORIES, STATUSES, STATUS_LABEL, stepsFor, conflictsFor } from './rules.js';
+import {
+  CATEGORIES, STATUSES, STATUS_LABEL, stepsFor, conflictsFor,
+  DAYS, EVERY_DAY, daysOf, isEveryDay, describeDays
+} from './rules.js';
 import { QUESTIONS, SEVERITY_LABEL, assessSkin } from './analysis.js';
 import { readLabel, lookupIngredients } from './ai.js';
 import { copyBriefing, downloadBriefing } from './briefing.js';
@@ -68,6 +71,40 @@ const fmtStampTime = iso =>
 const byShelfOrder = (a, b) =>
   (a.brand || '').localeCompare(b.brand || '') || (a.name || '').localeCompare(b.name || '');
 
+/* ---------- header marks ----------
+
+   One small line drawing per view. Hairline strokes in the muted ink, no fill,
+   no colour — closer to a printer's device on a title page than an icon. They
+   sit behind the page title and are decorative only, so they are hidden from
+   screen readers. */
+
+const ART = {
+  shelf: `<path d="M14 44V20a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v24"/><path d="M12 44h20"/>
+          <path d="M19 14V9h6v5"/>
+          <path d="M40 44V26a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v18"/><path d="M38 44h16"/>
+          <path d="M43 21v-4h6v4"/>
+          <path d="M62 44V31a4 4 0 0 1 4-4h1a4 4 0 0 1 4 4v13"/><path d="M60 44h15"/>`,
+  add: `<path d="M44 12c0 0-13 15-13 23a13 13 0 0 0 26 0c0-8-13-23-13-23z"/>
+        <path d="M38 35a6 6 0 0 0 6 6"/>
+        <path d="M14 30h14M21 23v14"/>`,
+  assess: `<circle cx="44" cy="28" r="16"/><circle cx="44" cy="28" r="10"/><circle cx="44" cy="28" r="4"/>
+           <path d="M14 44c6-10 14-15 22-16"/><path d="M74 44c-6-10-14-15-22-16"/>`,
+  routine: `<circle cx="26" cy="26" r="9"/>
+            <path d="M26 11v-5M26 46v-5M11 26h-5M46 26h5M15 15l-4-4M37 37l4 4M37 15l4-4M15 37l-4 4"/>
+            <path d="M72 30a12 12 0 1 1-13-16 10 10 0 0 0 13 16z"/>`,
+  discoveries: `<circle cx="34" cy="28" r="15"/><path d="M45 39l14 14"/>
+                <path d="M34 20c-5 4-5 12 0 16 5-4 5-12 0-16z"/>
+                <path d="M66 20h10M66 26h6"/>`,
+  settings: `<path d="M14 20h60M14 30h44M14 40h52"/>
+             <circle cx="62" cy="20" r="4"/><circle cx="34" cy="30" r="4"/><circle cx="52" cy="40" r="4"/>`
+};
+
+export function headerArt(name) {
+  const marks = ART[name];
+  if (!marks) return '';
+  return `<svg class="header-art" viewBox="0 0 88 52" aria-hidden="true" focusable="false">${marks}</svg>`;
+}
+
 /* Three drifting dots for anything that has gone away to think. */
 export const dots = () => '<span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>';
 
@@ -120,7 +157,7 @@ export async function shelf(root) {
   if (!products.length) {
     const who = (await store.getActiveProfile())?.name;
     root.innerHTML = `
-      <div class="view-head"><h1 class="page-title">The Shelf</h1></div>
+      <div class="view-head">${headerArt('shelf')}<h1 class="page-title">The Shelf</h1></div>
       <div class="empty">
         <p>${who ? esc(who) + '’s shelf is' : 'The shelf is'} presently empty. Photograph a
            product, record what is in it, and it will be kept here.</p>
@@ -144,6 +181,7 @@ export async function shelf(root) {
 
   root.innerHTML = `
     <div class="view-head">
+      ${headerArt('shelf')}
       <h1 class="page-title">The Shelf</h1>
       <div class="btn-row"><a class="btn" href="#/add">Add a product</a></div>
     </div>
@@ -360,6 +398,7 @@ export async function form(root, { id } = {}) {
 
   root.innerHTML = `
     <div class="view-head">
+      ${headerArt('add')}
       <h1 class="page-title">${editing ? 'Edit product' : 'Add a product'}</h1>
     </div>
 
@@ -724,7 +763,7 @@ export async function assess(root, { id } = {}) {
     const blob = await store.getImage(record.photoId);
     root.innerHTML = `
       <p class="label muted" style="margin:0 0 32px"><a href="#/assess">← Assessment</a></p>
-      <div class="view-head"><h1 class="page-title">${esc(fmtStampTime(record.date))}</h1>
+      <div class="view-head">${headerArt('assess')}<h1 class="page-title">${esc(fmtStampTime(record.date))}</h1>
         <button class="btn btn-quiet btn-danger" id="del-assessment">Remove this record</button></div>
       <div class="assess-grid">
         <div>${blob ? `<div class="shelf-frame"><img src="${imgUrl(blob)}" alt="Skin, ${esc(fmtStamp(record.date))}"></div>`
@@ -739,22 +778,30 @@ export async function assess(root, { id } = {}) {
     return;
   }
 
+  /* Past readings open in place — comparing this month against last should not
+     mean losing your place on the page. */
   const historyMarkup = history.length ? `
     <div class="block">
-      <h2 class="section-title">Previous readings</h2>
+      <h2 class="section-title">Previous readings — ${history.length}</h2>
       <div class="history">
         ${history.map(a => `
-          <button class="history-row" data-id="${esc(a.id)}">
-            <span class="history-date">${esc(fmtStampTime(a.date))}</span>
-            <span class="muted">${a.result.concerns.length
-              ? esc(a.result.concerns.slice(0, 3).map(c => c.label).join(', '))
-              : 'Nothing marked'}</span>
-          </button>`).join('')}
+          <div class="history-item">
+            <button class="history-row" data-open="${esc(a.id)}" aria-expanded="false"
+                    aria-controls="past-${esc(a.id)}">
+              <span class="history-date">${esc(fmtStampTime(a.date))}</span>
+              <span class="muted grow">${a.result.concerns.length
+                ? esc(a.result.concerns.slice(0, 3).map(c => c.label).join(', '))
+                : 'Nothing marked'}</span>
+              <span class="history-mark" aria-hidden="true">+</span>
+            </button>
+            <div class="history-body" id="past-${esc(a.id)}" hidden></div>
+          </div>`).join('')}
       </div>
     </div>` : '';
 
   root.innerHTML = `
     <div class="view-head">
+      ${headerArt('assess')}
       <h1 class="page-title">Assessment</h1>
       <div class="btn-row">
         <button class="btn btn-quiet" id="brief-here">Copy briefing for another assistant</button>
@@ -812,8 +859,41 @@ export async function assess(root, { id } = {}) {
       .catch(err => { zone.querySelector('p').textContent = err.message; return null; });
   });
 
+  /* Expand a past reading inline, rendering it only when first opened. */
   root.querySelectorAll('.history-row').forEach(btn => {
-    btn.onclick = () => { location.hash = `#/assess/${btn.dataset.id}`; };
+    btn.onclick = async () => {
+      const id = btn.dataset.open;
+      const body = root.querySelector(`#past-${CSS.escape(id)}`);
+      const isOpen = !body.hidden;
+
+      if (isOpen) {
+        body.hidden = true;
+        btn.setAttribute('aria-expanded', 'false');
+        btn.querySelector('.history-mark').textContent = '+';
+        return;
+      }
+
+      if (!body.dataset.filled) {
+        const record = history.find(a => a.id === id);
+        const photo = await store.getImage(record.photoId);
+        body.innerHTML = `
+          ${photo ? `<div class="history-photo"><img src="${imgUrl(photo)}" alt=""></div>` : ''}
+          ${renderResult(record.result, productsById)}
+          <div class="btn-row" style="margin-bottom:32px">
+            <button class="btn btn-quiet btn-danger" data-forget="${esc(id)}">Remove this record</button>
+          </div>`;
+        body.dataset.filled = '1';
+        body.querySelector('[data-forget]').onclick = async () => {
+          if (!confirm('Remove this assessment and its photograph?')) return;
+          await store.deleteAssessment(id);
+          assess(root);
+        };
+      }
+
+      body.hidden = false;
+      btn.setAttribute('aria-expanded', 'true');
+      btn.querySelector('.history-mark').textContent = '–';
+    };
   });
 
   root.querySelector('#brief-here').onclick = async () => {
@@ -891,7 +971,7 @@ export async function routine(root) {
   const byId = Object.fromEntries(products.map(p => [p.id, p]));
 
   if (!products.length) {
-    root.innerHTML = `<div class="view-head"><h1 class="page-title">Routine</h1></div>
+    root.innerHTML = `<div class="view-head">${headerArt('routine')}<h1 class="page-title">Routine</h1></div>
       <div class="empty"><p>A routine is assembled from what is on the shelf. Add a product first.</p>
       <a class="btn" href="#/add">Add a product</a></div>`;
     return;
@@ -900,6 +980,22 @@ export async function routine(root) {
   /* Everything below edits this draft; Save writes it. */
   const draft = { am: [...(saved.am || [])], pm: [...(saved.pm || [])] };
   const inStep = (period, key) => draft[period].filter(e => e.step === key);
+  const expanded = new Set();   // rows whose day toggles are open
+
+  const dayToggles = (period, productId, stepKey, entry) => {
+    const id = `${period}|${productId}|${stepKey}`;
+    const chosen = new Set(daysOf(entry));
+    if (!expanded.has(id)) {
+      return `<button class="link-btn day-summary${isEveryDay(entry) ? '' : ' day-some'}"
+                data-days="${esc(id)}">${esc(describeDays(entry))}</button>`;
+    }
+    return `<span class="day-picker">
+      ${DAYS.map((label, i) => `
+        <button class="day${chosen.has(i) ? ' is-on' : ''}"
+                data-day="${esc(id)}|${i}" title="${esc(label)}">${esc(label[0])}</button>`).join('')}
+      <button class="link-btn" data-days="${esc(id)}">Done</button>
+    </span>`;
+  };
 
   const stepRows = (period, step) => {
     const chosen = inStep(period, step.key);
@@ -913,6 +1009,7 @@ export async function routine(root) {
       return `<div class="picker-row">
         <span class="picker-step" style="min-width:110px">${i === 0 ? esc(step.label) : ''}</span>
         <span class="grow">${esc(p.brand ? p.brand + ' · ' : '')}${esc(p.name)}</span>
+        ${dayToggles(period, entry.productId, step.key, entry)}
         ${i > 0 ? `<button class="link-btn" data-up="${esc(period)}|${esc(step.key)}|${i}">Move up</button>` : ''}
         <button class="link-btn" data-drop="${esc(period)}|${esc(entry.productId)}|${esc(step.key)}">Remove</button>
       </div>`;
@@ -946,27 +1043,76 @@ export async function routine(root) {
       <div id="conflicts-${period}" class="block" style="margin-top:32px"></div>
     </div>`;
 
+  /* Products actually used on a given day, in application order. */
+  const onDay = (period, day) => {
+    const out = [];
+    for (const step of stepsFor(period)) {
+      for (const entry of draft[period].filter(e => e.step === step.key && daysOf(e).includes(day))) {
+        const p = byId[entry.productId];
+        if (p) out.push(p);
+      }
+    }
+    return out;
+  };
+
+  const weekTable = () => `
+    <div class="week">
+      ${DAYS.map((label, day) => {
+        const morning = onDay('am', day);
+        const evening = onDay('pm', day);
+        const clashes = [...conflictsFor(morning, 'am'), ...conflictsFor(evening, 'pm')]
+          .filter(n => n.severity === 'high');
+        return `<div class="week-row${clashes.length ? ' week-clash' : ''}">
+          <div class="week-day">${esc(label)}</div>
+          <div>
+            <div class="week-slot"><span class="week-when">AM</span>${morning.length
+              ? morning.map(p => esc(p.name)).join(', ') : '<span class="muted">nothing</span>'}</div>
+            <div class="week-slot"><span class="week-when">PM</span>${evening.length
+              ? evening.map(p => esc(p.name)).join(', ') : '<span class="muted">nothing</span>'}</div>
+            ${clashes.length ? `<div class="week-warn">${esc(clashes[0].text)}</div>` : ''}
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+
   const draw = () => {
     root.innerHTML = `
       <div class="view-head">
+        ${headerArt('routine')}
         <h1 class="page-title">Routine</h1>
         <div class="btn-row">
           <button class="btn" id="save-routine">Save</button>
           <span class="field-hint" style="margin:0" id="routine-note"></span>
         </div>
       </div>
-      <div class="routine-cols">
+
+      <div class="block" style="margin-top:0">
+        <h2 class="section-title">Your week</h2>
+        ${weekTable()}
+      </div>
+
+      <div class="routine-cols block">
         ${column('am', 'Morning')}
         ${column('pm', 'Evening')}
       </div>`;
 
+    /* Conflicts are judged per day now — things you alternate never meet, so
+       warning about them was crying wolf. */
     for (const period of ['am', 'pm']) {
-      const chosen = draft[period].map(e => byId[e.productId]).filter(Boolean);
-      const notes = conflictsFor(chosen, period);
+      const byText = new Map();
+      for (let day = 0; day < 7; day++) {
+        for (const note of conflictsFor(onDay(period, day), period)) {
+          if (!byText.has(note.text)) byText.set(note.text, { ...note, days: [] });
+          byText.get(note.text).days.push(DAYS[day]);
+        }
+      }
+      const notes = [...byText.values()];
+      const anything = draft[period].length;
       root.querySelector(`#conflicts-${period}`).innerHTML = notes.length
         ? `<h2 class="section-title">Worth knowing</h2>${notes.map(n =>
-            `<div class="notice"><strong>${n.severity === 'high' ? 'Take care' : n.severity === 'medium' ? 'Consider' : 'Note'}</strong> — ${esc(n.text)}</div>`).join('')}`
-        : (chosen.length ? '<p class="muted" style="font-size:13px">Nothing conflicts in this routine.</p>' : '');
+            `<div class="notice"><strong>${n.severity === 'high' ? 'Take care' : n.severity === 'medium' ? 'Consider' : 'Note'}</strong>
+              ${n.days.length === 7 ? '' : `<em>${esc(n.days.join(', '))}</em> — `}${esc(n.text)}</div>`).join('')}`
+        : (anything ? '<p class="muted" style="font-size:13px">Nothing conflicts on any day.</p>' : '');
     }
     wire();
   };
@@ -976,7 +1122,31 @@ export async function routine(root) {
       sel.onchange = () => {
         if (!sel.value) return;
         const [period, stepKey] = sel.dataset.add.split('|');
-        draft[period].push({ step: stepKey, productId: sel.value });
+        draft[period].push({ step: stepKey, productId: sel.value, days: [...EVERY_DAY] });
+        draw();
+      };
+    });
+
+    /* Open or close a row's day toggles. */
+    root.querySelectorAll('[data-days]').forEach(btn => {
+      btn.onclick = () => {
+        const id = btn.dataset.days;
+        expanded.has(id) ? expanded.delete(id) : expanded.add(id);
+        draw();
+      };
+    });
+
+    root.querySelectorAll('[data-day]').forEach(btn => {
+      btn.onclick = () => {
+        const [period, productId, stepKey, dayText] = btn.dataset.day.split('|');
+        const day = Number(dayText);
+        const entry = draft[period].find(e => e.productId === productId && e.step === stepKey);
+        if (!entry) return;
+        const days = new Set(daysOf(entry));
+        days.has(day) ? days.delete(day) : days.add(day);
+        // Never leave an entry on no days at all — that is a removal, not a schedule.
+        entry.days = days.size ? [...days].sort((a, b) => a - b) : [...EVERY_DAY];
+        expanded.add(`${period}|${productId}|${stepKey}`);
         draw();
       };
     });
@@ -1018,6 +1188,51 @@ export async function routine(root) {
    Discoveries
    ============================================================ */
 
+/* A drawn bottle for each discovery.
+
+   Real product photographs are not available here: search returns citations,
+   not images, and nothing client-side can pull a picture off a retailer's page.
+   So rather than a broken image or a grey box, each pick gets a silhouette
+   drawn from its own name — deterministic, so a product always looks the same,
+   and shaped by what kind of product it is. */
+function pickArt(item, index) {
+  const seed = [...`${item.brand || ''}${item.product || ''}`]
+    .reduce((n, c) => (n * 31 + c.charCodeAt(0)) >>> 0, 7) || index + 1;
+
+  const kind = `${item.kind || ''} ${item.product || ''}`.toLowerCase();
+  const shape = /serum|ampoule|essence|drop|oil/.test(kind) ? 'dropper'
+    : /cream|balm|mask|butter|jar/.test(kind) ? 'jar'
+    : /cleans|foam|wash|tube|gel/.test(kind) ? 'tube'
+    : 'bottle';
+
+  const tints = ['#E3E0D6', '#DCE2E4', '#E6DED3', '#DDE3DC', '#E4DCE0', '#DFE0E6'];
+  const tint = tints[seed % tints.length];
+  const band = 26 + (seed >> 3) % 16;
+  const body = {
+    dropper: 'M30 34h20v40a6 6 0 0 1-6 6h-8a6 6 0 0 1-6-6z',
+    jar:     'M24 44h32v30a6 6 0 0 1-6 6H30a6 6 0 0 1-6-6z',
+    tube:    'M31 30h18l3 46a5 5 0 0 1-5 5H33a5 5 0 0 1-5-5z',
+    bottle:  'M28 38h24v36a6 6 0 0 1-6 6H34a6 6 0 0 1-6-6z'
+  }[shape];
+  const cap = {
+    dropper: '<rect x="35" y="14" width="10" height="20" rx="1"/>',
+    jar:     '<rect x="27" y="34" width="26" height="10" rx="1"/>',
+    tube:    '<rect x="34" y="20" width="12" height="10" rx="1"/>',
+    bottle:  '<rect x="34" y="22" width="12" height="16" rx="1"/><path d="M31 22h18"/>'
+  }[shape];
+
+  return `<svg class="pick-art" viewBox="0 0 80 92" role="img"
+               aria-label="${esc(`${item.brand || ''} ${item.product || ''}`.trim() || 'Product')}">
+    <rect x="0" y="0" width="80" height="92" fill="${tint}"/>
+    <g fill="none" stroke="#1B1A17" stroke-width="1.1" stroke-linejoin="round">
+      <path d="${body}"/>
+      ${cap}
+      <path d="M28 ${band}h24" opacity="0.3"/>
+      <path d="M28 ${band + 6}h15" opacity="0.3"/>
+    </g>
+  </svg>`;
+}
+
 export async function discoveries(root) {
   const { apiKey } = await aiSettings();
   const products = await store.getProducts();
@@ -1025,7 +1240,7 @@ export async function discoveries(root) {
 
   if (!AI_FEATURES || !apiKey) {
     root.innerHTML = `
-      <div class="view-head"><h1 class="page-title">Discoveries</h1></div>
+      <div class="view-head">${headerArt('discoveries')}<h1 class="page-title">Discoveries</h1></div>
       <div class="empty">
         <p>This looks for Japanese and Korean products that suit your latest reading and fill a
            gap on your shelf.</p>
@@ -1043,6 +1258,7 @@ export async function discoveries(root) {
     const stale = picks && (Date.now() - new Date(picks.generatedAt).getTime()) > 30 * 864e5;
     root.innerHTML = `
       <div class="view-head">
+        ${headerArt('discoveries')}
         <h1 class="page-title">Discoveries</h1>
         <div class="btn-row">
           <button class="btn" id="look">${picks ? 'Look again' : 'Look for something new'}</button>
@@ -1056,20 +1272,29 @@ export async function discoveries(root) {
           discontinued or misremembered. Verify each one before buying.</div>` : ''}
         <p class="muted" style="margin-bottom:32px">Found ${esc(fmtStamp(picks.generatedAt))}${stale ? ' — over a month ago, worth looking again.' : '.'}
           ${picks.grounded === false ? '' : 'Searched on the web, but check the details yourself before buying.'}</p>
-        <div class="picks">
-          ${(picks.items || []).map(item => `
-            <div class="pick">
-              <div>
-                <div class="pick-brand">${esc(item.brand || '')}</div>
-                <div class="pick-name">${esc(item.product || '')}</div>
-                <div class="pick-kind">${esc(item.kind || '')}</div>
-              </div>
-              <div>
-                <div class="pick-why">${esc(item.why || '')}</div>
-                ${item.actives ? `<div class="pick-meta"><strong>Actives</strong> — ${esc(item.actives)}</div>` : ''}
-                ${item.caution ? `<div class="pick-meta"><strong>Caution</strong> — ${esc(item.caution)}</div>` : ''}
-              </div>
-            </div>`).join('')}
+        <div class="carousel">
+          <div class="carousel-track" id="picks-track">
+            ${(picks.items || []).map((item, i) => `
+              <article class="pick" aria-roledescription="slide"
+                       aria-label="${i + 1} of ${(picks.items || []).length}">
+                ${pickArt(item, i)}
+                <div class="pick-body">
+                  <div class="pick-brand">${esc(item.brand || '')}</div>
+                  <div class="pick-name">${esc(item.product || '')}</div>
+                  <div class="pick-kind">${esc(item.kind || '')}</div>
+                  <div class="pick-why">${esc(item.why || '')}</div>
+                  ${item.actives ? `<div class="pick-meta"><strong>Actives</strong> — ${esc(item.actives)}</div>` : ''}
+                  ${item.caution ? `<div class="pick-meta"><strong>Caution</strong> — ${esc(item.caution)}</div>` : ''}
+                </div>
+              </article>`).join('')}
+          </div>
+          <div class="carousel-bar">
+            <button class="link-btn" id="pick-prev">← Previous</button>
+            <span class="carousel-dots" id="pick-dots">
+              ${(picks.items || []).map((_, i) => `<button class="carousel-dot${i === 0 ? ' is-on' : ''}" data-go="${i}" aria-label="Go to ${i + 1}"></button>`).join('')}
+            </span>
+            <button class="link-btn" id="pick-next">Next →</button>
+          </div>
         </div>
         ${(picks.sources || []).length ? `<div class="block">
           <h2 class="section-title">Where this came from</h2>
@@ -1078,6 +1303,44 @@ export async function discoveries(root) {
           </div>
         </div>` : ''}`
       : `<div class="empty"><p>Nothing looked up yet.</p></div>`}`;
+
+    /* Carousel: scroll-snap does the moving, buttons and dots just nudge it. */
+    const track = root.querySelector('#picks-track');
+    if (track) {
+      const slides = [...track.querySelectorAll('.pick')];
+      const dots = [...root.querySelectorAll('.carousel-dot')];
+      const goTo = i => {
+        const target = slides[Math.max(0, Math.min(slides.length - 1, i))];
+        if (target) track.scrollTo({ left: target.offsetLeft - track.offsetLeft, behavior: 'smooth' });
+      };
+      const current = () => {
+        const mid = track.scrollLeft + track.clientWidth / 2;
+        let best = 0;
+        slides.forEach((s, i) => {
+          if (s.offsetLeft - track.offsetLeft < mid) best = i;
+        });
+        return best;
+      };
+      const mark = () => {
+        const i = current();
+        dots.forEach((d, n) => d.classList.toggle('is-on', n === i));
+        root.querySelector('#pick-prev').disabled = i === 0;
+        root.querySelector('#pick-next').disabled = i === slides.length - 1;
+      };
+      root.querySelector('#pick-prev').onclick = () => goTo(current() - 1);
+      root.querySelector('#pick-next').onclick = () => goTo(current() + 1);
+      dots.forEach(d => { d.onclick = () => goTo(Number(d.dataset.go)); });
+      track.addEventListener('scroll', () => {
+        clearTimeout(track.__t);
+        track.__t = setTimeout(mark, 90);
+      });
+      track.tabIndex = 0;
+      track.addEventListener('keydown', ev => {
+        if (ev.key === 'ArrowRight') { ev.preventDefault(); goTo(current() + 1); }
+        if (ev.key === 'ArrowLeft') { ev.preventDefault(); goTo(current() - 1); }
+      });
+      mark();
+    }
 
     root.querySelector('#look').onclick = async () => {
       const button = root.querySelector('#look');
@@ -1111,7 +1374,7 @@ export async function settings(root) {
   const allAssessments = await store.getAll('assessments');
 
   root.innerHTML = `
-    <div class="view-head"><h1 class="page-title">Settings</h1></div>
+    <div class="view-head">${headerArt('settings')}<h1 class="page-title">Settings</h1></div>
 
     <div class="prose">
       <h2 class="section-title">Profiles</h2>

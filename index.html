@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Skincare Library</title>
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:,">
+</head>
+<body>
+
+<header class="masthead">
+  <div class="masthead-inner">
+    <div class="mast-left">
+      <a class="wordmark" href="#/">Skincare&nbsp;Library</a>
+      <select class="profile-switch" id="profile-select" aria-label="Whose shelf"></select>
+    </div>
+    <nav class="nav" id="nav">
+      <a href="#/" data-route="shelf">Shelf</a>
+      <a href="#/add" data-route="add">Add</a>
+      <a href="#/assess" data-route="assess">Assessment</a>
+      <a href="#/routine" data-route="routine">Routine</a>
+      <a href="#/discoveries" data-route="discoveries">Discoveries</a>
+      <a href="#/settings" data-route="settings">Settings</a>
+    </nav>
+  </div>
+</header>
+
+<main id="view" class="view"></main>
+
+<footer class="colophon">
+  <span>Kept privately in this browser.</span>
+  <span id="colophon-count"></span>
+</footer>
+
+<script type="module" src="js/app.js?v=2"></script>
+</body>
+</html>

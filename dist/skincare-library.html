@@ -1,0 +1,3839 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Skincare Library</title>
+<link rel="icon" href="data:,">
+<style>
+/* ============================================================
+   Skincare Library — art direction after Aesop
+   Bone ground, hairline rules, one grotesque, no ornament.
+   ============================================================ */
+
+:root {
+  --bone:       #F6F3ED;
+  --bone-deep:  #EDE8DF;
+  --bone-sink:  #E5DFD3;
+  --ink:        #1B1A17;
+  --ink-muted:  #6E6A60;
+  --rule:       #DFD8CB;
+  --amber:      #7A5A2E;
+
+  --sans: "Suisse Int'l", "Helvetica Neue", Helvetica, Arial, sans-serif;
+
+  --gutter: 48px;
+  --ease: 200ms ease;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--bone);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.65;
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+img { max-width: 100%; display: block; }
+
+/* Author styles beat the UA sheet, so [hidden] needs restating. */
+[hidden] { display: none !important; }
+
+a { color: inherit; text-decoration: none; }
+
+button, input, select, textarea { font: inherit; color: inherit; }
+
+/* ---------- type ---------- */
+
+.label,
+.nav a,
+.wordmark,
+.btn,
+.chip,
+.colophon,
+.filter-bar label,
+.field > label,
+th {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  line-height: 1.4;
+}
+
+h1, h2, h3 { font-weight: 400; margin: 0; }
+
+.page-title {
+  font-size: 32px;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.section-title {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--rule);
+  margin: 0 0 24px;
+}
+
+.muted { color: var(--ink-muted); }
+
+.prose { max-width: 62ch; }
+
+/* ---------- masthead ---------- */
+
+.masthead {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--bone);
+  border-bottom: 1px solid var(--rule);
+}
+
+.masthead-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 22px var(--gutter);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 32px;
+}
+
+.wordmark { letter-spacing: 0.22em; }
+
+.mast-left { display: flex; align-items: baseline; gap: 24px; min-width: 0; }
+
+/* Whose shelf you are looking at — always in view, never shouting. */
+.profile-switch {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--rule);
+  border-radius: 0;
+  padding: 2px 0;
+  max-width: 170px;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: color var(--ease), border-color var(--ease);
+}
+
+.profile-switch:hover,
+.profile-switch:focus { color: var(--ink); border-bottom-color: var(--ink); outline: none; }
+
+.nav { display: flex; gap: 28px; flex-wrap: wrap; }
+
+.nav a {
+  color: var(--ink-muted);
+  transition: color var(--ease);
+  padding-bottom: 2px;
+}
+
+.nav a:hover { color: var(--ink); }
+
+.nav a.is-active {
+  color: var(--ink);
+  border-bottom: 1px solid var(--ink);
+}
+
+/* ---------- shell ---------- */
+
+.view {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 64px var(--gutter) 96px;
+  min-height: 60vh;
+}
+
+.view-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 32px;
+  flex-wrap: wrap;
+  margin-bottom: 40px;
+}
+
+.colophon {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px var(--gutter) 48px;
+  border-top: 1px solid var(--rule);
+  color: var(--ink-muted);
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+/* ---------- controls ---------- */
+
+.btn {
+  display: inline-block;
+  background: none;
+  border: 1px solid var(--ink);
+  color: var(--ink);
+  padding: 12px 22px;
+  cursor: pointer;
+  transition: background var(--ease), color var(--ease), opacity var(--ease);
+}
+
+.btn:hover { background: var(--ink); color: var(--bone); }
+
+.btn-quiet {
+  border-color: var(--rule);
+  color: var(--ink-muted);
+}
+
+.btn-quiet:hover { background: none; border-color: var(--ink); color: var(--ink); }
+
+.btn-danger:hover { background: var(--amber); border-color: var(--amber); color: var(--bone); }
+
+.btn:disabled { opacity: 0.35; cursor: default; }
+.btn:disabled:hover { background: none; color: var(--ink); }
+
+.btn-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+
+.field { margin-bottom: 28px; }
+
+.field > label {
+  display: block;
+  color: var(--ink-muted);
+  margin-bottom: 8px;
+}
+
+.field input[type="text"],
+.field input[type="number"],
+.field input[type="date"],
+.field input[type="password"],
+.field select,
+.field textarea {
+  width: 100%;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--rule);
+  padding: 8px 0;
+  border-radius: 0;
+  transition: border-color var(--ease);
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.field select {
+  background-image: none;
+  cursor: pointer;
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  outline: none;
+  border-bottom-color: var(--ink);
+}
+
+.field textarea { resize: vertical; min-height: 120px; line-height: 1.7; }
+
+.field-hint { color: var(--ink-muted); font-size: 13px; margin-top: 8px; }
+
+.field-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+}
+
+/* radio / checkbox sets */
+
+.choices { display: flex; flex-wrap: wrap; gap: 10px; }
+
+.choices input { position: absolute; opacity: 0; pointer-events: none; }
+
+.choices label {
+  border: 1px solid var(--rule);
+  padding: 9px 16px;
+  cursor: pointer;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  transition: color var(--ease), border-color var(--ease), background var(--ease);
+}
+
+.choices label:hover { color: var(--ink); border-color: var(--ink); }
+
+.choices input:checked + label {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--bone);
+}
+
+.choices input:focus-visible + label { outline: 1px solid var(--amber); outline-offset: 2px; }
+
+/* ---------- filter bar ---------- */
+
+.filter-bar {
+  display: flex;
+  gap: 40px;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 16px 0;
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+  margin-bottom: 48px;
+}
+
+.filter {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.filter label { color: var(--ink-muted); }
+
+.filter select {
+  background: none;
+  border: none;
+  border-bottom: 1px solid transparent;
+  padding: 2px 0;
+  cursor: pointer;
+  border-radius: 0;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: border-color var(--ease);
+}
+
+.filter select:hover, .filter select:focus { border-bottom-color: var(--ink); outline: none; }
+
+.filter-count { margin-left: auto; color: var(--ink-muted); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; }
+
+/* ---------- shelf ---------- */
+
+.shelf {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 56px 40px;
+}
+
+.shelf-item { display: block; }
+
+.shelf-frame {
+  background: var(--bone-deep);
+  aspect-ratio: 4 / 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  margin-bottom: 18px;
+}
+
+.shelf-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: opacity var(--ease);
+}
+
+.shelf-item:hover .shelf-frame img { opacity: 0.82; }
+
+.shelf-frame .no-image {
+  color: var(--ink-muted);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.shelf-brand {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  margin-bottom: 4px;
+}
+
+.shelf-name { font-size: 16px; line-height: 1.4; }
+
+.shelf-meta {
+  margin-top: 6px;
+  color: var(--ink-muted);
+  font-size: 13px;
+}
+
+/* ---------- product detail ---------- */
+
+.detail {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  gap: 80px;
+  align-items: start;
+}
+
+.detail-frame {
+  background: var(--bone-deep);
+  aspect-ratio: 4 / 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: sticky;
+  top: 110px;
+}
+
+.detail-frame img { width: 100%; height: 100%; object-fit: cover; }
+
+.detail-brand {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  margin-bottom: 12px;
+}
+
+.detail-title { font-size: 34px; line-height: 1.15; margin-bottom: 28px; }
+
+.spec {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 0;
+  border-top: 1px solid var(--rule);
+}
+
+.spec dt {
+  padding: 12px 0;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  border-bottom: 1px solid var(--rule);
+}
+
+.spec dd {
+  margin: 0;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.block { margin-top: 56px; }
+
+/* actives summary */
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.chip {
+  border: 1px solid var(--rule);
+  padding: 6px 12px;
+  color: var(--ink-muted);
+}
+
+.chip-active { border-color: var(--amber); color: var(--amber); }
+.chip-flag { border-color: var(--amber); color: var(--amber); }
+
+/* ingredient rows */
+
+.ing-list { border-top: 1px solid var(--rule); }
+
+.ing {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) minmax(0, 1.15fr);
+  gap: 20px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--rule);
+  align-items: baseline;
+}
+
+.ing-index { color: var(--ink-muted); font-size: 11px; letter-spacing: 0.08em; }
+.ing-name { line-height: 1.4; }
+.ing-fn { color: var(--ink-muted); font-size: 13px; line-height: 1.55; }
+.ing-unknown .ing-fn { font-style: italic; }
+.ing-flagged .ing-name { color: var(--amber); }
+
+.ing-tags { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 6px; }
+
+.tag {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  border-bottom: 1px solid var(--rule);
+}
+
+.tag-flag { color: var(--amber); border-bottom-color: var(--amber); }
+
+/* ---------- notices ---------- */
+
+.notice {
+  border-left: 1px solid var(--amber);
+  padding: 4px 0 4px 20px;
+  color: var(--ink-muted);
+  font-size: 13px;
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+
+.notice strong { color: var(--amber); font-weight: 400; }
+
+.caveat {
+  border: 1px solid var(--rule);
+  padding: 20px 24px;
+  color: var(--ink-muted);
+  font-size: 13px;
+  line-height: 1.65;
+  margin-bottom: 48px;
+}
+
+/* ---------- empty state ---------- */
+
+.empty {
+  border-top: 1px solid var(--rule);
+  padding-top: 48px;
+  max-width: 46ch;
+}
+
+.empty p { color: var(--ink-muted); margin: 0 0 24px; }
+
+/* ---------- upload ---------- */
+
+.dropzone {
+  background: var(--bone-deep);
+  border: 1px solid var(--rule);
+  aspect-ratio: 4 / 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  cursor: pointer;
+  text-align: center;
+  padding: 24px;
+  transition: border-color var(--ease), background var(--ease);
+  position: relative;
+  overflow: hidden;
+}
+
+.dropzone:hover, .dropzone.is-over { border-color: var(--ink); }
+
+.dropzone p {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.dropzone img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.dropzone input[type="file"] { display: none; }
+
+.form-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 4fr) minmax(0, 7fr);
+  gap: 80px;
+  align-items: start;
+}
+
+/* ---------- assessment ---------- */
+
+.assess-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 4fr) minmax(0, 7fr);
+  gap: 80px;
+  align-items: start;
+}
+
+.reading { border-top: 1px solid var(--rule); }
+
+.reading-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 120px minmax(0, 1.4fr);
+  gap: 24px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--rule);
+  align-items: baseline;
+}
+
+.severity {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.severity-marked { color: var(--amber); }
+
+.reading-note { color: var(--ink-muted); font-size: 13px; }
+
+.routine-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 64px;
+}
+
+.step {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 20px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--rule);
+  align-items: baseline;
+}
+
+.step-num { color: var(--ink-muted); font-size: 11px; letter-spacing: 0.08em; }
+.step-label { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-muted); margin-bottom: 4px; }
+.step-product { line-height: 1.4; }
+.step-empty { color: var(--ink-muted); font-style: italic; }
+.step-note { color: var(--ink-muted); font-size: 13px; margin-top: 4px; }
+
+.history { border-top: 1px solid var(--rule); }
+
+.history-row {
+  display: flex;
+  gap: 24px;
+  align-items: baseline;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--rule);
+  width: 100%;
+  text-align: left;
+  background: none;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  cursor: pointer;
+  transition: opacity var(--ease);
+}
+
+.history-row:hover { opacity: 0.6; }
+.history-date { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-muted); min-width: 140px; }
+
+/* ---------- routine builder ---------- */
+
+.picker { border-top: 1px solid var(--rule); }
+
+.picker-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.picker-row .grow { flex: 1; min-width: 0; }
+.picker-row .picker-step { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-muted); }
+
+.link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--ink-muted);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  transition: color var(--ease);
+}
+
+.link-btn:hover { color: var(--ink); }
+
+/* Profile names are edited in place; the rule appears on approach. */
+.profile-name {
+  width: 100%;
+  background: none;
+  border: none;
+  border-bottom: 1px solid transparent;
+  border-radius: 0;
+  padding: 4px 0;
+  transition: border-color var(--ease);
+}
+
+.profile-name:hover { border-bottom-color: var(--rule); }
+.profile-name:focus { border-bottom-color: var(--ink); outline: none; }
+
+/* ---------- waiting ---------- */
+
+/* Three dots, for anything that has gone away to think. Sized off the text it
+   sits in, so it works inside a button and inside a sentence. */
+.dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32em;
+  vertical-align: baseline;
+  margin-left: 0.15em;
+}
+
+.dots i {
+  width: 0.28em;
+  height: 0.28em;
+  min-width: 3px;
+  min-height: 3px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.25;
+  animation: dot-drift 1.25s infinite ease-in-out;
+}
+
+.dots i:nth-child(2) { animation-delay: 0.16s; }
+.dots i:nth-child(3) { animation-delay: 0.32s; }
+
+@keyframes dot-drift {
+  0%, 65%, 100% { opacity: 0.25; transform: translateY(0); }
+  32%           { opacity: 1;    transform: translateY(-0.18em); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dots i { animation: none; opacity: 0.55; }
+}
+
+/* ---------- chat ---------- */
+
+.chat-launch {
+  position: fixed;
+  right: var(--gutter);
+  bottom: 28px;
+  z-index: 40;
+  background: var(--ink);
+  color: var(--bone);
+  border: none;
+  border-radius: 0;
+  padding: 14px 26px;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: opacity var(--ease);
+}
+
+.chat-launch:hover { opacity: 0.82; }
+
+.chat-panel {
+  position: fixed;
+  right: var(--gutter);
+  bottom: 28px;
+  z-index: 41;
+  width: 380px;
+  max-width: calc(100vw - var(--gutter) * 2);
+  height: 520px;
+  max-height: calc(100vh - 120px);
+  background: var(--bone);
+  border: 1px solid var(--rule);
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-head {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.chat-log {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.chat-turn { margin-bottom: 20px; }
+
+.chat-who {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  margin-bottom: 6px;
+}
+
+.chat-user .chat-who { color: var(--amber); }
+
+.chat-text { font-size: 14px; line-height: 1.6; }
+
+.chat-form {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 16px 20px;
+  border-top: 1px solid var(--rule);
+}
+
+.chat-form input {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--rule);
+  border-radius: 0;
+  padding: 6px 0;
+  transition: border-color var(--ease);
+}
+
+.chat-form input:focus { outline: none; border-bottom-color: var(--ink); }
+.chat-form .btn { padding: 9px 16px; }
+
+/* ---------- discoveries ---------- */
+
+.picks { border-top: 1px solid var(--rule); }
+
+.pick {
+  padding: 24px 0;
+  border-bottom: 1px solid var(--rule);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
+  gap: 32px;
+  align-items: start;
+}
+
+.pick-brand {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  margin-bottom: 4px;
+}
+
+.pick-name { font-size: 17px; line-height: 1.35; }
+.pick-kind { color: var(--ink-muted); font-size: 13px; margin-top: 4px; }
+.pick-why { line-height: 1.6; }
+.pick-meta { color: var(--ink-muted); font-size: 13px; margin-top: 10px; }
+
+/* ---------- responsive ---------- */
+
+@media (max-width: 1080px) {
+  :root { --gutter: 32px; }
+  .shelf { grid-template-columns: repeat(2, 1fr); gap: 48px 32px; }
+  .detail, .form-grid, .assess-grid { grid-template-columns: 1fr; gap: 48px; }
+  .detail-frame { position: static; max-width: 480px; }
+  .routine-cols { gap: 48px; }
+}
+
+@media (max-width: 720px) {
+  :root { --gutter: 20px; }
+  body { font-size: 14px; }
+  .view { padding: 40px var(--gutter) 64px; }
+  .masthead-inner { flex-direction: column; align-items: flex-start; gap: 16px; padding: 18px var(--gutter); }
+  .mast-left { gap: 14px; }
+  .profile-switch { max-width: 120px; }
+  .nav { gap: 18px; }
+  .shelf { grid-template-columns: 1fr; gap: 40px; }
+  .page-title { font-size: 26px; }
+  .detail-title { font-size: 26px; }
+  .field-pair { grid-template-columns: 1fr; gap: 0; }
+  .routine-cols { grid-template-columns: 1fr; }
+  .spec { grid-template-columns: 110px 1fr; }
+  .ing { grid-template-columns: 22px 1fr; }
+  .ing-fn { grid-column: 2; }
+  .reading-row { grid-template-columns: 1fr; gap: 4px; }
+  .filter-bar { gap: 20px; }
+  .colophon { flex-direction: column; gap: 8px; }
+  .pick { grid-template-columns: 1fr; gap: 12px; }
+  .chat-panel { left: var(--gutter); right: var(--gutter); width: auto; height: 70vh; }
+  .chat-launch { right: var(--gutter); bottom: 20px; }
+}
+
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="masthead-inner">
+    <div class="mast-left">
+      <a class="wordmark" href="#/">Skincare&nbsp;Library</a>
+      <select class="profile-switch" id="profile-select" aria-label="Whose shelf"></select>
+    </div>
+    <nav class="nav" id="nav">
+      <a href="#/" data-route="shelf">Shelf</a>
+      <a href="#/add" data-route="add">Add</a>
+      <a href="#/assess" data-route="assess">Assessment</a>
+      <a href="#/routine" data-route="routine">Routine</a>
+      <a href="#/discoveries" data-route="discoveries">Discoveries</a>
+      <a href="#/settings" data-route="settings">Settings</a>
+    </nav>
+  </div>
+</header>
+
+<main id="view" class="view"></main>
+
+<footer class="colophon">
+  <span>Kept privately in this browser.</span>
+  <span id="colophon-count"></span>
+</footer>
+
+<script>
+(() => {
+"use strict";
+/* ===== js/ingredients.js ===== */
+/* A curated INCI dictionary. Not exhaustive — unmatched ingredients still
+   render, they simply carry no annotation. */
+
+const TAG_LABEL = {
+  solvent: 'Solvent',
+  humectant: 'Humectant',
+  emollient: 'Emollient',
+  occlusive: 'Occlusive',
+  emulsifier: 'Emulsifier',
+  surfactant: 'Cleansing agent',
+  preservative: 'Preservative',
+  thickener: 'Texture',
+  ph: 'pH adjuster',
+  antioxidant: 'Antioxidant',
+  soothing: 'Soothing',
+  barrier: 'Barrier support',
+  aha: 'AHA',
+  bha: 'BHA',
+  pha: 'PHA',
+  enzyme: 'Enzyme exfoliant',
+  retinoid: 'Retinoid',
+  'vitamin-c': 'Vitamin C',
+  niacinamide: 'Niacinamide',
+  peptide: 'Peptide',
+  ceramide: 'Ceramide',
+  'uv-filter': 'UV filter',
+  brightening: 'Brightening',
+  'anti-acne': 'Anti-blemish',
+  oil: 'Plant oil',
+  texture: 'Texture',
+  fragrance: 'Fragrance',
+  'essential-oil': 'Essential oil',
+  alcohol: 'Drying alcohol',
+  photosensitising: 'Photosensitising',
+  comedogenic: 'May clog',
+  dye: 'Colourant'
+};
+
+/* Tags worth naming at the top of a product page. */
+const ACTIVE_TAGS = [
+  'retinoid', 'vitamin-c', 'niacinamide', 'aha', 'bha', 'pha', 'enzyme',
+  'peptide', 'ceramide', 'antioxidant', 'brightening', 'anti-acne', 'uv-filter'
+];
+
+/* Tags worth a caution. */
+const FLAG_TAGS = ['fragrance', 'essential-oil', 'alcohol', 'photosensitising', 'comedogenic', 'dye'];
+
+const D = (n, f, t) => ({ n, f, t });
+
+const INGREDIENTS = {
+  /* --- base and solvents --- */
+  'water': D('Water', 'The base most formulas are built on.', ['solvent']),
+  'alcohol denat': D('Denatured alcohol', 'Thins texture and speeds drying. High in the list, it can be dehydrating on already-dry or sensitised skin.', ['solvent', 'alcohol']),
+  'alcohol': D('Alcohol', 'Solvent that gives a fast, weightless finish; drying in quantity.', ['solvent', 'alcohol']),
+  'sd alcohol 40-b': D('SD Alcohol 40-B', 'Cosmetic-grade denatured alcohol used as a solvent.', ['solvent', 'alcohol']),
+  'isopropyl alcohol': D('Isopropyl alcohol', 'Strong solvent, drying on skin.', ['solvent', 'alcohol']),
+  'benzyl alcohol': D('Benzyl alcohol', 'Preservative and solvent — not one of the drying alcohols.', ['preservative']),
+  'butylene glycol': D('Butylene glycol', 'Lightweight humectant that also helps dissolve other actives.', ['humectant', 'solvent']),
+  'propanediol': D('Propanediol', 'Plant-derived humectant and solvent with a light finish.', ['humectant', 'solvent']),
+  'propylene glycol': D('Propylene glycol', 'Humectant and solvent; occasionally sensitising.', ['humectant', 'solvent']),
+  'dipropylene glycol': D('Dipropylene glycol', 'Humectant solvent used to thin heavier bases.', ['humectant', 'solvent']),
+  'pentylene glycol': D('Pentylene glycol', 'Humectant with mild preservative action.', ['humectant', 'preservative']),
+  'hexylene glycol': D('Hexylene glycol', 'Solvent and viscosity reducer.', ['solvent']),
+  'caprylyl glycol': D('Caprylyl glycol', 'Conditioning humectant that supports the preservative system.', ['humectant', 'preservative']),
+  '1,2-hexanediol': D('1,2-Hexanediol', 'Humectant and preservative booster.', ['humectant', 'preservative']),
+  'glycerin': D('Glycerin', 'The workhorse humectant — draws water into the upper layers of skin.', ['humectant']),
+  'isododecane': D('Isododecane', 'Volatile emollient that spreads thinly and evaporates.', ['emollient', 'texture']),
+
+  /* --- humectants --- */
+  'sodium hyaluronate': D('Sodium hyaluronate', 'The salt form of hyaluronic acid; holds water at the surface.', ['humectant']),
+  'hyaluronic acid': D('Hyaluronic acid', 'Large humectant molecule that binds many times its weight in water.', ['humectant']),
+  'hydrolyzed hyaluronic acid': D('Hydrolysed hyaluronic acid', 'Smaller fragments intended to sit slightly deeper than standard HA.', ['humectant']),
+  'sodium pca': D('Sodium PCA', 'Part of skin’s own natural moisturising factor.', ['humectant', 'barrier']),
+  'betaine': D('Betaine', 'Gentle humectant with a soothing, anti-irritant character.', ['humectant', 'soothing']),
+  'trehalose': D('Trehalose', 'Sugar humectant that helps skin hold water under stress.', ['humectant']),
+  'urea': D('Urea', 'Hydrates at low levels; softens and loosens rough skin at high levels.', ['humectant', 'barrier']),
+  'panthenol': D('Panthenol', 'Pro-vitamin B5 — hydrating, calming, and supportive of barrier repair.', ['humectant', 'soothing', 'barrier']),
+  'sorbitol': D('Sorbitol', 'Sugar alcohol humectant.', ['humectant']),
+  'saccharide isomerate': D('Saccharide isomerate', 'Plant sugar complex that binds to skin for long-lasting hydration.', ['humectant']),
+  'polyglutamic acid': D('Polyglutamic acid', 'Fermentation-derived humectant, film-forming and very water-binding.', ['humectant']),
+  'beta-glucan': D('Beta-glucan', 'Oat- or yeast-derived; hydrating and notably calming.', ['humectant', 'soothing']),
+  'honey': D('Honey', 'Humectant with mild antibacterial character.', ['humectant']),
+
+  /* --- emollients, oils, occlusives --- */
+  'squalane': D('Squalane', 'Weightless, stable emollient that mimics skin’s own lipids.', ['emollient']),
+  'caprylic/capric triglyceride': D('Caprylic/capric triglyceride', 'Coconut-derived emollient with a dry, silky slip.', ['emollient']),
+  'cetearyl alcohol': D('Cetearyl alcohol', 'Fatty alcohol — softens and thickens. Not drying.', ['emollient', 'thickener']),
+  'cetyl alcohol': D('Cetyl alcohol', 'Fatty alcohol used to give body to creams.', ['emollient', 'thickener']),
+  'stearyl alcohol': D('Stearyl alcohol', 'Fatty alcohol; emollient and thickener.', ['emollient', 'thickener']),
+  'behenyl alcohol': D('Behenyl alcohol', 'Rich fatty alcohol for cushioned textures.', ['emollient', 'thickener']),
+  'simmondsia chinensis seed oil': D('Jojoba oil', 'A liquid wax close in structure to skin’s own sebum.', ['emollient', 'oil']),
+  'butyrospermum parkii butter': D('Shea butter', 'Rich butter — softening and semi-occlusive.', ['emollient', 'occlusive']),
+  'helianthus annuus seed oil': D('Sunflower seed oil', 'High in linoleic acid; supports the barrier.', ['emollient', 'oil', 'barrier']),
+  'rosa canina fruit oil': D('Rosehip oil', 'Carries natural vitamin A and antioxidants.', ['emollient', 'oil', 'antioxidant']),
+  'argania spinosa kernel oil': D('Argan oil', 'Light, vitamin E-rich plant oil.', ['emollient', 'oil']),
+  'persea gratissima oil': D('Avocado oil', 'Heavier oil for dry, depleted skin.', ['emollient', 'oil']),
+  'cocos nucifera oil': D('Coconut oil', 'Very occlusive; known to clog on acne-prone skin.', ['emollient', 'oil', 'comedogenic']),
+  'olea europaea fruit oil': D('Olive oil', 'Rich oil, occlusive and softening.', ['emollient', 'oil']),
+  'prunus amygdalus dulcis oil': D('Sweet almond oil', 'Mild, softening plant oil.', ['emollient', 'oil']),
+  'vitis vinifera seed oil': D('Grapeseed oil', 'Light, linoleic-rich oil that absorbs quickly.', ['emollient', 'oil']),
+  'oenothera biennis oil': D('Evening primrose oil', 'Rich in gamma-linolenic acid; calming for dry skin.', ['emollient', 'oil', 'barrier']),
+  'macadamia integrifolia seed oil': D('Macadamia oil', 'Cushioning oil high in palmitoleic acid.', ['emollient', 'oil']),
+  'isopropyl myristate': D('Isopropyl myristate', 'Fast-absorbing emollient with a reputation for clogging.', ['emollient', 'comedogenic']),
+  'isopropyl palmitate': D('Isopropyl palmitate', 'Emollient and thickener; may clog on acne-prone skin.', ['emollient', 'comedogenic']),
+  'ethylhexyl palmitate': D('Ethylhexyl palmitate', 'Light emollient ester with a dry finish.', ['emollient']),
+  'coco-caprylate': D('Coco-caprylate', 'Plant-derived light emollient, a silicone alternative.', ['emollient']),
+  'mineral oil': D('Mineral oil', 'Inert occlusive that reduces water loss.', ['occlusive', 'emollient']),
+  'paraffinum liquidum': D('Mineral oil', 'Inert occlusive that reduces water loss.', ['occlusive', 'emollient']),
+  'petrolatum': D('Petrolatum', 'The most effective occlusive available; seals water in.', ['occlusive']),
+  'lanolin': D('Lanolin', 'Wool-derived occlusive, excellent on very dry or chapped skin.', ['occlusive', 'emollient']),
+  'dimethicone': D('Dimethicone', 'Silicone that smooths the surface and slows water loss.', ['occlusive', 'emollient', 'texture']),
+  'cyclopentasiloxane': D('Cyclopentasiloxane', 'Volatile silicone giving instant slip, then evaporating.', ['emollient', 'texture']),
+  'phenyl trimethicone': D('Phenyl trimethicone', 'Silicone that adds gloss and spreadability.', ['emollient', 'texture']),
+  'dimethicone crosspolymer': D('Dimethicone crosspolymer', 'Silicone gel that blurs texture and absorbs oil.', ['texture']),
+
+  /* --- barrier lipids --- */
+  'ceramide np': D('Ceramide NP', 'A key barrier lipid; helps rebuild the skin’s mortar.', ['ceramide', 'barrier']),
+  'ceramide ap': D('Ceramide AP', 'Barrier lipid, usually paired with NP and EOP.', ['ceramide', 'barrier']),
+  'ceramide eop': D('Ceramide EOP', 'Barrier lipid that supports water retention.', ['ceramide', 'barrier']),
+  'ceramide ns': D('Ceramide NS', 'Barrier lipid found naturally in the stratum corneum.', ['ceramide', 'barrier']),
+  'cholesterol': D('Cholesterol', 'Works alongside ceramides and fatty acids to restore the barrier.', ['barrier', 'emollient']),
+  'phytosphingosine': D('Phytosphingosine', 'Ceramide precursor; calming and mildly antibacterial.', ['barrier', 'soothing']),
+  'lecithin': D('Lecithin', 'Phospholipid emulsifier that also conditions.', ['emollient', 'emulsifier']),
+  'linoleic acid': D('Linoleic acid', 'Essential fatty acid often low in acne-prone skin.', ['barrier', 'emollient']),
+  'stearic acid': D('Stearic acid', 'Fatty acid used to thicken and soften.', ['emollient', 'thickener']),
+  'palmitic acid': D('Palmitic acid', 'Fatty acid, emollient and structuring.', ['emollient', 'thickener']),
+  'myristic acid': D('Myristic acid', 'Fatty acid; forms soap-based cleansers with alkali.', ['surfactant', 'emollient']),
+
+  /* --- the actives --- */
+  'niacinamide': D('Niacinamide', 'Vitamin B3. Regulates oil, evens tone, strengthens the barrier — the most broadly useful active there is.', ['niacinamide', 'brightening', 'barrier']),
+  'ascorbic acid': D('L-Ascorbic acid', 'Pure vitamin C. Strong antioxidant and brightener; unstable, and best used in the morning.', ['vitamin-c', 'antioxidant', 'brightening']),
+  '3-o-ethyl ascorbic acid': D('3-O-Ethyl ascorbic acid', 'Stable vitamin C derivative, less irritating than the pure acid.', ['vitamin-c', 'brightening']),
+  'sodium ascorbyl phosphate': D('Sodium ascorbyl phosphate', 'Gentle, stable vitamin C derivative; also anti-blemish.', ['vitamin-c', 'brightening', 'anti-acne']),
+  'magnesium ascorbyl phosphate': D('Magnesium ascorbyl phosphate', 'Mild, stable vitamin C derivative.', ['vitamin-c', 'brightening']),
+  'ascorbyl glucoside': D('Ascorbyl glucoside', 'Slow-release vitamin C derivative.', ['vitamin-c', 'brightening']),
+  'tetrahexyldecyl ascorbate': D('Tetrahexyldecyl ascorbate', 'Oil-soluble vitamin C that penetrates well and stays stable.', ['vitamin-c', 'antioxidant', 'brightening']),
+  'retinol': D('Retinol', 'The reference over-the-counter retinoid. Increases cell turnover; introduce slowly and pair with sunscreen.', ['retinoid', 'photosensitising']),
+  'retinal': D('Retinaldehyde', 'One step closer to retinoic acid than retinol, so it works faster.', ['retinoid', 'photosensitising']),
+  'retinaldehyde': D('Retinaldehyde', 'One step closer to retinoic acid than retinol, so it works faster.', ['retinoid', 'photosensitising']),
+  'retinyl palmitate': D('Retinyl palmitate', 'The mildest retinoid ester; gentle but slow.', ['retinoid']),
+  'hydroxypinacolone retinoate': D('Hydroxypinacolone retinoate', 'Retinoid ester that acts on receptors directly with less irritation.', ['retinoid']),
+  'adapalene': D('Adapalene', 'A prescription-strength retinoid sold over the counter for acne.', ['retinoid', 'anti-acne', 'photosensitising']),
+  'tretinoin': D('Tretinoin', 'Prescription retinoic acid — the strongest of the family.', ['retinoid', 'photosensitising']),
+  'bakuchiol': D('Bakuchiol', 'Plant extract used as a gentler alternative to retinol.', ['antioxidant', 'soothing']),
+  'glycolic acid': D('Glycolic acid', 'The smallest AHA — strong resurfacing, and the most likely to sting.', ['aha', 'photosensitising']),
+  'lactic acid': D('Lactic acid', 'Larger AHA; exfoliates while also hydrating.', ['aha', 'humectant', 'photosensitising']),
+  'mandelic acid': D('Mandelic acid', 'Large, slow AHA — the kindest option for sensitive or deeper skin tones.', ['aha', 'photosensitising']),
+  'malic acid': D('Malic acid', 'Mild AHA, usually a supporting player.', ['aha']),
+  'tartaric acid': D('Tartaric acid', 'AHA used mostly to adjust pH in acid blends.', ['aha', 'ph']),
+  'salicylic acid': D('Salicylic acid', 'Oil-soluble BHA that clears inside the pore. The active of choice for congestion.', ['bha', 'anti-acne', 'photosensitising']),
+  'betaine salicylate': D('Betaine salicylate', 'Gentler relative of salicylic acid.', ['bha', 'anti-acne']),
+  'salix alba bark extract': D('Willow bark extract', 'Natural source of salicylates; mildly exfoliating and calming.', ['bha', 'soothing']),
+  'gluconolactone': D('Gluconolactone', 'PHA — exfoliates at the surface only, with humectant benefits.', ['pha', 'humectant']),
+  'lactobionic acid': D('Lactobionic acid', 'Large PHA, well tolerated by sensitive skin.', ['pha', 'humectant']),
+  'papain': D('Papain', 'Papaya enzyme that digests surface proteins for gentle exfoliation.', ['enzyme']),
+  'bromelain': D('Bromelain', 'Pineapple enzyme used for mild exfoliation.', ['enzyme']),
+  'azelaic acid': D('Azelaic acid', 'Rare triple threat — calms redness, clears blemishes, fades marks.', ['brightening', 'anti-acne', 'soothing']),
+  'benzoyl peroxide': D('Benzoyl peroxide', 'Kills acne bacteria directly. Drying, and it bleaches fabric.', ['anti-acne']),
+  'sulfur': D('Sulfur', 'Traditional anti-blemish and oil-absorbing active.', ['anti-acne']),
+  'zinc pca': D('Zinc PCA', 'Helps regulate sebum; mildly calming.', ['anti-acne', 'soothing']),
+  'tranexamic acid': D('Tranexamic acid', 'Targets stubborn pigmentation, including melasma.', ['brightening']),
+  'alpha-arbutin': D('Alpha-arbutin', 'Blocks pigment formation gently; well tolerated.', ['brightening']),
+  'arbutin': D('Arbutin', 'Plant-derived brightener that interrupts pigment production.', ['brightening']),
+  'kojic acid': D('Kojic acid', 'Fungal-derived brightener for dark marks.', ['brightening']),
+  'hydroquinone': D('Hydroquinone', 'The strongest pigment inhibitor; regulated in many markets.', ['brightening']),
+  'glycyrrhiza glabra root extract': D('Licorice root extract', 'Calming, and a mild brightener for post-blemish marks.', ['brightening', 'soothing']),
+  'adenosine': D('Adenosine', 'Signalling molecule used for firmness and line-smoothing.', ['antioxidant']),
+  'palmitoyl tripeptide-1': D('Palmitoyl tripeptide-1', 'Signal peptide associated with collagen support.', ['peptide']),
+  'palmitoyl tetrapeptide-7': D('Palmitoyl tetrapeptide-7', 'Peptide used to temper inflammatory signalling.', ['peptide']),
+  'palmitoyl pentapeptide-4': D('Palmitoyl pentapeptide-4', 'Well-studied signal peptide for firmness.', ['peptide']),
+  'acetyl hexapeptide-8': D('Acetyl hexapeptide-8', 'Peptide aimed at expression lines.', ['peptide']),
+  'copper tripeptide-1': D('Copper tripeptide-1', 'Peptide linked to wound healing and firmness.', ['peptide']),
+  'ubiquinone': D('Coenzyme Q10', 'Antioxidant naturally present in skin.', ['antioxidant']),
+  'ferulic acid': D('Ferulic acid', 'Antioxidant that stabilises vitamins C and E.', ['antioxidant']),
+  'tocopherol': D('Vitamin E', 'Fat-soluble antioxidant; protects oils in the formula and lipids in skin.', ['antioxidant', 'emollient']),
+  'tocopheryl acetate': D('Tocopheryl acetate', 'Stable vitamin E ester.', ['antioxidant', 'emollient']),
+  'resveratrol': D('Resveratrol', 'Polyphenol antioxidant from grapes.', ['antioxidant']),
+  'camellia sinensis leaf extract': D('Green tea extract', 'Polyphenol antioxidant, calming on reactive skin.', ['antioxidant', 'soothing']),
+  'caffeine': D('Caffeine', 'Antioxidant that temporarily constricts vessels — hence its use around the eye.', ['antioxidant']),
+  'ectoin': D('Ectoin', 'Protective molecule that shields cells from environmental stress.', ['soothing', 'humectant']),
+  'allantoin': D('Allantoin', 'Quietly soothing and skin-softening.', ['soothing', 'barrier']),
+  'bisabolol': D('Bisabolol', 'Chamomile-derived calming agent.', ['soothing']),
+  'centella asiatica extract': D('Centella asiatica', 'Cica. Calms redness and supports repair.', ['soothing', 'barrier']),
+  'madecassoside': D('Madecassoside', 'The most studied centella fraction; anti-inflammatory.', ['soothing', 'barrier']),
+  'asiaticoside': D('Asiaticoside', 'Centella fraction associated with healing.', ['soothing', 'barrier']),
+  'aloe barbadensis leaf juice': D('Aloe vera', 'Hydrating and cooling on irritated skin.', ['soothing', 'humectant']),
+  'avena sativa kernel extract': D('Oat extract', 'Classic anti-itch, barrier-friendly soother.', ['soothing', 'barrier']),
+  'colloidal oatmeal': D('Colloidal oatmeal', 'Clinically recognised for calming eczema-prone skin.', ['soothing', 'barrier']),
+  'chamomilla recutita flower extract': D('Chamomile extract', 'Traditional calming botanical.', ['soothing']),
+  'calendula officinalis flower extract': D('Calendula extract', 'Gentle, healing botanical.', ['soothing']),
+  'dipotassium glycyrrhizate': D('Dipotassium glycyrrhizate', 'Licorice-derived anti-inflammatory.', ['soothing']),
+  'snail secretion filtrate': D('Snail secretion filtrate', 'Hydrating repair ingredient popular in Korean formulas.', ['humectant', 'soothing']),
+  'galactomyces ferment filtrate': D('Galactomyces ferment filtrate', 'Yeast ferment associated with clarity and texture.', ['brightening', 'humectant']),
+  'saccharomyces ferment filtrate': D('Saccharomyces ferment filtrate', 'Yeast ferment used for radiance and hydration.', ['humectant', 'brightening']),
+  'bifida ferment lysate': D('Bifida ferment lysate', 'Probiotic ferment; calming and barrier-supportive.', ['soothing', 'barrier']),
+  'lactobacillus ferment': D('Lactobacillus ferment', 'Probiotic ferment for barrier and microbiome support.', ['soothing', 'barrier']),
+  'hamamelis virginiana water': D('Witch hazel', 'Astringent botanical; check whether it is distilled with alcohol.', ['soothing']),
+  'kaolin': D('Kaolin', 'Soft white clay that absorbs oil without stripping.', ['texture', 'anti-acne']),
+  'bentonite': D('Bentonite', 'Strongly absorbent clay for masks.', ['texture', 'anti-acne']),
+  'charcoal powder': D('Charcoal', 'Absorbs surface oil; largely a textural and visual ingredient.', ['texture']),
+
+  /* --- UV filters --- */
+  'zinc oxide': D('Zinc oxide', 'Mineral filter with broad UVA/UVB coverage; also mildly calming.', ['uv-filter', 'soothing']),
+  'titanium dioxide': D('Titanium dioxide', 'Mineral filter, strongest in UVB.', ['uv-filter']),
+  'butyl methoxydibenzoylmethane': D('Avobenzone', 'The main UVA filter in Western sunscreens; needs stabilising.', ['uv-filter']),
+  'ethylhexyl methoxycinnamate': D('Octinoxate', 'Widely used UVB filter.', ['uv-filter']),
+  'octocrylene': D('Octocrylene', 'UVB filter that also stabilises avobenzone.', ['uv-filter']),
+  'homosalate': D('Homosalate', 'UVB filter and solvent for other filters.', ['uv-filter']),
+  'ethylhexyl salicylate': D('Octisalate', 'UVB filter with a light feel.', ['uv-filter']),
+  'benzophenone-3': D('Oxybenzone', 'Broad filter, increasingly restricted.', ['uv-filter']),
+  'bis-ethylhexyloxyphenol methoxyphenyl triazine': D('Tinosorb S', 'Photostable broad-spectrum filter, outside the US.', ['uv-filter']),
+  'methylene bis-benzotriazolyl tetramethylbutylphenol': D('Tinosorb M', 'Broad-spectrum filter that both absorbs and scatters.', ['uv-filter']),
+  'diethylamino hydroxybenzoyl hexyl benzoate': D('Uvinul A Plus', 'Strong, photostable UVA filter.', ['uv-filter']),
+  'ethylhexyl triazone': D('Uvinul T 150', 'Highly efficient UVB filter.', ['uv-filter']),
+  'terephthalylidene dicamphor sulfonic acid': D('Mexoryl SX', 'Water-soluble UVA filter.', ['uv-filter']),
+  'drometrizole trisiloxane': D('Mexoryl XL', 'Oil-soluble broad-spectrum filter.', ['uv-filter']),
+  'polysilicone-15': D('Polysilicone-15', 'Silicone-based UVB filter with a light finish.', ['uv-filter']),
+
+  /* --- cleansing agents --- */
+  'sodium lauryl sulfate': D('Sodium lauryl sulfate', 'Powerful cleanser; harsh on the facial barrier.', ['surfactant']),
+  'sodium laureth sulfate': D('Sodium laureth sulfate', 'Milder sulfate, still a strong foaming cleanser.', ['surfactant']),
+  'cocamidopropyl betaine': D('Cocamidopropyl betaine', 'Mild co-surfactant that softens harsher ones.', ['surfactant']),
+  'coco-glucoside': D('Coco-glucoside', 'Sugar-derived gentle cleanser.', ['surfactant']),
+  'decyl glucoside': D('Decyl glucoside', 'Very mild non-ionic cleanser.', ['surfactant']),
+  'lauryl glucoside': D('Lauryl glucoside', 'Gentle sugar surfactant.', ['surfactant']),
+  'sodium cocoyl isethionate': D('Sodium cocoyl isethionate', 'Creamy, mild cleanser used in syndet bars.', ['surfactant']),
+  'sodium methyl cocoyl taurate': D('Sodium methyl cocoyl taurate', 'Gentle foaming agent.', ['surfactant']),
+  'polysorbate 20': D('Polysorbate 20', 'Solubiliser that carries oils into water.', ['emulsifier', 'surfactant']),
+  'polysorbate 60': D('Polysorbate 60', 'Emulsifier for creams and lotions.', ['emulsifier']),
+  'polysorbate 80': D('Polysorbate 80', 'Emulsifier and solubiliser.', ['emulsifier']),
+  'peg-40 hydrogenated castor oil': D('PEG-40 hydrogenated castor oil', 'Solubiliser common in cleansing oils and toners.', ['emulsifier', 'surfactant']),
+
+  /* --- structure --- */
+  'glyceryl stearate': D('Glyceryl stearate', 'Emulsifier that also leaves skin soft.', ['emulsifier', 'emollient']),
+  'peg-100 stearate': D('PEG-100 stearate', 'Co-emulsifier, almost always paired with glyceryl stearate.', ['emulsifier']),
+  'cetearyl glucoside': D('Cetearyl glucoside', 'Plant-derived emulsifier.', ['emulsifier']),
+  'carbomer': D('Carbomer', 'Gelling polymer that builds thickness.', ['thickener']),
+  'acrylates/c10-30 alkyl acrylate crosspolymer': D('Acrylates crosspolymer', 'Thickener and stabiliser for gels and emulsions.', ['thickener']),
+  'xanthan gum': D('Xanthan gum', 'Natural gum used to thicken and suspend.', ['thickener']),
+  'sclerotium gum': D('Sclerotium gum', 'Natural gum with a light, non-tacky feel.', ['thickener']),
+  'hydroxyethylcellulose': D('Hydroxyethylcellulose', 'Cellulose thickener for clear gels.', ['thickener']),
+  'sodium polyacrylate': D('Sodium polyacrylate', 'Highly efficient synthetic thickener.', ['thickener']),
+  'ammonium acryloyldimethyltaurate/vp copolymer': D('Ammonium acryloyldimethyltaurate/VP copolymer', 'Thickener that gives a bouncy gel texture.', ['thickener']),
+  'hydroxyethyl acrylate/sodium acryloyldimethyl taurate copolymer': D('Hydroxyethyl acrylate copolymer', 'Gel-cream thickener and emulsifier.', ['thickener', 'emulsifier']),
+  'sodium chloride': D('Salt', 'Adjusts viscosity in cleansers.', ['thickener']),
+  'mica': D('Mica', 'Mineral that adds soft light diffusion.', ['texture']),
+
+  /* --- preservation and pH --- */
+  'phenoxyethanol': D('Phenoxyethanol', 'The most common broad-spectrum preservative.', ['preservative']),
+  'ethylhexylglycerin': D('Ethylhexylglycerin', 'Preservative booster and skin conditioner.', ['preservative']),
+  'chlorphenesin': D('Chlorphenesin', 'Preservative, usually alongside phenoxyethanol.', ['preservative']),
+  'sodium benzoate': D('Sodium benzoate', 'Preservative effective in acidic formulas.', ['preservative']),
+  'potassium sorbate': D('Potassium sorbate', 'Mild preservative against mould and yeast.', ['preservative']),
+  'methylparaben': D('Methylparaben', 'Well-studied, low-irritation preservative.', ['preservative']),
+  'propylparaben': D('Propylparaben', 'Paraben preservative.', ['preservative']),
+  'ethylparaben': D('Ethylparaben', 'Paraben preservative.', ['preservative']),
+  'butylparaben': D('Butylparaben', 'Paraben preservative.', ['preservative']),
+  'methylisothiazolinone': D('Methylisothiazolinone', 'Preservative with a notable contact-allergy record.', ['preservative']),
+  'dmdm hydantoin': D('DMDM hydantoin', 'Formaldehyde-releasing preservative.', ['preservative']),
+  'disodium edta': D('Disodium EDTA', 'Chelator — keeps trace metals from spoiling the formula.', ['preservative']),
+  'tetrasodium edta': D('Tetrasodium EDTA', 'Chelator that stabilises the formula.', ['preservative']),
+  'sodium phytate': D('Sodium phytate', 'Plant-derived chelator.', ['preservative']),
+  'sodium metabisulfite': D('Sodium metabisulfite', 'Antioxidant that protects vitamin C formulas.', ['antioxidant', 'preservative']),
+  'sodium hydroxide': D('Sodium hydroxide', 'Raises pH to a skin-appropriate level.', ['ph']),
+  'citric acid': D('Citric acid', 'Usually here to adjust pH rather than to exfoliate.', ['ph', 'aha']),
+  'sodium citrate': D('Sodium citrate', 'Buffers pH.', ['ph']),
+  'triethanolamine': D('Triethanolamine', 'pH adjuster and emulsifier.', ['ph']),
+  'tromethamine': D('Tromethamine', 'pH buffer.', ['ph']),
+  'aminomethyl propanol': D('Aminomethyl propanol', 'pH adjuster used with acrylate thickeners.', ['ph']),
+
+  /* --- fragrance and colour --- */
+  'fragrance': D('Fragrance', 'An undisclosed blend. The most common source of contact reactions.', ['fragrance']),
+  'limonene': D('Limonene', 'Citrus fragrance component; oxidises into a sensitiser.', ['fragrance']),
+  'linalool': D('Linalool', 'Floral fragrance component and known allergen.', ['fragrance']),
+  'citronellol': D('Citronellol', 'Rose-like fragrance allergen.', ['fragrance']),
+  'geraniol': D('Geraniol', 'Fragrance allergen requiring EU declaration.', ['fragrance']),
+  'eugenol': D('Eugenol', 'Clove-like fragrance allergen.', ['fragrance']),
+  'coumarin': D('Coumarin', 'Sweet, hay-like fragrance allergen.', ['fragrance']),
+  'citral': D('Citral', 'Lemon fragrance allergen.', ['fragrance']),
+  'benzyl salicylate': D('Benzyl salicylate', 'Fragrance component and declared allergen.', ['fragrance']),
+  'hexyl cinnamal': D('Hexyl cinnamal', 'Jasmine-like fragrance allergen.', ['fragrance']),
+  'alpha-isomethyl ionone': D('Alpha-isomethyl ionone', 'Violet fragrance allergen.', ['fragrance']),
+  'lavandula angustifolia oil': D('Lavender oil', 'Fragrant essential oil; can irritate over time.', ['essential-oil', 'fragrance']),
+  'citrus aurantium dulcis peel oil': D('Sweet orange peel oil', 'Citrus essential oil — fragrant and potentially photosensitising.', ['essential-oil', 'fragrance', 'photosensitising']),
+  'citrus limon peel oil': D('Lemon peel oil', 'Citrus essential oil; phototoxic unless distilled.', ['essential-oil', 'fragrance', 'photosensitising']),
+  'citrus bergamia peel oil': D('Bergamot oil', 'Classically phototoxic citrus oil.', ['essential-oil', 'fragrance', 'photosensitising']),
+  'melaleuca alternifolia leaf oil': D('Tea tree oil', 'Antibacterial essential oil; effective on spots, sensitising in quantity.', ['essential-oil', 'anti-acne']),
+  'mentha piperita oil': D('Peppermint oil', 'Cooling essential oil that frequently irritates.', ['essential-oil', 'fragrance']),
+  'rosmarinus officinalis leaf oil': D('Rosemary oil', 'Aromatic essential oil.', ['essential-oil', 'fragrance']),
+  'eucalyptus globulus leaf oil': D('Eucalyptus oil', 'Strongly aromatic essential oil.', ['essential-oil', 'fragrance']),
+  'pelargonium graveolens flower oil': D('Geranium oil', 'Rose-like essential oil.', ['essential-oil', 'fragrance']),
+  'cananga odorata flower oil': D('Ylang ylang oil', 'Heady floral essential oil.', ['essential-oil', 'fragrance']),
+  'santalum album oil': D('Sandalwood oil', 'Woody essential oil.', ['essential-oil', 'fragrance']),
+  'rosa damascena flower water': D('Rose water', 'Lightly fragrant floral water.', ['soothing', 'fragrance']),
+  'ci 77891': D('CI 77891', 'Titanium dioxide used as a white colourant.', ['dye']),
+  'ci 77491': D('CI 77491', 'Red iron oxide colourant.', ['dye']),
+  'ci 19140': D('CI 19140', 'Yellow synthetic colourant.', ['dye']),
+  'ci 42090': D('CI 42090', 'Blue synthetic colourant.', ['dye'])
+};
+
+/* Common names, trade names and spellings that map onto a canonical entry. */
+const ALIASES = {
+  'aqua': 'water', 'eau': 'water', 'purified water': 'water', 'distilled water': 'water',
+  'aqua/water/eau': 'water', 'water/aqua/eau': 'water', 'aqua (water)': 'water',
+  'parfum': 'fragrance', 'perfume': 'fragrance', 'aroma': 'fragrance', 'fragrance/parfum': 'fragrance',
+  'vitamin e': 'tocopherol', 'vitamin c': 'ascorbic acid', 'l-ascorbic acid': 'ascorbic acid',
+  'ethyl ascorbic acid': '3-o-ethyl ascorbic acid',
+  'vitamin b3': 'niacinamide', 'nicotinamide': 'niacinamide',
+  'vitamin b5': 'panthenol', 'd-panthenol': 'panthenol', 'dexpanthenol': 'panthenol',
+  'shea butter': 'butyrospermum parkii butter', 'butyrospermum parkii': 'butyrospermum parkii butter',
+  'jojoba oil': 'simmondsia chinensis seed oil', 'simmondsia chinensis oil': 'simmondsia chinensis seed oil',
+  'rosehip oil': 'rosa canina fruit oil', 'rosa canina seed oil': 'rosa canina fruit oil',
+  'argan oil': 'argania spinosa kernel oil', 'coconut oil': 'cocos nucifera oil',
+  'sunflower oil': 'helianthus annuus seed oil', 'helianthus annuus oil': 'helianthus annuus seed oil',
+  'grapeseed oil': 'vitis vinifera seed oil', 'sweet almond oil': 'prunus amygdalus dulcis oil',
+  'avocado oil': 'persea gratissima oil', 'olive oil': 'olea europaea fruit oil',
+  'tea tree oil': 'melaleuca alternifolia leaf oil', 'lavender oil': 'lavandula angustifolia oil',
+  'centella asiatica': 'centella asiatica extract', 'cica': 'centella asiatica extract',
+  'centella asiatica leaf extract': 'centella asiatica extract',
+  'green tea extract': 'camellia sinensis leaf extract',
+  'camellia sinensis leaf water': 'camellia sinensis leaf extract',
+  'licorice root extract': 'glycyrrhiza glabra root extract',
+  'liquorice root extract': 'glycyrrhiza glabra root extract',
+  'aloe vera': 'aloe barbadensis leaf juice', 'aloe barbadensis leaf extract': 'aloe barbadensis leaf juice',
+  'aloe barbadensis leaf juice powder': 'aloe barbadensis leaf juice',
+  'oat extract': 'avena sativa kernel extract', 'oat kernel extract': 'avena sativa kernel extract',
+  'witch hazel': 'hamamelis virginiana water', 'hamamelis virginiana extract': 'hamamelis virginiana water',
+  'hamamelis virginiana leaf extract': 'hamamelis virginiana water',
+  'willow bark extract': 'salix alba bark extract',
+  'coenzyme q10': 'ubiquinone', 'coq10': 'ubiquinone',
+  'hyaluronic acid (sodium hyaluronate)': 'sodium hyaluronate',
+  'sodium hyaluronate crosspolymer': 'sodium hyaluronate',
+  'hydrolyzed sodium hyaluronate': 'hydrolyzed hyaluronic acid',
+  'avobenzone': 'butyl methoxydibenzoylmethane', 'octinoxate': 'ethylhexyl methoxycinnamate',
+  'octisalate': 'ethylhexyl salicylate', 'oxybenzone': 'benzophenone-3',
+  'tinosorb s': 'bis-ethylhexyloxyphenol methoxyphenyl triazine',
+  'tinosorb m': 'methylene bis-benzotriazolyl tetramethylbutylphenol',
+  'uvinul a plus': 'diethylamino hydroxybenzoyl hexyl benzoate',
+  'uvinul t 150': 'ethylhexyl triazone',
+  'mexoryl sx': 'terephthalylidene dicamphor sulfonic acid',
+  'mexoryl xl': 'drometrizole trisiloxane',
+  'granactive retinoid': 'hydroxypinacolone retinoate',
+  'retinyl retinoate': 'hydroxypinacolone retinoate',
+  'alpha arbutin': 'alpha-arbutin',
+  'caprylic capric triglyceride': 'caprylic/capric triglyceride',
+  'coco-caprylate/caprate': 'coco-caprylate',
+  'hexanediol': '1,2-hexanediol',
+  'mineral oil (paraffinum liquidum)': 'mineral oil',
+  'petroleum jelly': 'petrolatum', 'petrolatum (white)': 'petrolatum',
+  'ceramide 3': 'ceramide np', 'ceramide 6-ii': 'ceramide ap', 'ceramide 1': 'ceramide eop',
+  'ceramide 2': 'ceramide ns', 'ceramide npg': 'ceramide np',
+  'charcoal': 'charcoal powder', 'activated charcoal': 'charcoal powder',
+  'salicylic acid (bha)': 'salicylic acid', 'glycolic acid (aha)': 'glycolic acid',
+  'benzoylperoxide': 'benzoyl peroxide',
+  'zinc oxide (nano)': 'zinc oxide', 'titanium dioxide (nano)': 'titanium dioxide',
+  'alcohol denatured': 'alcohol denat', 'denatured alcohol': 'alcohol denat',
+  'ethanol': 'alcohol', 'ethyl alcohol': 'alcohol'
+};
+
+/* Lowercase, strip the decoration ingredient lists collect. */
+function normalize(raw) {
+  return String(raw)
+    .toLowerCase()
+    .replace(/\[[^\]]*\]/g, ' ')
+    .replace(/\*+/g, ' ')
+    .replace(/[.,;:•]+\s*$/, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+const stripParens = s => s.replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim();
+
+/* Resolve one ingredient name to a dictionary entry, or null. */
+function lookup(raw) {
+  const forms = [];
+  const base = normalize(raw);
+  forms.push(base);
+  const bare = stripParens(base);
+  if (bare !== base) forms.push(bare);
+  // "Butyrospermum Parkii (Shea) Butter" -> "butyrospermum parkii butter"
+  const collapsed = base.replace(/\(([^)]*)\)/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!forms.includes(collapsed)) forms.push(collapsed);
+
+  for (const form of forms) {
+    if (ALIASES[form] && INGREDIENTS[ALIASES[form]]) return INGREDIENTS[ALIASES[form]];
+    if (INGREDIENTS[form]) return INGREDIENTS[form];
+  }
+  return null;
+}
+
+/* Turn a pasted INCI list into an array of trimmed names. */
+function parseIngredients(text) {
+  if (!text) return [];
+  return String(text)
+    .replace(/^\s*ingredients?\s*[:\-]\s*/i, '')
+    .replace(/\(and\)/gi, ',')
+    .split(/[,\n;•]+/)
+    .map(s => s.replace(/^\s*\d+[).]\s*/, '').replace(/\s+/g, ' ').trim())
+    .map(s => s.replace(/[.\s]+$/, ''))
+    .filter(Boolean);
+}
+
+/* Every tag present in a product's ingredient list. */
+function tagsFor(ingredients = []) {
+  const set = new Set();
+  for (const name of ingredients) {
+    const entry = lookup(name);
+    if (entry) entry.t.forEach(t => set.add(t));
+  }
+  return set;
+}
+
+/* Weight by position: what appears early is present in quantity. */
+function weightedTags(ingredients = []) {
+  const weights = new Map();
+  const n = ingredients.length || 1;
+  ingredients.forEach((name, i) => {
+    const entry = lookup(name);
+    if (!entry) return;
+    const pos = i / n;
+    const w = pos < 0.34 ? 1 : pos < 0.67 ? 0.6 : 0.3;
+    for (const tag of entry.t) {
+      weights.set(tag, Math.max(weights.get(tag) || 0, w));
+    }
+  });
+  return weights;
+}
+
+const activesIn = ingredients =>
+  ACTIVE_TAGS.filter(t => tagsFor(ingredients).has(t));
+
+const flagsIn = ingredients =>
+  FLAG_TAGS.filter(t => tagsFor(ingredients).has(t));
+
+
+/* ===== js/rules.js ===== */
+/* Categories, routine order, concern mapping and layering conflicts.
+   The assessment engine reads from here, and so does the routine view. */
+
+
+
+const CATEGORIES = [
+  'Oil cleanser', 'Cleanser', 'Exfoliant', 'Toner', 'Essence', 'Serum',
+  'Treatment', 'Eye cream', 'Moisturiser', 'Face oil', 'Sunscreen',
+  'Mask', 'Mist', 'Spot treatment', 'Lip care', 'Body', 'Other'
+];
+
+const STATUSES = ['active', 'backup', 'finished', 'retired'];
+
+const STATUS_LABEL = {
+  active: 'In use',
+  backup: 'In reserve',
+  finished: 'Finished',
+  retired: 'Set aside'
+};
+
+/* Canonical order of application. `essential` steps produce a gap when unmet;
+   `multiple` steps hold more than one product, in the order they go on. */
+const STEPS = [
+  { key: 'pm-oil-cleanse', period: 'pm', label: 'First cleanse', categories: ['Oil cleanser'], essential: false },
+  { key: 'am-cleanse',     period: 'am', label: 'Cleanse',       categories: ['Cleanser'], essential: true },
+  { key: 'pm-cleanse',     period: 'pm', label: 'Cleanse',       categories: ['Cleanser'], essential: true },
+  { key: 'pm-exfoliate',   period: 'pm', label: 'Exfoliate',     categories: ['Exfoliant'], essential: false },
+  { key: 'am-tone',        period: 'am', label: 'Tone',          categories: ['Toner', 'Mist'], essential: false },
+  { key: 'pm-tone',        period: 'pm', label: 'Tone',          categories: ['Toner', 'Mist'], essential: false },
+  { key: 'am-essence',     period: 'am', label: 'Essence',       categories: ['Essence'], essential: false },
+  { key: 'pm-essence',     period: 'pm', label: 'Essence',       categories: ['Essence'], essential: false },
+  { key: 'am-treat',       period: 'am', label: 'Serum / treatment', categories: ['Serum', 'Treatment'], essential: true, multiple: true },
+  { key: 'pm-treat',       period: 'pm', label: 'Serum / treatment', categories: ['Serum', 'Treatment'], essential: true, multiple: true },
+  { key: 'am-eye',         period: 'am', label: 'Eye',           categories: ['Eye cream'], essential: false },
+  { key: 'pm-eye',         period: 'pm', label: 'Eye',           categories: ['Eye cream'], essential: false },
+  { key: 'am-moisturise',  period: 'am', label: 'Moisturise',    categories: ['Moisturiser'], essential: true },
+  { key: 'pm-moisturise',  period: 'pm', label: 'Moisturise',    categories: ['Moisturiser'], essential: true },
+  { key: 'pm-oil',         period: 'pm', label: 'Seal',          categories: ['Face oil'], essential: false },
+  { key: 'am-protect',     period: 'am', label: 'Protect',       categories: ['Sunscreen'], essential: true }
+];
+
+const stepsFor = period => STEPS.filter(s => s.period === period);
+
+/* ---------- concerns ---------- */
+
+const CONCERNS = [
+  {
+    key: 'dehydration', label: 'Dehydration',
+    helps: ['humectant', 'barrier', 'ceramide', 'occlusive'],
+    avoids: ['alcohol']
+  },
+  {
+    key: 'dryness', label: 'Dryness',
+    helps: ['emollient', 'occlusive', 'ceramide', 'barrier', 'humectant'],
+    avoids: ['alcohol', 'surfactant']
+  },
+  {
+    key: 'oiliness', label: 'Excess oil',
+    helps: ['niacinamide', 'bha', 'anti-acne'],
+    avoids: ['occlusive', 'comedogenic']
+  },
+  {
+    key: 'blemishes', label: 'Blemishes',
+    helps: ['bha', 'anti-acne', 'retinoid', 'niacinamide'],
+    avoids: ['comedogenic', 'essential-oil']
+  },
+  {
+    key: 'pigmentation', label: 'Pigmentation and marks',
+    helps: ['vitamin-c', 'brightening', 'niacinamide', 'retinoid', 'aha'],
+    avoids: []
+  },
+  {
+    key: 'texture', label: 'Uneven texture',
+    helps: ['aha', 'pha', 'enzyme', 'retinoid', 'bha'],
+    avoids: []
+  },
+  {
+    key: 'dullness', label: 'Dullness',
+    helps: ['vitamin-c', 'aha', 'antioxidant', 'brightening'],
+    avoids: []
+  },
+  {
+    key: 'redness', label: 'Redness and reactivity',
+    helps: ['soothing', 'ceramide', 'barrier'],
+    avoids: ['fragrance', 'essential-oil', 'alcohol', 'aha']
+  },
+  {
+    key: 'lines', label: 'Fine lines',
+    helps: ['retinoid', 'peptide', 'vitamin-c', 'antioxidant'],
+    avoids: []
+  },
+  {
+    key: 'pores', label: 'Visible pores',
+    helps: ['bha', 'retinoid', 'niacinamide'],
+    avoids: ['comedogenic']
+  },
+  {
+    key: 'barrier', label: 'Compromised barrier',
+    helps: ['ceramide', 'barrier', 'soothing', 'occlusive', 'humectant'],
+    avoids: ['aha', 'bha', 'retinoid', 'alcohol', 'fragrance', 'essential-oil']
+  }
+];
+
+const concernByKey = key => CONCERNS.find(c => c.key === key);
+
+/* ---------- layering conflicts ---------- */
+
+const hasIngredient = (product, name) =>
+  (product.ingredients || []).some(i => normalize(i) === name);
+
+const productTags = product => tagsFor(product.ingredients || []);
+
+/* `products` are the product objects placed in one period of a routine. */
+function conflictsFor(products, period) {
+  const notes = [];
+  const withTag = tag => products.filter(p => productTags(p).has(tag));
+
+  const retinoids = withTag('retinoid');
+  const ahas = withTag('aha').filter(p => p.category !== 'Sunscreen');
+  const bhas = withTag('bha');
+  const filters = withTag('uv-filter');
+  const acids = [...new Set([...ahas, ...bhas])];
+
+  if (retinoids.length && acids.length) {
+    notes.push({
+      severity: 'high',
+      text: `${retinoids[0].name} and ${acids[0].name} in one routine is a common cause of irritation. Alternate them on different evenings rather than layering.`
+    });
+  }
+  if (ahas.length && bhas.length) {
+    notes.push({
+      severity: 'medium',
+      text: 'An AHA and a BHA together is a lot of exfoliation for one sitting. Consider keeping one of them for a separate night.'
+    });
+  }
+  if (retinoids.length > 1) {
+    notes.push({ severity: 'medium', text: 'Two retinoids in the same routine gives no extra benefit, only extra irritation.' });
+  }
+  if (period === 'am' && (retinoids.length || acids.length)) {
+    notes.push({
+      severity: 'medium',
+      text: 'Retinoids and acids leave skin more sun-sensitive. They sit more comfortably in the evening.'
+    });
+  }
+  if (period === 'am' && !filters.length && products.length) {
+    notes.push({ severity: 'high', text: 'No sunscreen in the morning routine. Everything else you do for tone and lines depends on it.' });
+  }
+  const bp = products.filter(p => hasIngredient(p, 'benzoyl peroxide'));
+  if (bp.length && retinoids.length) {
+    notes.push({ severity: 'medium', text: 'Benzoyl peroxide can degrade a retinoid applied at the same time. Use them at opposite ends of the day.' });
+  }
+  const vitc = withTag('vitamin-c');
+  if (vitc.length && retinoids.length) {
+    notes.push({ severity: 'low', text: 'Vitamin C and a retinoid together is tolerable but busy. Vitamin C in the morning, retinoid at night, is the easier split.' });
+  }
+  const fragranced = withTag('fragrance').concat(withTag('essential-oil'));
+  if (new Set(fragranced).size >= 3) {
+    notes.push({ severity: 'low', text: 'Three or more fragranced products in one routine. Worth thinning out if your skin ever runs reactive.' });
+  }
+  return notes;
+}
+
+
+/* ===== js/store.js ===== */
+/* IndexedDB wrapper. Everything the app persists goes through here.
+
+   Products, assessments and routines belong to a profile, so the whole family
+   can share one browser. Reads are scoped to whichever profile is active — the
+   views mostly don't need to know profiles exist. Photographs and the API key
+   are the exceptions: images are referenced by id, and the key is a property of
+   the machine rather than of a person. */
+
+
+
+const DB_NAME = 'skincare';
+const DB_VERSION = 2;
+const STORES = ['products', 'images', 'assessments', 'profiles', 'meta'];
+
+let dbPromise = null;
+
+function openDB() {
+  if (dbPromise) return dbPromise;
+  dbPromise = new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = event => {
+      const db = req.result;
+      const tx = req.transaction;
+
+      if (!db.objectStoreNames.contains('products')) db.createObjectStore('products', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('images')) db.createObjectStore('images', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('assessments')) db.createObjectStore('assessments', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('profiles')) db.createObjectStore('profiles', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta', { keyPath: 'key' });
+
+      /* v1 → v2: everything already recorded belonged to one person. */
+      if (event.oldVersion >= 1 && event.oldVersion < 2) {
+        const id = uid();
+        tx.objectStore('profiles').put({ id, name: 'You', createdAt: new Date().toISOString() });
+
+        for (const name of ['products', 'assessments']) {
+          tx.objectStore(name).openCursor().onsuccess = e => {
+            const cursor = e.target.result;
+            if (!cursor) return;
+            const value = cursor.value;
+            if (!value.profileId) {
+              value.profileId = id;
+              cursor.update(value);
+            }
+            cursor.continue();
+          };
+        }
+
+        const meta = tx.objectStore('meta');
+        const existing = meta.get('routine');
+        existing.onsuccess = () => {
+          if (existing.result) {
+            meta.put({ key: routineKey(id), value: existing.result.value });
+            meta.delete('routine');
+          }
+        };
+        meta.put({ key: 'activeProfile', value: id });
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+  return dbPromise;
+}
+
+function request(store, mode, fn) {
+  return openDB().then(db => new Promise((resolve, reject) => {
+    const tx = db.transaction(store, mode);
+    const req = fn(tx.objectStore(store));
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error);
+    if (req) {
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    } else {
+      tx.oncomplete = () => resolve();
+    }
+  }));
+}
+
+const uid = () =>
+  Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 9);
+
+const get = (store, key) => request(store, 'readonly', s => s.get(key));
+const getAll = store => request(store, 'readonly', s => s.getAll());
+const put = (store, value) => request(store, 'readwrite', s => s.put(value));
+const del = (store, key) => request(store, 'readwrite', s => s.delete(key));
+const clear = store => request(store, 'readwrite', s => s.clear());
+
+/* ---------- meta ---------- */
+
+async function getMeta(key, fallback) {
+  const rec = await get('meta', key);
+  return rec ? rec.value : fallback;
+}
+
+const setMeta = (key, value) => put('meta', { key, value });
+
+function routineKey(profileId) {
+  return 'routine:' + profileId;
+}
+
+const entryProductId = e => (typeof e === 'string' ? e : e && e.productId);
+
+/* Routines were once a flat list of product ids, one per step. They are now
+   {step, productId} entries so a step can hold several products in the order
+   they go on. Old lists are matched back onto steps by category — the same rule
+   the routine view used to apply when it read them. */
+function migrateEntries(entries, period, byId) {
+  const kept = [];
+  const legacy = [];
+  let changed = false;
+
+  for (const e of entries || []) {
+    if (typeof e === 'string') { legacy.push(e); changed = true; }
+    else if (e && e.productId) kept.push({ step: e.step || null, productId: e.productId });
+  }
+
+  for (const step of stepsFor(period)) {
+    const idx = legacy.findIndex(id => byId[id] && step.categories.includes(byId[id].category));
+    if (idx > -1) kept.push({ step: step.key, productId: legacy.splice(idx, 1)[0] });
+  }
+  // Anything that matched no step still belongs to the person; keep it unplaced.
+  for (const id of legacy) if (byId[id]) kept.push({ step: null, productId: id });
+
+  return { entries: kept, changed };
+}
+
+/* ---------- profiles ---------- */
+
+const getProfiles = async () =>
+  (await getAll('profiles')).sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
+
+const getActiveProfileId = () => getMeta('activeProfile', null);
+const setActiveProfileId = id => setMeta('activeProfile', id);
+
+const saveProfile = p => put('profiles', p);
+
+async function getActiveProfile() {
+  const id = await getActiveProfileId();
+  return (await getProfiles()).find(p => p.id === id) || null;
+}
+
+async function createProfile(name) {
+  const clean = String(name || '').trim();
+  if (!clean) throw new Error('A profile needs a name.');
+  const existing = await getProfiles();
+  if (existing.some(p => p.name.toLowerCase() === clean.toLowerCase())) {
+    throw new Error(`There is already a profile called ${clean}.`);
+  }
+  const profile = { id: uid(), name: clean, createdAt: new Date().toISOString() };
+  await put('profiles', profile);
+  return profile;
+}
+
+async function renameProfile(id, name) {
+  const clean = String(name || '').trim();
+  if (!clean) throw new Error('A profile needs a name.');
+  const profiles = await getProfiles();
+  if (profiles.some(p => p.id !== id && p.name.toLowerCase() === clean.toLowerCase())) {
+    throw new Error(`There is already a profile called ${clean}.`);
+  }
+  const profile = profiles.find(p => p.id === id);
+  if (!profile) throw new Error('That profile no longer exists.');
+  await put('profiles', { ...profile, name: clean });
+}
+
+/* Removing a profile takes its shelf, its photographs and its readings with it. */
+async function deleteProfile(id) {
+  const profiles = await getProfiles();
+  if (profiles.length <= 1) throw new Error('At least one profile has to remain.');
+
+  for (const p of (await getAll('products')).filter(x => x.profileId === id)) {
+    if (p.imageId) await del('images', p.imageId).catch(() => {});
+    await del('products', p.id);
+  }
+  for (const a of (await getAll('assessments')).filter(x => x.profileId === id)) {
+    if (a.photoId) await del('images', a.photoId).catch(() => {});
+    await del('assessments', a.id);
+  }
+  await del('meta', routineKey(id));
+  await del('meta', 'chat:' + id);
+  await del('meta', 'picks:' + id);
+  await del('profiles', id);
+
+  if (await getActiveProfileId() === id) {
+    await setActiveProfileId(profiles.find(p => p.id !== id).id);
+  }
+}
+
+/* Called on every render — guarantees there is always somewhere to put things. */
+async function ensureProfile() {
+  const profiles = await getProfiles();
+  if (!profiles.length) {
+    const profile = { id: uid(), name: 'You', createdAt: new Date().toISOString() };
+    await put('profiles', profile);
+    await setActiveProfileId(profile.id);
+    return profile;
+  }
+  const active = await getActiveProfileId();
+  if (!active || !profiles.some(p => p.id === active)) {
+    await setActiveProfileId(profiles[0].id);
+    return profiles[0];
+  }
+  return profiles.find(p => p.id === active);
+}
+
+/* How much each profile is holding — for the settings list. */
+async function profileTallies() {
+  const [products, assessments] = await Promise.all([getAll('products'), getAll('assessments')]);
+  const tally = {};
+  for (const p of products) {
+    tally[p.profileId] = tally[p.profileId] || { products: 0, assessments: 0 };
+    tally[p.profileId].products++;
+  }
+  for (const a of assessments) {
+    tally[a.profileId] = tally[a.profileId] || { products: 0, assessments: 0 };
+    tally[a.profileId].assessments++;
+  }
+  return tally;
+}
+
+/* ---------- products (scoped to the active profile) ---------- */
+
+async function getProducts() {
+  const pid = await getActiveProfileId();
+  return (await getAll('products')).filter(p => p.profileId === pid);
+}
+
+const getProduct = id => get('products', id);
+
+async function saveProduct(p) {
+  if (!p.profileId) p.profileId = await getActiveProfileId();
+  return put('products', p);
+}
+
+async function deleteProduct(id) {
+  const product = await getProduct(id);
+  if (product?.imageId) await del('images', product.imageId).catch(() => {});
+  await del('products', id);
+
+  // Drop it from that profile's routine so we never point at a product that is gone.
+  if (product) {
+    const routine = await getMeta(routineKey(product.profileId), { am: [], pm: [] });
+    const am = (routine.am || []).filter(e => entryProductId(e) !== id);
+    const pm = (routine.pm || []).filter(e => entryProductId(e) !== id);
+    if (am.length !== (routine.am || []).length || pm.length !== (routine.pm || []).length) {
+      await setMeta(routineKey(product.profileId), { am, pm });
+    }
+  }
+}
+
+/* One bottle, two people — copy the record rather than sharing it. */
+async function copyProductToProfile(productId, targetProfileId) {
+  const product = await getProduct(productId);
+  if (!product) throw new Error('That product is no longer in the library.');
+
+  const blob = await getImage(product.imageId);
+  const copy = {
+    ...product,
+    id: uid(),
+    profileId: targetProfileId,
+    imageId: blob ? await putImage(blob) : null,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+  await put('products', copy);
+  return copy;
+}
+
+/* ---------- images ---------- */
+
+async function putImage(blob) {
+  const id = uid();
+  await put('images', { id, blob });
+  return id;
+}
+
+async function getImage(id) {
+  if (!id) return null;
+  const rec = await get('images', id);
+  return rec ? rec.blob : null;
+}
+
+/* Downscale on the way in — phone photos are far larger than this UI needs. */
+function resizeImage(file, maxEdge = 1600, quality = 0.85) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const scale = Math.min(1, maxEdge / Math.max(img.width, img.height));
+      const w = Math.round(img.width * scale);
+      const h = Math.round(img.height * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      canvas.toBlob(
+        blob => (blob ? resolve(blob) : reject(new Error('Could not encode image.'))),
+        'image/jpeg',
+        quality
+      );
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('That file could not be read as an image.'));
+    };
+    img.src = url;
+  });
+}
+
+/* ---------- routine (per profile) ---------- */
+
+async function getRoutine() {
+  const pid = await getActiveProfileId();
+  const raw = await getMeta(routineKey(pid), { am: [], pm: [] });
+  const byId = Object.fromEntries((await getAll('products')).map(p => [p.id, p]));
+
+  const am = migrateEntries(raw.am, 'am', byId);
+  const pm = migrateEntries(raw.pm, 'pm', byId);
+  const routine = { am: am.entries, pm: pm.entries };
+
+  if (am.changed || pm.changed) await setMeta(routineKey(pid), routine);
+  return routine;
+}
+
+async function setRoutine(r) {
+  return setMeta(routineKey(await getActiveProfileId()), r);
+}
+
+/* ---------- chat and discoveries (per profile) ---------- */
+
+const getChat = async () => getMeta('chat:' + (await getActiveProfileId()), []);
+const setChat = async v => setMeta('chat:' + (await getActiveProfileId()), v);
+
+const getPicks = async () => getMeta('picks:' + (await getActiveProfileId()), null);
+const setPicks = async v => setMeta('picks:' + (await getActiveProfileId()), v);
+
+/* ---------- settings (shared across profiles) ---------- */
+
+const getSettings = () => getMeta('settings', { apiKey: '' });
+const setSettings = s => setMeta('settings', s);
+
+/* ---------- assessments (scoped to the active profile) ---------- */
+
+async function getAssessments() {
+  const pid = await getActiveProfileId();
+  return (await getAll('assessments')).filter(a => a.profileId === pid);
+}
+
+async function saveAssessment(a) {
+  if (!a.profileId) a.profileId = await getActiveProfileId();
+  return put('assessments', a);
+}
+
+async function deleteAssessment(id) {
+  const rec = await get('assessments', id);
+  if (rec?.photoId) await del('images', rec.photoId).catch(() => {});
+  await del('assessments', id);
+}
+
+/* ---------- backup ---------- */
+
+const blobToDataUrl = blob => new Promise((resolve, reject) => {
+  const fr = new FileReader();
+  fr.onload = () => resolve(fr.result);
+  fr.onerror = () => reject(fr.error);
+  fr.readAsDataURL(blob);
+});
+
+const dataUrlToBlob = url => fetch(url).then(r => r.blob());
+
+/* A backup covers every profile, not just the one you are looking at. */
+async function exportAll() {
+  const [products, images, assessments, profiles, settings, activeProfile] = await Promise.all([
+    getAll('products'), getAll('images'), getAll('assessments'),
+    getProfiles(), getSettings(), getActiveProfileId()
+  ]);
+
+  const routines = {};
+  for (const p of profiles) {
+    routines[p.id] = await getMeta(routineKey(p.id), { am: [], pm: [] });
+  }
+
+  const encoded = [];
+  for (const rec of images) {
+    encoded.push({ id: rec.id, dataUrl: await blobToDataUrl(rec.blob) });
+  }
+
+  // The API key is deliberately left out of backups.
+  return {
+    format: 'skincare-library',
+    version: 2,
+    exportedAt: new Date().toISOString(),
+    profiles,
+    activeProfile,
+    products,
+    images: encoded,
+    assessments,
+    routines,
+    settings: { apiKey: '' },
+    _keyOmitted: Boolean(settings.apiKey)
+  };
+}
+
+async function importAll(data, { replace = true } = {}) {
+  if (!data || data.format !== 'skincare-library') {
+    throw new Error('That file is not a Skincare Library backup.');
+  }
+
+  let profiles = data.profiles || [];
+  let products = data.products || [];
+  let assessments = data.assessments || [];
+  let routines = data.routines || {};
+  let active = data.activeProfile;
+
+  /* A backup written before profiles existed: everything was one person's. */
+  if (!profiles.length) {
+    const id = uid();
+    profiles = [{ id, name: 'You', createdAt: new Date().toISOString() }];
+    products = products.map(p => ({ ...p, profileId: id }));
+    assessments = assessments.map(a => ({ ...a, profileId: id }));
+    routines = { [id]: data.routine || { am: [], pm: [] } };
+    active = id;
+  }
+
+  if (replace) {
+    await Promise.all([
+      clear('products'), clear('images'), clear('assessments'), clear('profiles')
+    ]);
+    for (const row of await getAll('meta')) {
+      if (String(row.key).startsWith('routine:')) await del('meta', row.key);
+    }
+  }
+
+  for (const rec of data.images || []) {
+    await put('images', { id: rec.id, blob: await dataUrlToBlob(rec.dataUrl) });
+  }
+  for (const p of profiles) await put('profiles', p);
+  for (const p of products) await put('products', p);
+  for (const a of assessments) await put('assessments', a);
+  for (const [id, routine] of Object.entries(routines)) {
+    await setMeta(routineKey(id), routine);
+  }
+  await setActiveProfileId(
+    active && profiles.some(p => p.id === active) ? active : profiles[0].id
+  );
+
+  return {
+    profiles: profiles.length,
+    products: products.length,
+    assessments: assessments.length
+  };
+}
+
+async function wipe() {
+  await Promise.all(STORES.map(clear));
+}
+
+
+const store = { uid, get, getAll, put, del, clear, getProfiles, getActiveProfileId, setActiveProfileId, saveProfile, getActiveProfile, createProfile, renameProfile, deleteProfile, ensureProfile, profileTallies, getProducts, getProduct, saveProduct, deleteProduct, copyProductToProfile, putImage, getImage, resizeImage, getRoutine, setRoutine, getChat, setChat, getPicks, setPicks, getSettings, setSettings, getAssessments, saveAssessment, deleteAssessment, exportAll, importAll, wipe };
+
+/* ===== offline stubs (share build) ===== */
+/* The shared copy talks to nothing. These stand in for the modules that would,
+   so the app runs exactly as it does offline at home. */
+const PROVIDERS = [];
+const aiSettings = async () => ({ provider: 'none', apiKey: '', model: '', chatModel: '', sendPhoto: false });
+const hasKey = async () => false;
+const unavailable = () => { throw new Error('Not available in the shared copy.'); };
+const readLabel = unavailable;
+const lookupIngredients = unavailable;
+const assessWithAI = unavailable;
+const discover = unavailable;
+const chatStream = unavailable;
+const mountChat = () => {};
+const refreshChat = () => {};
+
+
+/* ===== js/analysis.js ===== */
+/* The assessment engine.
+
+   `assessSkin()` is the only entry point the rest of the app knows about, and
+   it always returns the same shape:
+
+     { source, concerns[], routine{am[],pm[]}, gaps[], caveat }
+
+   Two things can fill it. Without a key, `assessFromAnswers()` runs
+   deterministic rules over your questionnaire answers and the ingredient tags
+   of what you own, and the photograph is never read. With a key, `assessWithAI()`
+   in ai.js reads the photograph too — but only if you ticked the box — and adds
+   `observations`, `working` and `changes` on top of the same shape.
+
+   If the model call fails, the rules reading is returned with `degraded` set,
+   so a bad key or a rate limit costs you detail rather than the whole page. */
+
+
+
+
+
+const QUESTIONS = [
+  {
+    key: 'skinType', label: 'How does your skin behave by mid-afternoon?', multi: false,
+    options: [
+      { value: 'dry', label: 'Tight, flaking' },
+      { value: 'normal', label: 'Comfortable' },
+      { value: 'combination', label: 'Shine in the centre' },
+      { value: 'oily', label: 'Shine throughout' }
+    ]
+  },
+  {
+    key: 'sensitivity', label: 'How readily does it react to something new?', multi: false,
+    options: [
+      { value: 'low', label: 'Rarely' },
+      { value: 'moderate', label: 'Sometimes' },
+      { value: 'high', label: 'Often' }
+    ]
+  },
+  {
+    key: 'state', label: 'How is it at this moment?', multi: false,
+    options: [
+      { value: 'settled', label: 'Settled' },
+      { value: 'unsettled', label: 'Unsettled' },
+      { value: 'irritated', label: 'Irritated or stinging' }
+    ]
+  },
+  {
+    key: 'texture', label: 'How does the surface feel to the hand?', multi: false,
+    options: [
+      { value: 'smooth', label: 'Smooth' },
+      { value: 'slight', label: 'Slightly uneven' },
+      { value: 'rough', label: 'Rough or bumpy' }
+    ]
+  },
+  {
+    key: 'sun', label: 'How much daylight do you take on?', multi: false,
+    options: [
+      { value: 'minimal', label: 'Little' },
+      { value: 'moderate', label: 'Moderate' },
+      { value: 'high', label: 'A great deal' }
+    ]
+  },
+  {
+    key: 'concerns', label: 'What would you most like to change?', multi: true,
+    options: CONCERNS.map(c => ({ value: c.key, label: c.label }))
+  }
+];
+
+const WEIGHT = { marked: 3, moderate: 2, mild: 1 };
+const SEVERITY_LABEL = { marked: 'Marked', moderate: 'Moderate', mild: 'Mild' };
+
+/* ---------- reading the answers ---------- */
+
+function readConcerns(answers) {
+  const found = new Map();
+  const note = (key, severity, evidence) => {
+    const existing = found.get(key);
+    if (existing && WEIGHT[existing.severity] >= WEIGHT[severity]) return;
+    found.set(key, { key, severity, evidence });
+  };
+
+  for (const key of answers.concerns || []) {
+    note(key, 'marked', 'You named this directly.');
+  }
+
+  if (answers.skinType === 'dry') {
+    note('dryness', 'moderate', 'Skin reads tight and flaking by mid-afternoon.');
+    note('dehydration', 'mild', 'Tightness usually means water loss as much as oil loss.');
+  }
+  if (answers.skinType === 'oily' || answers.skinType === 'combination') {
+    note('oiliness', answers.skinType === 'oily' ? 'moderate' : 'mild', 'Shine returns through the day.');
+    note('pores', 'mild', 'Oilier skin tends to show pores more plainly.');
+  }
+  if (answers.sensitivity === 'high') {
+    note('redness', 'moderate', 'Skin reacts often to new products.');
+  }
+  if (answers.state === 'irritated') {
+    note('barrier', 'marked', 'Skin is currently irritated — the barrier comes first.');
+  } else if (answers.state === 'unsettled') {
+    note('barrier', 'mild', 'Skin is unsettled at present.');
+  }
+  if (answers.texture === 'rough') {
+    note('texture', 'moderate', 'The surface feels rough to the hand.');
+  } else if (answers.texture === 'slight') {
+    note('texture', 'mild', 'The surface feels slightly uneven.');
+  }
+  if (answers.sun === 'high') {
+    note('pigmentation', 'mild', 'Considerable daylight exposure.');
+    note('lines', 'mild', 'Considerable daylight exposure.');
+  }
+
+  return [...found.values()]
+    .map(c => ({ ...c, label: concernByKey(c.key)?.label || c.key }))
+    .sort((a, b) => WEIGHT[b.severity] - WEIGHT[a.severity]);
+}
+
+/* ---------- scoring products against those concerns ---------- */
+
+function scoreProduct(product, concerns) {
+  const weights = weightedTags(product.ingredients || []);
+  let score = 0;
+  const reasons = [];
+
+  for (const concern of concerns) {
+    const def = concernByKey(concern.key);
+    if (!def) continue;
+    const sev = WEIGHT[concern.severity];
+    for (const tag of def.helps) {
+      const w = weights.get(tag);
+      if (w) {
+        score += sev * w;
+        reasons.push({ tag, weight: sev * w });
+      }
+    }
+    for (const tag of def.avoids) {
+      const w = weights.get(tag);
+      if (w) score -= sev * w * 1.5;
+    }
+  }
+  if (product.status === 'active') score += 0.5;
+  if (!product.ingredients?.length) score -= 0.5;
+
+  const top = reasons.sort((a, b) => b.weight - a.weight).slice(0, 2).map(r => r.tag);
+  return { score, top };
+}
+
+const AM_UNSUITABLE = ['retinoid', 'aha', 'bha'];
+const EXFOLIATION_CONCERNS = ['texture', 'dullness', 'blemishes', 'pores', 'pigmentation'];
+
+function buildPeriod(period, products, concerns) {
+  const steps = STEPS.filter(s => s.period === period);
+  const barrierFirst = concerns.some(c => c.key === 'barrier' && c.severity === 'marked');
+  const wantsExfoliation =
+    !barrierFirst && concerns.some(c => EXFOLIATION_CONCERNS.includes(c.key));
+  const used = new Set();
+  const out = [];
+  const gaps = [];
+
+  for (const step of steps) {
+    if (step.key === 'pm-exfoliate' && !wantsExfoliation) continue;
+
+    let candidates = products.filter(
+      p => step.categories.includes(p.category) &&
+           p.status !== 'finished' && p.status !== 'retired' &&
+           !used.has(p.id)
+    );
+
+    // Acids and retinoids belong to the evening.
+    if (period === 'am' && step.key !== 'am-cleanse' && step.key !== 'am-protect') {
+      candidates = candidates.filter(p => {
+        const tags = tagsFor(p.ingredients || []);
+        return !AM_UNSUITABLE.some(t => tags.has(t));
+      });
+    }
+    // While the barrier is repairing, leave the exfoliants and retinoids alone.
+    if (barrierFirst) {
+      candidates = candidates.filter(p => {
+        const tags = tagsFor(p.ingredients || []);
+        return !['retinoid', 'aha', 'bha'].some(t => tags.has(t));
+      });
+    }
+
+    if (!candidates.length) {
+      if (step.essential) {
+        // Phrased without the period so a category missing morning and evening
+        // is reported once rather than twice.
+        gaps.push({
+          category: step.categories[0],
+          reason: barrierFirst && step.categories[0] !== 'Sunscreen'
+            ? `Nothing on this shelf fills the ${step.label.toLowerCase()} step gently enough for skin in this state.`
+            : `Nothing on this shelf covers the ${step.label.toLowerCase()} step.`
+        });
+      }
+      continue;
+    }
+
+    const ranked = candidates
+      .map(p => ({ product: p, ...scoreProduct(p, concerns) }))
+      .sort((a, b) => b.score - a.score);
+
+    // A step that holds several products may layer a second one that is
+    // actually pulling its weight; every other step takes the best single.
+    const picks = step.multiple
+      ? ranked.filter((r, i) => i === 0 || r.score > 0).slice(0, 2)
+      : ranked.slice(0, 1);
+
+    picks.forEach((pick, i) => {
+      used.add(pick.product.id);
+
+      let note;
+      if (candidates.length === 1) {
+        note = `The only ${step.categories[0].toLowerCase()} on the shelf.`;
+      } else if (pick.top.length) {
+        note = `Chosen for its ${pick.top.join(' and ')}.`;
+      } else {
+        note = `Chosen from ${ranked.length} in the same category.`;
+      }
+      if (i > 0) note = `Layered after the first. ${note}`;
+
+      out.push({ step: step.label, stepKey: step.key, productId: pick.product.id, note });
+    });
+  }
+
+  return { steps: out, gaps };
+}
+
+/* Concerns the library has nothing at all to offer. */
+function libraryGaps(products, concerns) {
+  const owned = new Set();
+  for (const p of products) {
+    if (p.status === 'finished' || p.status === 'retired') continue;
+    tagsFor(p.ingredients || []).forEach(t => owned.add(t));
+  }
+  const gaps = [];
+  for (const concern of concerns) {
+    if (concern.severity === 'mild') continue;
+    const def = concernByKey(concern.key);
+    if (!def) continue;
+    if (!def.helps.some(t => owned.has(t))) {
+      gaps.push({
+        category: def.label,
+        reason: `Nothing on this shelf carries the ingredients that usually address this — look for ${def.helps.slice(0, 3).join(', ')}.`
+      });
+    }
+  }
+  return gaps;
+}
+
+function assessFromAnswers({ answers, library }) {
+  const concerns = readConcerns(answers || {});
+  const products = library || [];
+
+  const am = buildPeriod('am', products, concerns);
+  const pm = buildPeriod('pm', products, concerns);
+
+  const seen = new Set();
+  const gaps = [...am.gaps, ...pm.gaps, ...libraryGaps(products, concerns)]
+    .filter(g => {
+      const k = g.category + g.reason;
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+
+  return {
+    source: 'rules',
+    concerns,
+    routine: { am: am.steps, pm: pm.steps },
+    gaps,
+    caveat:
+      'This reading is derived from your answers and the ingredient lists of the products you own — the photograph is stored for your own comparison over time, not analysed. It is a considered starting point, not a dermatological opinion.'
+  };
+}
+
+/* ---------- the single entry point ---------- */
+
+async function assessSkin({ imageBlob, answers, library, routine, sendPhoto } = {}) {
+  if (await hasKey()) {
+    try {
+      return await assessWithAI({ imageBlob, answers, library, routine: routine || { am: [], pm: [] }, sendPhoto });
+    } catch (err) {
+      // A reading you can act on beats an error page, so fall back to the rules
+      // and say plainly that is what happened.
+      const fallback = assessFromAnswers({ answers, library });
+      fallback.degraded = err.message;
+      return fallback;
+    }
+  }
+  return assessFromAnswers({ answers, library });
+}
+
+
+/* ===== js/briefing.js ===== */
+/* Export everything the app knows as a Markdown block you can paste into any
+   assistant — Gemini, Claude, ChatGPT — alongside a photograph.
+
+   This is the one AI path that needs no key, sends nothing by itself, and shows
+   you exactly what you are sharing before you share it. It survives into the
+   shared build for the same reason. */
+
+
+
+
+
+
+const PREAMBLE = `I'd like help with my skincare. Below is everything I own, the routine I follow, and how my skin has been behaving. I've attached a photograph of my skin.
+
+Please:
+
+1. Describe what you can actually see in the photograph. If the lighting, focus or framing makes something impossible to judge, say so plainly rather than guessing.
+2. Tell me which products in my routine are earning their place, and why — referring to specific ingredients.
+3. Suggest changes using **only what I already own**, including the order I should apply things.
+4. Tell me what my shelf is genuinely missing for the concerns listed below, described by ingredient rather than by brand.
+
+Keep this to cosmetic skincare guidance rather than medical diagnosis, and tell me if anything looks like it needs a doctor rather than a product.`;
+
+const formatDay = iso =>
+  new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+
+const label = tag => TAG_LABEL[tag] || tag;
+
+const named = p => `${p.brand ? p.brand + ' · ' : ''}${p.name}`;
+
+/* The questionnaire stores option values; people read option labels. */
+function answerLines(answers) {
+  if (!answers) return null;
+  const lines = [];
+  for (const q of QUESTIONS) {
+    const given = answers[q.key];
+    if (!given || (Array.isArray(given) && !given.length)) continue;
+    const values = Array.isArray(given) ? given : [given];
+    const text = values
+      .map(v => q.options.find(o => o.value === v)?.label || v)
+      .join(', ');
+    lines.push(`- ${q.label} **${text}**`);
+  }
+  return lines.length ? lines : null;
+}
+
+async function buildBriefing() {
+  const [profile, products, routine, assessments] = await Promise.all([
+    store.getActiveProfile(),
+    store.getProducts(),
+    store.getRoutine(),
+    store.getAssessments()
+  ]);
+
+  const byId = Object.fromEntries(products.map(p => [p.id, p]));
+  const latest = assessments.sort((a, b) => b.date.localeCompare(a.date))[0];
+
+  const out = [PREAMBLE, '\n---\n'];
+
+  out.push(`# Skincare briefing — ${profile?.name || 'me'}`);
+  out.push(`*Exported ${formatDay(new Date().toISOString())}*\n`);
+
+  /* --- how the skin has been --- */
+  const answers = answerLines(latest?.answers);
+  if (answers) {
+    out.push(`## My skin\n\nFrom a self-assessment on ${formatDay(latest.date)}:\n`);
+    out.push(answers.join('\n') + '\n');
+  } else {
+    out.push('## My skin\n\nI have not filled in a self-assessment yet.\n');
+  }
+
+  /* --- the shelf --- */
+  out.push(`## My shelf — ${products.length} ${products.length === 1 ? 'product' : 'products'}\n`);
+
+  if (!products.length) {
+    out.push('Nothing recorded yet.\n');
+  } else {
+    const ordered = [...products].sort((a, b) =>
+      (a.category || '').localeCompare(b.category || '') || named(a).localeCompare(named(b)));
+
+    for (const p of ordered) {
+      const actives = activesIn(p.ingredients || []).map(label);
+      const flags = flagsIn(p.ingredients || []).map(label);
+
+      out.push(`### ${p.category || 'Uncategorised'} — ${named(p)}`);
+      const facts = [STATUS_LABEL[p.status] || p.status, p.size, p.price].filter(Boolean);
+      if (facts.length) out.push(`- ${facts.join(' · ')}`);
+      out.push(`- Actives: ${actives.length ? actives.join(', ') : 'none the app recognises'}`);
+      if (flags.length) out.push(`- Worth watching: ${flags.join(', ')}`);
+      if (p.notes) out.push(`- My notes: ${p.notes.replace(/\s+/g, ' ')}`);
+      out.push(`- Ingredients: ${(p.ingredients || []).join(', ') || 'not recorded'}\n`);
+    }
+  }
+
+  /* --- the routine, in application order --- */
+  out.push('## My routine\n');
+  let anyStep = false;
+
+  for (const [period, title] of [['am', 'Morning'], ['pm', 'Evening']]) {
+    const lines = [];
+    for (const step of stepsFor(period)) {
+      for (const entry of (routine[period] || []).filter(e => e.step === step.key)) {
+        const p = byId[entry.productId];
+        if (p) lines.push(`${lines.length + 1}. **${step.label}** — ${named(p)}`);
+      }
+    }
+    out.push(`### ${title}\n`);
+    out.push(lines.length ? lines.join('\n') + '\n' : '_Nothing recorded._\n');
+    if (lines.length) anyStep = true;
+  }
+
+  /* --- what the app has already worked out, so the assistant can build on it --- */
+  if (anyStep) {
+    const notes = [];
+    for (const [period, title] of [['am', 'Morning'], ['pm', 'Evening']]) {
+      const chosen = (routine[period] || []).map(e => byId[e.productId]).filter(Boolean);
+      for (const n of conflictsFor(chosen, period)) notes.push(`- **${title}** — ${n.text}`);
+    }
+    if (notes.length) {
+      out.push('## Layering notes the app already flagged\n');
+      out.push(notes.join('\n') + '\n');
+    }
+  }
+
+  return out.join('\n');
+}
+
+/* Clipboard needs a secure context; localhost counts, but fall back anyway. */
+async function copyBriefing() {
+  const text = await buildBriefing();
+  try {
+    await navigator.clipboard.writeText(text);
+    return { copied: true, text };
+  } catch {
+    const field = document.createElement('textarea');
+    field.value = text;
+    field.style.position = 'fixed';
+    field.style.opacity = '0';
+    document.body.appendChild(field);
+    field.select();
+    const copied = document.execCommand('copy');
+    field.remove();
+    return { copied, text };
+  }
+}
+
+async function downloadBriefing() {
+  const text = await buildBriefing();
+  const profile = await store.getActiveProfile();
+  const slug = (profile?.name || 'briefing').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  const blob = new Blob([text], { type: 'text/markdown' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `skincare-briefing-${slug}-${new Date().toISOString().slice(0, 10)}.md`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+
+/* ===== js/views.js ===== */
+/* Rendering. Each view takes the <main> element and route params, writes its
+   markup, then wires its own events. */
+
+
+
+
+
+
+
+
+
+/* Everything that talks to a model needs your own key, which only makes sense
+   on your own machine. The share build flips this to false, leaving the app
+   fully offline — the briefing export deliberately survives it. */
+const AI_FEATURES = false;   // share build
+
+/* ---------- small helpers ---------- */
+
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+const urls = [];
+const imgUrl = blob => {
+  const u = URL.createObjectURL(blob);
+  urls.push(u);
+  return u;
+};
+function releaseUrls() {
+  urls.forEach(URL.revokeObjectURL);
+  urls.length = 0;
+}
+
+/* app.js hands us its render function so a profile switch can redraw. */
+let rerender = () => {};
+const onRerender = fn => { rerender = fn; };
+
+/* The masthead switcher. Rebuilt on every render, and after any profile edit. */
+async function profileBar() {
+  const select = document.getElementById('profile-select');
+  if (!select) return;
+
+  const [profiles, active] = await Promise.all([store.getProfiles(), store.getActiveProfileId()]);
+  select.innerHTML = profiles.map(p => option(p.id, p.name, active)).join('');
+  select.hidden = profiles.length < 2;   // no point offering a choice of one
+
+  select.onchange = async () => {
+    await store.setActiveProfileId(select.value);
+    // Deep links belong to whoever we just left, so return to the shelf.
+    if (/^#\/(product|edit|assess)\//.test(location.hash)) location.hash = '#/';
+    else rerender();
+  };
+}
+
+const fmtDate = s => s
+  ? new Date(s + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+  : '';
+
+const fmtStamp = iso =>
+  new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+
+/* Two readings on one day should still be tellable apart. */
+const fmtStampTime = iso =>
+  fmtStamp(iso) + ', ' + new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+
+const byShelfOrder = (a, b) =>
+  (a.brand || '').localeCompare(b.brand || '') || (a.name || '').localeCompare(b.name || '');
+
+/* Three drifting dots for anything that has gone away to think. */
+const dots = () => '<span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>';
+
+/* Put a control into its waiting state and hand back the undo. */
+function waiting(button, label) {
+  const was = button.innerHTML;
+  const wasDisabled = button.disabled;
+  button.disabled = true;
+  button.innerHTML = `${esc(label)}${dots()}`;
+  return () => { button.innerHTML = was; button.disabled = wasDisabled; };
+}
+
+const tagChip = (t, flag) =>
+  `<span class="chip ${flag ? 'chip-flag' : 'chip-active'}">${esc(TAG_LABEL[t] || t)}</span>`;
+
+const option = (v, label, selected) =>
+  `<option value="${esc(v)}"${selected === v ? ' selected' : ''}>${esc(label)}</option>`;
+
+function wireDropzone(zone, onFile) {
+  const input = zone.querySelector('input[type="file"]');
+  zone.addEventListener('click', () => input.click());
+  input.addEventListener('change', () => {
+    if (input.files[0]) onFile(input.files[0]);
+  });
+  ['dragenter', 'dragover'].forEach(e =>
+    zone.addEventListener(e, ev => { ev.preventDefault(); zone.classList.add('is-over'); }));
+  ['dragleave', 'drop'].forEach(e =>
+    zone.addEventListener(e, ev => { ev.preventDefault(); zone.classList.remove('is-over'); }));
+  zone.addEventListener('drop', ev => {
+    const file = ev.dataTransfer?.files?.[0];
+    if (file) onFile(file);
+  });
+}
+
+const dropzoneMarkup = (id, caption = 'Drop a photograph, or select one') => `
+  <div class="dropzone" id="${id}">
+    <p>${esc(caption)}</p>
+    <input type="file" accept="image/*">
+  </div>`;
+
+/* ============================================================
+   Shelf
+   ============================================================ */
+
+const shelfFilters = { category: '', status: '', active: '' };
+
+async function shelf(root) {
+  const products = (await store.getProducts()).sort(byShelfOrder);
+
+  if (!products.length) {
+    const who = (await store.getActiveProfile())?.name;
+    root.innerHTML = `
+      <div class="view-head"><h1 class="page-title">The Shelf</h1></div>
+      <div class="empty">
+        <p>${who ? esc(who) + '’s shelf is' : 'The shelf is'} presently empty. Photograph a
+           product, record what is in it, and it will be kept here.</p>
+        <a class="btn" href="#/add">Add the first product</a>
+      </div>`;
+    return;
+  }
+
+  const activesPresent = new Set();
+  products.forEach(p => tagsFor(p.ingredients || []).forEach(t => {
+    if (ACTIVE_TAGS.includes(t)) activesPresent.add(t);
+  }));
+
+  const visible = products.filter(p =>
+    (!shelfFilters.category || p.category === shelfFilters.category) &&
+    (!shelfFilters.status || p.status === shelfFilters.status) &&
+    (!shelfFilters.active || tagsFor(p.ingredients || []).has(shelfFilters.active))
+  );
+
+  const categoriesPresent = [...new Set(products.map(p => p.category).filter(Boolean))].sort();
+
+  root.innerHTML = `
+    <div class="view-head">
+      <h1 class="page-title">The Shelf</h1>
+      <div class="btn-row"><a class="btn" href="#/add">Add a product</a></div>
+    </div>
+
+    <div class="filter-bar">
+      <div class="filter">
+        <label for="f-cat">Category</label>
+        <select id="f-cat">
+          ${option('', 'All', shelfFilters.category)}
+          ${categoriesPresent.map(c => option(c, c, shelfFilters.category)).join('')}
+        </select>
+      </div>
+      <div class="filter">
+        <label for="f-status">Status</label>
+        <select id="f-status">
+          ${option('', 'All', shelfFilters.status)}
+          ${STATUSES.map(s => option(s, STATUS_LABEL[s], shelfFilters.status)).join('')}
+        </select>
+      </div>
+      <div class="filter">
+        <label for="f-active">Contains</label>
+        <select id="f-active">
+          ${option('', 'Anything', shelfFilters.active)}
+          ${[...activesPresent].map(t => option(t, TAG_LABEL[t] || t, shelfFilters.active)).join('')}
+        </select>
+      </div>
+      <span class="filter-count">${visible.length} of ${products.length}</span>
+    </div>
+
+    <div class="shelf" id="shelf-grid"></div>
+    ${visible.length ? '' : '<p class="muted">Nothing matches that combination.</p>'}`;
+
+  const grid = root.querySelector('#shelf-grid');
+  for (const p of visible) {
+    const blob = await store.getImage(p.imageId);
+    const a = document.createElement('a');
+    a.className = 'shelf-item';
+    a.href = `#/product/${p.id}`;
+    a.innerHTML = `
+      <div class="shelf-frame">
+        ${blob ? `<img src="${imgUrl(blob)}" alt="${esc(p.name)}">` : '<span class="no-image">No photograph</span>'}
+      </div>
+      <div class="shelf-brand">${esc(p.brand || '—')}</div>
+      <div class="shelf-name">${esc(p.name)}</div>
+      <div class="shelf-meta">${esc(p.category || '')}${p.status && p.status !== 'active' ? ' · ' + esc(STATUS_LABEL[p.status]) : ''}</div>`;
+    grid.appendChild(a);
+  }
+
+  root.querySelector('#f-cat').onchange = e => { shelfFilters.category = e.target.value; shelf(root); };
+  root.querySelector('#f-status').onchange = e => { shelfFilters.status = e.target.value; shelf(root); };
+  root.querySelector('#f-active').onchange = e => { shelfFilters.active = e.target.value; shelf(root); };
+}
+
+/* ============================================================
+   Product detail
+   ============================================================ */
+
+async function product(root, { id }) {
+  const p = await store.getProduct(id);
+  const activeId = await store.getActiveProfileId();
+
+  if (!p) {
+    root.innerHTML = `<div class="empty"><p>That product is no longer in the library.</p>
+      <a class="btn" href="#/">Return to the shelf</a></div>`;
+    return;
+  }
+  if (p.profileId !== activeId) {
+    root.innerHTML = `<div class="empty">
+      <p>That product sits on another profile’s shelf. Switch profiles at the top of the page
+         to see it.</p>
+      <a class="btn" href="#/">Return to this shelf</a></div>`;
+    return;
+  }
+
+  const others = (await store.getProfiles()).filter(x => x.id !== activeId);
+
+  const blob = await store.getImage(p.imageId);
+  const ingredients = p.ingredients || [];
+  const tags = tagsFor(ingredients);
+  const actives = ACTIVE_TAGS.filter(t => tags.has(t));
+  const flags = FLAG_TAGS.filter(t => tags.has(t));
+  const matched = ingredients.filter(i => lookup(i)).length;
+
+  let expiryNotice = '';
+  if (p.openedAt && p.paoMonths) {
+    const due = new Date(p.openedAt + 'T00:00:00');
+    due.setMonth(due.getMonth() + Number(p.paoMonths));
+    const past = due < new Date();
+    const dueText = due.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+    expiryNotice = `<div class="notice"><strong>${past ? 'Past its date — ' + esc(dueText) + '.' : 'Use by ' + esc(dueText) + '.'}</strong>
+      Opened ${esc(fmtDate(p.openedAt))}, with ${Number(p.paoMonths)} months after opening.</div>`;
+  }
+
+  const spec = [
+    ['Category', p.category],
+    ['Status', STATUS_LABEL[p.status] || p.status],
+    ['Size', p.size],
+    ['Price', p.price],
+    ['Purchased', fmtDate(p.purchasedAt)],
+    ['Opened', fmtDate(p.openedAt)],
+    ['Rating', p.rating ? '★'.repeat(Number(p.rating)) + '☆'.repeat(5 - Number(p.rating)) : '']
+  ].filter(([, v]) => v);
+
+  root.innerHTML = `
+    <p class="label muted" style="margin:0 0 32px"><a href="#/">← The shelf</a></p>
+    <div class="detail">
+      <div class="detail-frame">
+        ${blob ? `<img src="${imgUrl(blob)}" alt="${esc(p.name)}">` : '<span class="no-image">No photograph</span>'}
+      </div>
+      <div>
+        <div class="detail-brand">${esc(p.brand || '—')}</div>
+        <h1 class="detail-title">${esc(p.name)}</h1>
+
+        ${actives.length ? `<div class="chips" style="margin-bottom:16px">${actives.map(t => tagChip(t, false)).join('')}</div>` : ''}
+        ${flags.length ? `<div class="chips" style="margin-bottom:32px">${flags.map(t => tagChip(t, true)).join('')}</div>` : ''}
+
+        ${expiryNotice}
+
+        <dl class="spec">
+          ${spec.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}
+        </dl>
+
+        ${p.notes ? `<div class="block">
+          <h2 class="section-title">Notes</h2>
+          <p class="prose" style="white-space:pre-wrap;margin:0">${esc(p.notes)}</p>
+        </div>` : ''}
+
+        <div class="block">
+          <h2 class="section-title">Ingredients ${ingredients.length ? `— ${matched} of ${ingredients.length} annotated` : ''}</h2>
+          ${ingredients.length ? `<div class="ing-list">${ingredients.map((name, i) => {
+            const entry = lookup(name);
+            const flagged = entry && entry.t.some(t => FLAG_TAGS.includes(t));
+            return `<div class="ing ${entry ? '' : 'ing-unknown'} ${flagged ? 'ing-flagged' : ''}">
+              <div class="ing-index">${i + 1}</div>
+              <div>
+                <div class="ing-name">${esc(entry ? entry.n : name)}</div>
+                ${entry && entry.n.toLowerCase() !== name.toLowerCase()
+                  ? `<div class="tag" style="border:none;margin-top:2px">${esc(name)}</div>` : ''}
+                ${entry ? `<div class="ing-tags">${entry.t.map(t =>
+                    `<span class="tag ${FLAG_TAGS.includes(t) ? 'tag-flag' : ''}">${esc(TAG_LABEL[t] || t)}</span>`).join('')}</div>` : ''}
+              </div>
+              <div class="ing-fn">${entry ? esc(entry.f) : 'Not in the reference — recorded as written.'}</div>
+            </div>`;
+          }).join('')}</div>`
+          : '<p class="muted">No ingredient list recorded yet.</p>'}
+        </div>
+
+        ${others.length ? `<div class="block">
+          <h2 class="section-title">Shared with the household</h2>
+          <p class="muted" style="font-size:13px;margin:0 0 20px">If someone else uses this bottle
+            too, put a copy on their shelf rather than photographing it twice. The two records are
+            separate from then on.</p>
+          <div class="btn-row">
+            <select id="copy-target" style="background:none;border:none;border-bottom:1px solid var(--rule);padding:4px 0;border-radius:0">
+              ${others.map(o => option(o.id, o.name, others[0].id)).join('')}
+            </select>
+            <button class="btn btn-quiet" id="copy-across">Copy across</button>
+            <span class="field-hint" style="margin:0" id="copy-note"></span>
+          </div>
+        </div>` : ''}
+
+        <div class="block btn-row">
+          <a class="btn" href="#/edit/${esc(p.id)}">Edit</a>
+          <button class="btn btn-quiet btn-danger" id="delete">Remove from library</button>
+        </div>
+      </div>
+    </div>`;
+
+  const copyBtn = root.querySelector('#copy-across');
+  if (copyBtn) {
+    copyBtn.onclick = async () => {
+      const target = root.querySelector('#copy-target');
+      const name = target.selectedOptions[0].text;
+      copyBtn.disabled = true;
+      try {
+        await store.copyProductToProfile(p.id, target.value);
+        root.querySelector('#copy-note').textContent = `Copied to ${name}’s shelf.`;
+      } catch (err) {
+        root.querySelector('#copy-note').textContent = err.message;
+      } finally {
+        copyBtn.disabled = false;
+      }
+    };
+  }
+
+  root.querySelector('#delete').onclick = async () => {
+    if (!confirm(`Remove ${p.brand ? p.brand + ' ' : ''}${p.name} from the library? This cannot be undone.`)) return;
+    await store.deleteProduct(p.id);
+    location.hash = '#/';
+  };
+}
+
+/* ============================================================
+   Add / edit
+   ============================================================ */
+
+async function form(root, { id } = {}) {
+  const editing = Boolean(id);
+  const p = editing ? await store.getProduct(id) : null;
+  if (editing && !p) {
+    root.innerHTML = `<div class="empty"><p>That product is no longer in the library.</p>
+      <a class="btn" href="#/">Return to the shelf</a></div>`;
+    return;
+  }
+
+  const settings = await store.getSettings();
+  const existingBlob = p ? await store.getImage(p.imageId) : null;
+  // Resizing is asynchronous; hold the job so a fast submit still waits for it.
+  let photoJob = null;
+  // The original is kept only for label reading — ingredient print is tiny, and
+  // the copy we store for the shelf is downscaled too far to read it.
+  let originalFile = null;
+  const pendingPhoto = () => (photoJob ? photoJob : Promise.resolve(null));
+
+  root.innerHTML = `
+    <div class="view-head">
+      <h1 class="page-title">${editing ? 'Edit product' : 'Add a product'}</h1>
+    </div>
+
+    <form class="form-grid" id="product-form" autocomplete="off">
+      <div>
+        ${dropzoneMarkup('photo')}
+        <div class="btn-row" style="margin-top:16px">
+          <button type="button" class="btn btn-quiet" id="autofill" ${AI_FEATURES && settings.apiKey ? '' : 'hidden'}>Read the label</button>
+        </div>
+        <p class="field-hint" id="photo-hint">${AI_FEATURES && settings.apiKey
+          ? 'A key is configured — Claude can read brand, name and ingredients from a photograph of the packaging.'
+          : 'Photographs are resized and kept in this browser.'}</p>
+      </div>
+
+      <div>
+        <div class="field-pair">
+          <div class="field">
+            <label for="brand">Brand</label>
+            <input type="text" id="brand" value="${esc(p?.brand)}">
+          </div>
+          <div class="field">
+            <label for="name">Product name</label>
+            <input type="text" id="name" required value="${esc(p?.name)}">
+          </div>
+        </div>
+
+        <div class="field-pair">
+          <div class="field">
+            <label for="category">Category</label>
+            <select id="category">${CATEGORIES.map(c => option(c, c, p?.category || 'Serum')).join('')}</select>
+          </div>
+          <div class="field">
+            <label for="status">Status</label>
+            <select id="status">${STATUSES.map(s => option(s, STATUS_LABEL[s], p?.status || 'active')).join('')}</select>
+          </div>
+        </div>
+
+        <div class="field-pair">
+          <div class="field">
+            <label for="size">Size</label>
+            <input type="text" id="size" placeholder="50 ml" value="${esc(p?.size)}">
+          </div>
+          <div class="field">
+            <label for="price">Price</label>
+            <input type="text" id="price" placeholder="£38" value="${esc(p?.price)}">
+          </div>
+        </div>
+
+        <div class="field-pair">
+          <div class="field">
+            <label for="purchasedAt">Purchased</label>
+            <input type="date" id="purchasedAt" value="${esc(p?.purchasedAt)}">
+          </div>
+          <div class="field">
+            <label for="openedAt">Opened</label>
+            <input type="date" id="openedAt" value="${esc(p?.openedAt)}">
+          </div>
+        </div>
+
+        <div class="field-pair">
+          <div class="field">
+            <label for="paoMonths">Period after opening (months)</label>
+            <input type="number" id="paoMonths" min="1" max="60" value="${esc(p?.paoMonths)}">
+          </div>
+          <div class="field">
+            <label for="rating">Rating</label>
+            <select id="rating">
+              ${option('', 'Unrated', p?.rating || '')}
+              ${[1, 2, 3, 4, 5].map(n => option(String(n), '★'.repeat(n), String(p?.rating || ''))).join('')}
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="notes">Notes</label>
+          <textarea id="notes" placeholder="How it wears, what it sits well under, whether you would buy it again.">${esc(p?.notes)}</textarea>
+        </div>
+
+        <div class="field">
+          <label for="ingredients">Ingredients</label>
+          <textarea id="ingredients" placeholder="Paste the list straight from the packaging. Commas are enough.">${esc((p?.ingredients || []).join(', '))}</textarea>
+          <div class="field-hint" id="parse-summary"></div>
+          <div class="chips" id="parse-chips" style="margin-top:12px"></div>
+        </div>
+
+        <div class="btn-row">
+          <button type="submit" class="btn">${editing ? 'Save changes' : 'Add to the library'}</button>
+          <a class="btn btn-quiet" href="${editing ? '#/product/' + esc(id) : '#/'}">Cancel</a>
+          <span class="field-hint" id="form-error" style="margin:0;color:var(--amber)"></span>
+        </div>
+      </div>
+    </form>`;
+
+  const zone = root.querySelector('#photo');
+  const hint = root.querySelector('#photo-hint');
+  const showPhoto = blob => {
+    zone.querySelectorAll('img').forEach(n => n.remove());
+    const img = document.createElement('img');
+    img.src = imgUrl(blob);
+    img.alt = 'Selected photograph';
+    zone.appendChild(img);
+  };
+  if (existingBlob) showPhoto(existingBlob);
+
+  wireDropzone(zone, file => {
+    originalFile = file;
+    photoJob = store.resizeImage(file)
+      .then(blob => { showPhoto(blob); return blob; })
+      .catch(err => { hint.textContent = err.message; return null; });
+  });
+
+  /* live parse of the ingredient list */
+  const ingField = root.querySelector('#ingredients');
+  const summary = root.querySelector('#parse-summary');
+  const chips = root.querySelector('#parse-chips');
+  const refreshParse = () => {
+    const list = parseIngredients(ingField.value);
+    const known = list.filter(i => lookup(i));
+    const tags = tagsFor(list);
+    summary.textContent = list.length
+      ? `${list.length} ingredients read, ${known.length} recognised.`
+      : 'Nothing read yet.';
+    chips.innerHTML = [
+      ...ACTIVE_TAGS.filter(t => tags.has(t)).map(t => tagChip(t, false)),
+      ...FLAG_TAGS.filter(t => tags.has(t)).map(t => tagChip(t, true))
+    ].join('');
+  };
+  ingField.addEventListener('input', refreshParse);
+  refreshParse();
+
+  /* optional label reading */
+  const autofillBtn = root.querySelector('#autofill');
+  if (autofillBtn) {
+    autofillBtn.onclick = async () => {
+      // Read from the sharpest copy available. The shelf photo is downscaled
+      // to 1600px, which is fine to look at and hopeless for 5pt INCI print.
+      const blob = originalFile
+        ? await store.resizeImage(originalFile, 2400, 0.92)
+        : (await pendingPhoto()) || existingBlob;
+      if (!blob) { hint.textContent = 'Add a photograph of the packaging first.'; return; }
+
+      const restore = waiting(autofillBtn, 'Reading');
+      hint.innerHTML = `Reading the photograph${dots()}`;
+
+      try {
+        const read = await readLabel(blob);
+
+        // Merge rather than overwrite, so you can read the front for the name,
+        // then swap in the back-of-pack photograph for the ingredients.
+        const fill = (selector, value) => {
+          const field = root.querySelector(selector);
+          if (value && !field.value.trim()) field.value = value;
+        };
+        fill('#brand', read.brand);
+        fill('#name', read.name);
+        fill('#size', read.size);
+        if (read.category && CATEGORIES.includes(read.category) && !root.querySelector('#category').dataset.touched) {
+          root.querySelector('#category').value = read.category;
+        }
+
+        const merge = list => {
+          const already = parseIngredients(ingField.value);
+          const seen = new Set(already.map(i => i.toLowerCase()));
+          const added = list.filter(i => !seen.has(i.toLowerCase()));
+          ingField.value = [...already, ...added].join(', ');
+          refreshParse();
+          return added.length;
+        };
+
+        if (read.ingredients?.length) {
+          hint.textContent = `Read ${merge(read.ingredients)} ingredients off the pack. `
+            + 'Check them before saving.';
+        } else {
+          /* Nothing legible on the pack — go and look the product up instead. */
+          const brand = root.querySelector('#brand').value.trim();
+          const name = root.querySelector('#name').value.trim();
+
+          if (!name && !brand) {
+            hint.textContent = 'No ingredient list was legible, and there is no product name to look up.';
+          } else {
+            hint.innerHTML = `No list visible on the pack. Looking up ${esc([brand, name].filter(Boolean).join(' '))}${dots()}`;
+            const found = await lookupIngredients({ brand, name });
+
+            if (!found.ingredients.length) {
+              hint.textContent = 'No ingredient list was legible, and none could be found online. '
+                + 'Try a close, straight-on photograph of the back of the pack.';
+            } else {
+              const count = merge(found.ingredients);
+              hint.innerHTML = found.grounded
+                ? `Found ${count} ingredients online for this product — <strong>not read off your pack</strong>, so check them against it. `
+                  + `${found.note ? esc(found.note) + ' ' : ''}`
+                  + (found.sources?.length
+                    ? found.sources.slice(0, 3).map(s => `<a href="${esc(s.url)}" target="_blank" rel="noreferrer noopener" style="text-decoration:underline">${esc(s.title)}</a>`).join(', ')
+                    : '')
+                : `Found ${count} ingredients, but <strong>web search was unavailable</strong>, so these came from the model’s memory rather than a source. Formulations change — check them against your pack carefully.`;
+            }
+          }
+        }
+      } catch (err) {
+        hint.textContent = err.message;
+      } finally {
+        restore();
+      }
+    };
+  }
+
+  root.querySelector('#product-form').onsubmit = async ev => {
+    ev.preventDefault();
+    const val = sel => root.querySelector(sel).value.trim();
+    const error = root.querySelector('#form-error');
+    if (!val('#name')) { error.textContent = 'A product name is needed.'; return; }
+
+    const pendingBlob = await pendingPhoto();
+    let imageId = p?.imageId || null;
+    if (pendingBlob) {
+      if (imageId) await store.del('images', imageId).catch(() => {});
+      imageId = await store.putImage(pendingBlob);
+    }
+
+    await store.saveProduct({
+      id: p?.id || store.uid(),
+      brand: val('#brand'),
+      name: val('#name'),
+      category: val('#category'),
+      status: val('#status'),
+      size: val('#size'),
+      price: val('#price'),
+      purchasedAt: val('#purchasedAt'),
+      openedAt: val('#openedAt'),
+      paoMonths: val('#paoMonths'),
+      rating: val('#rating'),
+      notes: root.querySelector('#notes').value.trim(),
+      ingredients: parseIngredients(ingField.value),
+      imageId,
+      createdAt: p?.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+
+    location.hash = p ? `#/product/${p.id}` : '#/';
+  };
+}
+
+/* ============================================================
+   Assessment
+   ============================================================ */
+
+function renderResult(result, productsById) {
+  const extras = [];
+
+  if (result.degraded) {
+    extras.push(`<div class="notice"><strong>Read offline</strong> — the model could not be
+      reached (${esc(result.degraded)}), so this is the rules-based reading from your answers.</div>`);
+  }
+  if (result.photoUsed && result.photoUsable === false && result.photoNote) {
+    extras.push(`<div class="notice"><strong>The photograph is hard to judge</strong> — ${esc(result.photoNote)}</div>`);
+  }
+
+  const observations = (result.observations || []).length ? `
+    <div class="block" style="margin-top:0">
+      <h2 class="section-title">What is visible</h2>
+      <div class="reading">
+        ${result.observations.map(o => `
+          <div class="reading-row" style="grid-template-columns:minmax(0,1fr) minmax(0,2fr)">
+            <div>${esc(o.area)}</div>
+            <div class="reading-note">${esc(o.note)}</div>
+          </div>`).join('')}
+      </div>
+    </div>` : '';
+
+  const working = (result.working || []).length ? `
+    <div class="block">
+      <h2 class="section-title">Earning its place</h2>
+      <ul class="prose" style="margin:0;padding-left:18px">
+        ${result.working.map(w => `<li style="margin-bottom:8px">${esc(w)}</li>`).join('')}
+      </ul>
+    </div>` : '';
+
+  const changes = (result.changes || []).length ? `
+    <div class="block">
+      <h2 class="section-title">What to change</h2>
+      <div class="reading">
+        ${result.changes.map(c => `
+          <div class="reading-row" style="grid-template-columns:minmax(0,1fr) minmax(0,1.4fr)">
+            <div>${esc(c.change)}</div>
+            <div class="reading-note">${esc(c.why)}</div>
+          </div>`).join('')}
+      </div>
+    </div>` : '';
+
+  return renderResultBody(result, productsById, extras.join(''), observations, working, changes);
+}
+
+function renderResultBody(result, productsById, extras, observations, working, changes) {
+  const period = key => (result.routine[key] || []).map((s, i) => `
+    <div class="step">
+      <div class="step-num">${String(i + 1).padStart(2, '0')}</div>
+      <div>
+        <div class="step-label">${esc(s.step)}</div>
+        ${s.productId && productsById[s.productId]
+          ? `<div class="step-product"><a href="#/product/${esc(s.productId)}">${esc(productsById[s.productId].brand || '')} ${esc(productsById[s.productId].name)}</a></div>`
+          : '<div class="step-product step-empty">Nothing suitable on the shelf</div>'}
+        <div class="step-note">${esc(s.note || '')}</div>
+      </div>
+    </div>`).join('');
+
+  return `
+    <div class="caveat">${esc(result.caveat)}</div>
+    ${extras}
+    ${observations}
+
+    <div class="block">
+      <h2 class="section-title">The reading</h2>
+      ${result.concerns.length ? `<div class="reading">${result.concerns.map(c => `
+        <div class="reading-row">
+          <div>${esc(c.label)}</div>
+          <div class="severity ${c.severity === 'marked' ? 'severity-marked' : ''}">${esc(SEVERITY_LABEL[c.severity])}</div>
+          <div class="reading-note">${esc(c.evidence)}</div>
+        </div>`).join('')}</div>`
+        : '<p class="muted">Nothing stands out from your answers. Keep to what is working.</p>'}
+    </div>
+
+    ${working}
+    ${changes}
+
+    <div class="block">
+      <h2 class="section-title">The routine this suggests</h2>
+      <div class="routine-cols">
+        <div>
+          <h3 class="step-label" style="margin-bottom:8px">Morning</h3>
+          ${period('am') || '<p class="muted">No morning routine could be built from the shelf.</p>'}
+        </div>
+        <div>
+          <h3 class="step-label" style="margin-bottom:8px">Evening</h3>
+          ${period('pm') || '<p class="muted">No evening routine could be built from the shelf.</p>'}
+        </div>
+      </div>
+    </div>
+
+    ${result.gaps.length ? `<div class="block">
+      <h2 class="section-title">What is missing</h2>
+      ${result.gaps.map(g => `<div class="notice"><strong>${esc(g.category)}</strong> — ${esc(g.reason)}</div>`).join('')}
+    </div>` : ''}`;
+}
+
+async function assess(root, { id } = {}) {
+  const products = await store.getProducts();
+  const productsById = Object.fromEntries(products.map(p => [p.id, p]));
+  const history = (await store.getAssessments()).sort((a, b) => b.date.localeCompare(a.date));
+  const settings = await aiSettings();
+  const keyConfigured = AI_FEATURES && Boolean(settings.apiKey);
+  const sendPhotoDefault = settings.sendPhoto;
+  const providerName = PROVIDERS.find(p => p.id === settings.provider)?.label || settings.provider;
+
+  /* Viewing one from the archive. */
+  if (id) {
+    const record = history.find(a => a.id === id);
+    if (!record) {
+      root.innerHTML = `<div class="empty"><p>That assessment is no longer kept.</p>
+        <a class="btn" href="#/assess">Back to assessment</a></div>`;
+      return;
+    }
+    const blob = await store.getImage(record.photoId);
+    root.innerHTML = `
+      <p class="label muted" style="margin:0 0 32px"><a href="#/assess">← Assessment</a></p>
+      <div class="view-head"><h1 class="page-title">${esc(fmtStampTime(record.date))}</h1>
+        <button class="btn btn-quiet btn-danger" id="del-assessment">Remove this record</button></div>
+      <div class="assess-grid">
+        <div>${blob ? `<div class="shelf-frame"><img src="${imgUrl(blob)}" alt="Skin, ${esc(fmtStamp(record.date))}"></div>`
+          : '<div class="shelf-frame"><span class="no-image">No photograph</span></div>'}</div>
+        <div>${renderResult(record.result, productsById)}</div>
+      </div>`;
+    root.querySelector('#del-assessment').onclick = async () => {
+      if (!confirm('Remove this assessment and its photograph?')) return;
+      await store.deleteAssessment(record.id);
+      location.hash = '#/assess';
+    };
+    return;
+  }
+
+  const historyMarkup = history.length ? `
+    <div class="block">
+      <h2 class="section-title">Previous readings</h2>
+      <div class="history">
+        ${history.map(a => `
+          <button class="history-row" data-id="${esc(a.id)}">
+            <span class="history-date">${esc(fmtStampTime(a.date))}</span>
+            <span class="muted">${a.result.concerns.length
+              ? esc(a.result.concerns.slice(0, 3).map(c => c.label).join(', '))
+              : 'Nothing marked'}</span>
+          </button>`).join('')}
+      </div>
+    </div>` : '';
+
+  root.innerHTML = `
+    <div class="view-head">
+      <h1 class="page-title">Assessment</h1>
+      <div class="btn-row">
+        <button class="btn btn-quiet" id="brief-here">Copy briefing for another assistant</button>
+        <span class="field-hint" style="margin:0" id="brief-here-note"></span>
+      </div>
+    </div>
+    <div class="assess-grid">
+      <div>
+        ${dropzoneMarkup('skin-photo', 'A photograph of your skin')}
+        <p class="field-hint">Even daylight, no makeup, the same angle each time. Kept in this
+          browser so you can compare one month against the next.</p>
+        ${AI_FEATURES && keyConfigured ? `
+          <div class="choices" style="margin-top:20px">
+            <input type="checkbox" id="send-photo" ${sendPhotoDefault ? 'checked' : ''}>
+            <label for="send-photo">Let the model look at it</label>
+          </div>
+          <p class="field-hint">Off, the reading comes from your answers and your shelf and the
+            photograph never leaves this Mac. On, it is sent to ${esc(providerName)} to be read.</p>`
+        : ''}
+      </div>
+      <div>
+        <form id="assess-form">
+          ${QUESTIONS.map(q => `
+            <div class="field">
+              <label>${esc(q.label)}</label>
+              <div class="choices">
+                ${q.options.map((o, i) => `
+                  <input type="${q.multi ? 'checkbox' : 'radio'}" name="${esc(q.key)}"
+                         id="${esc(q.key)}-${i}" value="${esc(o.value)}"${!q.multi && i === 0 ? ' checked' : ''}>
+                  <label for="${esc(q.key)}-${i}">${esc(o.label)}</label>`).join('')}
+              </div>
+            </div>`).join('')}
+          <div class="btn-row">
+            <button type="submit" class="btn">Read my skin</button>
+            <span class="field-hint" style="margin:0">Answers and photograph stay on this machine.</span>
+          </div>
+        </form>
+      </div>
+    </div>
+    <div id="assess-result"></div>
+    ${historyMarkup}`;
+
+  let photoJob = null;
+  const zone = root.querySelector('#skin-photo');
+  wireDropzone(zone, file => {
+    photoJob = store.resizeImage(file, 1200)
+      .then(blob => {
+        zone.querySelectorAll('img').forEach(n => n.remove());
+        const img = document.createElement('img');
+        img.src = imgUrl(blob);
+        img.alt = 'Skin photograph';
+        zone.appendChild(img);
+        return blob;
+      })
+      .catch(err => { zone.querySelector('p').textContent = err.message; return null; });
+  });
+
+  root.querySelectorAll('.history-row').forEach(btn => {
+    btn.onclick = () => { location.hash = `#/assess/${btn.dataset.id}`; };
+  });
+
+  root.querySelector('#brief-here').onclick = async () => {
+    const briefNote = root.querySelector('#brief-here-note');
+    try {
+      const { copied } = await copyBriefing();
+      briefNote.textContent = copied
+        ? 'Copied. Paste it alongside your photograph.'
+        : 'Could not reach the clipboard — try Settings.';
+    } catch (err) {
+      briefNote.textContent = err.message;
+    }
+  };
+
+  root.querySelector('#assess-form').onsubmit = async ev => {
+    ev.preventDefault();
+    const fd = new FormData(ev.target);
+    const answers = {};
+    for (const q of QUESTIONS) {
+      answers[q.key] = q.multi ? fd.getAll(q.key) : (fd.get(q.key) || '');
+    }
+
+    const photoBlob = photoJob ? await photoJob : null;
+    const sendPhoto = Boolean(root.querySelector('#send-photo')?.checked);
+    const submit = ev.target.querySelector('button[type="submit"]');
+    const restore = submit ? waiting(submit, 'Reading') : () => {};
+
+    let result;
+    try {
+      result = await assessSkin({
+        imageBlob: photoBlob,
+        answers,
+        library: products,
+        routine: await store.getRoutine(),
+        sendPhoto
+      });
+    } finally {
+      restore();
+    }
+
+    const record = {
+      id: store.uid(),
+      date: new Date().toISOString(),
+      photoId: photoBlob ? await store.putImage(photoBlob) : null,
+      answers,
+      result
+    };
+    await store.saveAssessment(record);
+
+    const out = root.querySelector('#assess-result');
+    out.innerHTML = `<div class="block">${renderResult(result, productsById)}
+      <div class="btn-row">
+        <button class="btn" id="adopt">Adopt this as my routine</button>
+        <span class="field-hint" style="margin:0" id="adopt-note">Kept in your archive as of today.</span>
+      </div></div>`;
+    out.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    out.querySelector('#adopt').onclick = async () => {
+      const entries = period => (result.routine[period] || [])
+        .filter(s => s.productId)
+        .map(s => ({ step: s.stepKey || null, productId: s.productId }));
+      await store.setRoutine({ am: entries('am'), pm: entries('pm') });
+      out.querySelector('#adopt-note').textContent = 'Saved. It is now under Routine.';
+    };
+  };
+}
+
+/* ============================================================
+   Routine
+   ============================================================ */
+
+async function routine(root) {
+  const products = (await store.getProducts()).sort(byShelfOrder);
+  const saved = await store.getRoutine();
+  const byId = Object.fromEntries(products.map(p => [p.id, p]));
+
+  if (!products.length) {
+    root.innerHTML = `<div class="view-head"><h1 class="page-title">Routine</h1></div>
+      <div class="empty"><p>A routine is assembled from what is on the shelf. Add a product first.</p>
+      <a class="btn" href="#/add">Add a product</a></div>`;
+    return;
+  }
+
+  /* Everything below edits this draft; Save writes it. */
+  const draft = { am: [...(saved.am || [])], pm: [...(saved.pm || [])] };
+  const inStep = (period, key) => draft[period].filter(e => e.step === key);
+
+  const stepRows = (period, step) => {
+    const chosen = inStep(period, step.key);
+    const taken = new Set(chosen.map(e => e.productId));
+    const candidates = products.filter(p => step.categories.includes(p.category) && !taken.has(p.id));
+    const canAdd = step.multiple ? candidates.length > 0 : chosen.length === 0 && candidates.length > 0;
+
+    const rows = chosen.map((entry, i) => {
+      const p = byId[entry.productId];
+      if (!p) return '';
+      return `<div class="picker-row">
+        <span class="picker-step" style="min-width:110px">${i === 0 ? esc(step.label) : ''}</span>
+        <span class="grow">${esc(p.brand ? p.brand + ' · ' : '')}${esc(p.name)}</span>
+        ${i > 0 ? `<button class="link-btn" data-up="${esc(period)}|${esc(step.key)}|${i}">Move up</button>` : ''}
+        <button class="link-btn" data-drop="${esc(period)}|${esc(entry.productId)}|${esc(step.key)}">Remove</button>
+      </div>`;
+    }).join('');
+
+    const adder = canAdd
+      ? `<div class="picker-row">
+          <span class="picker-step" style="min-width:110px">${chosen.length ? '' : esc(step.label)}</span>
+          <span class="grow">
+            <select class="step-add" data-add="${esc(period)}|${esc(step.key)}"
+                    style="width:100%;background:none;border:none;border-bottom:1px solid var(--rule);padding:4px 0;border-radius:0">
+              ${option('', chosen.length ? '＋ add another' : '—', '')}
+              ${candidates.map(p => option(p.id, `${p.brand ? p.brand + ' · ' : ''}${p.name}`, '')).join('')}
+            </select>
+          </span>
+        </div>`
+      : (chosen.length ? '' : `<div class="picker-row">
+          <span class="picker-step" style="min-width:110px">${esc(step.label)}</span>
+          <span class="grow muted">Nothing in this category</span>
+        </div>`);
+
+    return rows + adder;
+  };
+
+  const column = (period, title) => `
+    <div>
+      <h2 class="section-title">${esc(title)}</h2>
+      <div class="picker">
+        ${stepsFor(period).map(step => stepRows(period, step)).join('')}
+      </div>
+      <div id="conflicts-${period}" class="block" style="margin-top:32px"></div>
+    </div>`;
+
+  const draw = () => {
+    root.innerHTML = `
+      <div class="view-head">
+        <h1 class="page-title">Routine</h1>
+        <div class="btn-row">
+          <button class="btn" id="save-routine">Save</button>
+          <span class="field-hint" style="margin:0" id="routine-note"></span>
+        </div>
+      </div>
+      <div class="routine-cols">
+        ${column('am', 'Morning')}
+        ${column('pm', 'Evening')}
+      </div>`;
+
+    for (const period of ['am', 'pm']) {
+      const chosen = draft[period].map(e => byId[e.productId]).filter(Boolean);
+      const notes = conflictsFor(chosen, period);
+      root.querySelector(`#conflicts-${period}`).innerHTML = notes.length
+        ? `<h2 class="section-title">Worth knowing</h2>${notes.map(n =>
+            `<div class="notice"><strong>${n.severity === 'high' ? 'Take care' : n.severity === 'medium' ? 'Consider' : 'Note'}</strong> — ${esc(n.text)}</div>`).join('')}`
+        : (chosen.length ? '<p class="muted" style="font-size:13px">Nothing conflicts in this routine.</p>' : '');
+    }
+    wire();
+  };
+
+  function wire() {
+    root.querySelectorAll('.step-add').forEach(sel => {
+      sel.onchange = () => {
+        if (!sel.value) return;
+        const [period, stepKey] = sel.dataset.add.split('|');
+        draft[period].push({ step: stepKey, productId: sel.value });
+        draw();
+      };
+    });
+
+    root.querySelectorAll('[data-drop]').forEach(btn => {
+      btn.onclick = () => {
+        const [period, productId, stepKey] = btn.dataset.drop.split('|');
+        const i = draft[period].findIndex(e => e.productId === productId && e.step === stepKey);
+        if (i > -1) draft[period].splice(i, 1);
+        draw();
+      };
+    });
+
+    /* Swap with the entry above it inside the same step. */
+    root.querySelectorAll('[data-up]').forEach(btn => {
+      btn.onclick = () => {
+        const [period, stepKey, indexText] = btn.dataset.up.split('|');
+        const within = Number(indexText);
+        const positions = draft[period]
+          .map((e, i) => (e.step === stepKey ? i : -1))
+          .filter(i => i > -1);
+        const a = positions[within - 1];
+        const b = positions[within];
+        [draft[period][a], draft[period][b]] = [draft[period][b], draft[period][a]];
+        draw();
+      };
+    });
+
+    root.querySelector('#save-routine').onclick = async () => {
+      await store.setRoutine({ am: draft.am, pm: draft.pm });
+      root.querySelector('#routine-note').textContent = 'Saved.';
+    };
+  }
+
+  draw();
+}
+
+/* ============================================================
+   Discoveries
+   ============================================================ */
+
+async function discoveries(root) {
+  const { apiKey } = await aiSettings();
+  const products = await store.getProducts();
+  const cached = await store.getPicks();
+
+  if (!AI_FEATURES || !apiKey) {
+    root.innerHTML = `
+      <div class="view-head"><h1 class="page-title">Discoveries</h1></div>
+      <div class="empty">
+        <p>This looks for Japanese and Korean products that suit your latest reading and fill a
+           gap on your shelf.</p>
+        ${AI_FEATURES
+          ? `<p>It needs a model connected under Settings.</p>
+             <a class="btn" href="#/settings">Connect one</a>`
+          : `<p>This copy of the library does not talk to any model. Copy a briefing from
+               Settings and ask an assistant of your own instead.</p>
+             <a class="btn" href="#/settings">Copy a briefing</a>`}
+      </div>`;
+    return;
+  }
+
+  const paint = (picks, note) => {
+    const stale = picks && (Date.now() - new Date(picks.generatedAt).getTime()) > 30 * 864e5;
+    root.innerHTML = `
+      <div class="view-head">
+        <h1 class="page-title">Discoveries</h1>
+        <div class="btn-row">
+          <button class="btn" id="look">${picks ? 'Look again' : 'Look for something new'}</button>
+          <span class="field-hint" style="margin:0" id="pick-note">${esc(note || '')}</span>
+        </div>
+      </div>
+
+      ${picks ? `
+        ${picks.grounded === false ? `<div class="notice"><strong>Not web-checked</strong> —
+          search was unavailable, so these come from the model's memory. Products may be
+          discontinued or misremembered. Verify each one before buying.</div>` : ''}
+        <p class="muted" style="margin-bottom:32px">Found ${esc(fmtStamp(picks.generatedAt))}${stale ? ' — over a month ago, worth looking again.' : '.'}
+          ${picks.grounded === false ? '' : 'Searched on the web, but check the details yourself before buying.'}</p>
+        <div class="picks">
+          ${(picks.items || []).map(item => `
+            <div class="pick">
+              <div>
+                <div class="pick-brand">${esc(item.brand || '')}</div>
+                <div class="pick-name">${esc(item.product || '')}</div>
+                <div class="pick-kind">${esc(item.kind || '')}</div>
+              </div>
+              <div>
+                <div class="pick-why">${esc(item.why || '')}</div>
+                ${item.actives ? `<div class="pick-meta"><strong>Actives</strong> — ${esc(item.actives)}</div>` : ''}
+                ${item.caution ? `<div class="pick-meta"><strong>Caution</strong> — ${esc(item.caution)}</div>` : ''}
+              </div>
+            </div>`).join('')}
+        </div>
+        ${(picks.sources || []).length ? `<div class="block">
+          <h2 class="section-title">Where this came from</h2>
+          <div class="chips">
+            ${picks.sources.map(s => `<a class="chip" href="${esc(s.url)}" target="_blank" rel="noreferrer noopener">${esc(s.title)}</a>`).join('')}
+          </div>
+        </div>` : ''}`
+      : `<div class="empty"><p>Nothing looked up yet.</p></div>`}`;
+
+    root.querySelector('#look').onclick = async () => {
+      const button = root.querySelector('#look');
+      const restore = waiting(button, 'Searching');
+      root.querySelector('#pick-note').innerHTML = `This takes a moment${dots()}`;
+      try {
+        const assessments = (await store.getAssessments()).sort((a, b) => b.date.localeCompare(a.date));
+        const fresh = await discover({ library: products, assessment: assessments[0] });
+        await store.setPicks(fresh);
+        paint(fresh, `Found ${fresh.items.length}.`);
+      } catch (err) {
+        restore();
+        root.querySelector('#pick-note').textContent = err.message;
+      }
+    };
+  };
+
+  paint(cached, '');
+}
+
+/* ============================================================
+   Settings
+   ============================================================ */
+
+async function settings(root) {
+  const current = await aiSettings();
+  const profiles = await store.getProfiles();
+  const activeId = await store.getActiveProfileId();
+  const tallies = await store.profileTallies();
+  const allProducts = await store.getAll('products');
+  const allAssessments = await store.getAll('assessments');
+
+  root.innerHTML = `
+    <div class="view-head"><h1 class="page-title">Settings</h1></div>
+
+    <div class="prose">
+      <h2 class="section-title">Profiles</h2>
+      <p class="muted">Everyone at home can have their own shelf, readings and routine. Switch
+        between them at the top of the page. They are kept apart for tidiness, not for privacy —
+        anyone at this browser can look at any of them.</p>
+
+      <div class="picker" style="margin-top:24px">
+        ${profiles.map(p => {
+          const t = tallies[p.id] || { products: 0, assessments: 0 };
+          return `<div class="picker-row">
+            <span class="grow">
+              <input type="text" class="profile-name" data-id="${esc(p.id)}" value="${esc(p.name)}"
+                     aria-label="Profile name">
+            </span>
+            <span class="picker-step">${t.products} ${t.products === 1 ? 'product' : 'products'} · ${t.assessments} ${t.assessments === 1 ? 'reading' : 'readings'}</span>
+            ${p.id === activeId ? '<span class="picker-step" style="color:var(--amber)">Showing</span>' : ''}
+            ${profiles.length > 1 ? `<button class="link-btn" data-remove="${esc(p.id)}">Remove</button>` : ''}
+          </div>`;
+        }).join('')}
+      </div>
+
+      <div class="field" style="max-width:360px;margin-top:32px">
+        <label for="new-profile">Add someone</label>
+        <input type="text" id="new-profile" placeholder="Their name" autocomplete="off">
+      </div>
+      <div class="btn-row">
+        <button class="btn" id="add-profile">Add profile</button>
+        <span class="field-hint" style="margin:0" id="profile-note"></span>
+      </div>
+    </div>
+
+    <div class="prose block">
+      <h2 class="section-title">Your library</h2>
+      <p class="muted">${allProducts.length} products and ${allAssessments.length} assessments across
+        ${profiles.length} ${profiles.length === 1 ? 'profile' : 'profiles'}, held in this browser's
+        storage. Clearing site data would remove them, so keep a backup.</p>
+      <div class="btn-row" style="margin:24px 0 8px">
+        <button class="btn" id="export">Export a backup</button>
+        <button class="btn btn-quiet" id="import-btn">Restore from a backup</button>
+        <input type="file" id="import" accept="application/json" style="display:none">
+      </div>
+      <p class="field-hint" id="backup-note"></p>
+    </div>
+
+    <div class="prose block">
+      <h2 class="section-title">Ask another assistant</h2>
+      <p class="muted">Copies your shelf, your routine and your last self-assessment as text you
+        can paste into Gemini, Claude or anything else, along with a photograph of your skin.
+        Nothing is sent by this app — you paste it yourself, so you can read exactly what you are
+        sharing first.</p>
+      <div class="btn-row" style="margin-top:24px">
+        <button class="btn" id="copy-briefing">Copy briefing</button>
+        <button class="btn btn-quiet" id="download-briefing">Download as a file</button>
+        <span class="field-hint" style="margin:0" id="briefing-note"></span>
+      </div>
+    </div>
+
+    ${AI_FEATURES ? `<div class="prose block">
+      <h2 class="section-title">Connecting a model</h2>
+      <p class="muted">With a key saved here, the app can read product labels for you, read your
+        skin photograph, answer questions in the chat panel, and look for new products each month.
+        Without one, everything else still works and nothing is ever sent anywhere.</p>
+      <p class="muted"><strong>What leaves this Mac, and when.</strong> Reading a label sends that
+        photograph. An assessment sends your answers, your shelf and your routine — and your skin
+        photograph only if you tick the box, which is off by default. Chat sends your shelf and
+        routine with each message. Google’s free tier commonly uses what you submit to improve
+        their products; that is the trade for it costing nothing. The app asks Google not to
+        retain each request, but that setting does not override their terms. Your key is kept in
+        this browser and is left out of backups.</p>
+
+      <div class="field-pair" style="max-width:640px;margin-top:24px">
+        <div class="field">
+          <label for="provider">Provider</label>
+          <select id="provider">
+            ${PROVIDERS.map(p => option(p.id, p.label, current.provider)).join('')}
+          </select>
+        </div>
+        <div class="field">
+          <label for="model">Model</label>
+          <input type="text" id="model" value="${esc(current.model)}" autocomplete="off">
+        </div>
+      </div>
+      <div class="field" style="max-width:640px">
+        <label for="api-key">API key</label>
+        <input type="password" id="api-key" placeholder="${current.provider === 'anthropic' ? 'sk-ant-…' : 'AIza…'}" value="${esc(current.apiKey)}">
+      </div>
+      <div class="btn-row">
+        <button class="btn" id="save-key">Save</button>
+        <button class="btn btn-quiet" id="clear-key">Remove key</button>
+        <span class="field-hint" style="margin:0" id="key-note"></span>
+      </div>
+      <p class="field-hint">A Gemini key is free from <code>aistudio.google.com</code>. If a model
+        name is refused, your tier may not include it — try <code>gemini-3.5-flash-lite</code>.</p>
+    </div>` : ''}
+
+    <div class="prose block">
+      <h2 class="section-title">Erase</h2>
+      <p class="muted">Removes every product, photograph, assessment and routine from this browser.</p>
+      <div class="btn-row" style="margin-top:16px">
+        <button class="btn btn-quiet btn-danger" id="wipe">Erase everything</button>
+      </div>
+    </div>`;
+
+  const note = root.querySelector('#backup-note');
+  const profileNote = root.querySelector('#profile-note');
+
+  root.querySelector('#copy-briefing').onclick = async () => {
+    const briefingNote = root.querySelector('#briefing-note');
+    try {
+      const { copied, text } = await copyBriefing();
+      const words = text.split(/\s+/).length;
+      briefingNote.textContent = copied
+        ? `Copied — about ${words} words. Paste it wherever you like.`
+        : 'Could not reach the clipboard. Use the file instead.';
+    } catch (err) {
+      briefingNote.textContent = err.message;
+    }
+  };
+
+  root.querySelector('#download-briefing').onclick = async () => {
+    try {
+      await downloadBriefing();
+      root.querySelector('#briefing-note').textContent = 'Saved to your downloads.';
+    } catch (err) {
+      root.querySelector('#briefing-note').textContent = err.message;
+    }
+  };
+  const redraw = async () => { await profileBar(); await settings(root); };
+
+  root.querySelector('#add-profile').onclick = async () => {
+    const field = root.querySelector('#new-profile');
+    try {
+      const created = await store.createProfile(field.value);
+      await store.setActiveProfileId(created.id);
+      await redraw();
+      root.querySelector('#profile-note').textContent = `${created.name} added, and now showing.`;
+    } catch (err) {
+      profileNote.textContent = err.message;
+    }
+  };
+
+  root.querySelectorAll('.profile-name').forEach(field => {
+    field.onchange = async () => {
+      try {
+        await store.renameProfile(field.dataset.id, field.value);
+        await redraw();
+      } catch (err) {
+        profileNote.textContent = err.message;
+      }
+    };
+  });
+
+  root.querySelectorAll('[data-remove]').forEach(btn => {
+    btn.onclick = async () => {
+      const id = btn.dataset.remove;
+      const person = profiles.find(p => p.id === id);
+      const t = tallies[id] || { products: 0, assessments: 0 };
+      if (!confirm(
+        `Remove ${person.name}? Their ${t.products} products, ${t.assessments} readings and their ` +
+        `routine go with them, and this cannot be undone.`
+      )) return;
+      try {
+        await store.deleteProfile(id);
+        await redraw();
+        root.querySelector('#profile-note').textContent = `${person.name} removed.`;
+      } catch (err) {
+        profileNote.textContent = err.message;
+      }
+    };
+  });
+
+  root.querySelector('#export').onclick = async () => {
+    const data = await store.exportAll();
+    const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `skincare-library-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    note.textContent = `Exported ${data.products.length} products.` +
+      (data._keyOmitted ? ' The API key was left out.' : '');
+  };
+
+  const fileInput = root.querySelector('#import');
+  root.querySelector('#import-btn').onclick = () => fileInput.click();
+  fileInput.onchange = async () => {
+    const file = fileInput.files[0];
+    if (!file) return;
+    if (!confirm('Restoring replaces everything currently in the library. Continue?')) {
+      fileInput.value = '';
+      return;
+    }
+    try {
+      const data = JSON.parse(await file.text());
+      const counts = await store.importAll(data);
+      const message = `Restored ${counts.products} products and ${counts.assessments} assessments `
+        + `across ${counts.profiles} ${counts.profiles === 1 ? 'profile' : 'profiles'}.`;
+      await profileBar();
+      await settings(root);            // redraw so the profile list reflects the restore
+      root.querySelector('#backup-note').textContent = message;
+    } catch (err) {
+      note.textContent = err.message;
+    }
+    fileInput.value = '';
+  };
+
+  if (AI_FEATURES) {
+    root.querySelector('#save-key').onclick = async () => {
+      await store.setSettings({
+        ...current,
+        provider: root.querySelector('#provider').value,
+        model: root.querySelector('#model').value.trim(),
+        apiKey: root.querySelector('#api-key').value.trim()
+      });
+      root.querySelector('#key-note').textContent = 'Saved.';
+      await settings(root);
+    };
+    root.querySelector('#clear-key').onclick = async () => {
+      await store.setSettings({ ...current, apiKey: '' });
+      await settings(root);
+      root.querySelector('#key-note').textContent = 'Key removed.';
+    };
+    /* Switching provider swaps the sensible default model with it. */
+    root.querySelector('#provider').onchange = e => {
+      const field = root.querySelector('#model');
+      field.value = e.target.value === 'anthropic' ? 'claude-opus-5' : 'gemini-3.6-flash';
+    };
+  }
+
+  root.querySelector('#wipe').onclick = async () => {
+    if (!confirm('Erase the entire library? Export a backup first if you want to keep it.')) return;
+    if (!confirm('This is permanent. Erase everything?')) return;
+    await store.wipe();
+    location.hash = '#/';
+  };
+}
+
+
+const views = { esc, releaseUrls, onRerender, profileBar, dots, waiting, shelf, product, form, assess, routine, discoveries, settings };
+
+/* ===== js/app.js ===== */
+/* Hash router and boot. */
+
+
+
+
+
+const root = document.getElementById('view');
+const nav = document.getElementById('nav');
+const count = document.getElementById('colophon-count');
+
+const ROUTES = {
+  '':        { view: views.shelf,    nav: 'shelf' },
+  'product': { view: views.product,  nav: 'shelf' },
+  'add':     { view: views.form,     nav: 'add' },
+  'edit':    { view: views.form,     nav: 'shelf' },
+  'assess':  { view: views.assess,   nav: 'assess' },
+  'routine': { view: views.routine,  nav: 'routine' },
+  'discoveries': { view: views.discoveries, nav: 'discoveries' },
+  'settings':{ view: views.settings, nav: 'settings' }
+};
+
+function parseHash() {
+  const [head, id] = location.hash.replace(/^#\/?/, '').split('/');
+  return { head: head || '', id: id ? decodeURIComponent(id) : undefined };
+}
+
+async function render() {
+  const { head, id } = parseHash();
+  const route = ROUTES[head];
+
+  views.releaseUrls();
+  await store.ensureProfile();     // there is always somewhere to put things
+  await views.profileBar();
+
+  if (!route) {
+    root.innerHTML = `<div class="empty"><p>There is nothing at that address.</p>
+      <a class="btn" href="#/">Return to the shelf</a></div>`;
+    return;
+  }
+
+  nav.querySelectorAll('a').forEach(a =>
+    a.classList.toggle('is-active', a.dataset.route === route.nav));
+
+  try {
+    await route.view(root, { id });
+  } catch (err) {
+    console.error(err);
+    root.innerHTML = `<div class="empty">
+      <p>Something went wrong rendering this page: ${views.esc(err.message)}</p>
+      <a class="btn" href="#/">Return to the shelf</a></div>`;
+  }
+
+  window.scrollTo({ top: 0 });
+  refreshCount();
+  refreshChat();
+}
+
+async function refreshCount() {
+  const products = await store.getProducts();
+  count.textContent = products.length
+    ? `${products.length} ${products.length === 1 ? 'product' : 'products'}`
+    : '';
+}
+
+views.onRerender(render);
+mountChat();
+window.addEventListener('hashchange', render);
+render();
+
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,134 @@
+# Handoff — Skincare Library
+
+State of the work as of 12 August 2026. `README.md` covers how to *use* the app;
+this covers how the code got here, what is proven, and what will bite you.
+
+## What it is
+
+A private skincare library: photograph products, keep their ingredient lists,
+read what is actually in them, record a routine, and get a skin assessment.
+Vanilla HTML/CSS/JS, no build step, no framework, everything in IndexedDB.
+
+Location: `/Users/ching/Claude Code/Experiments/Skincare library/`
+Not a git repo — there is no history to recover deleted code from.
+
+## Running it
+
+```bash
+python3 serve.py          # http://localhost:8931
+```
+
+**Do not use `python3 -m http.server`.** It sends no cache headers, so browsers
+hoard stale JS modules and edits appear not to take effect. This cost hours
+across the session, twice for me and once for the user. `serve.py` sends
+`Cache-Control: no-store`. If a browser already cached files under the old
+server, one hard reload (Cmd+Shift+R) is needed to break out.
+
+## The files
+
+| File | Holds |
+|---|---|
+| `js/store.js` | IndexedDB v2 — profiles, products, images, assessments, routines, chat, picks, settings |
+| `js/ingredients.js` | ~190-entry INCI dictionary: function, tags, cautions, aliases |
+| `js/rules.js` | Categories, routine step order, concern→ingredient map, layering conflicts |
+| `js/analysis.js` | `assessSkin()` — rules engine, and the AI branch |
+| `js/ai.js` | The five operations: read label, look up ingredients, assess, chat, discover |
+| `js/providers/gemini.js` | Gemini adapter (the only live provider) |
+| `js/autofill.js` | Legacy Anthropic label reader, kept as a second provider |
+| `js/briefing.js` | Markdown export for pasting into any assistant — no key needed |
+| `js/chat.js` | Floating chat panel |
+| `js/views.js` | All rendering. Holds the `AI_FEATURES` build switch |
+| `js/app.js` | Hash router |
+| `build_share.py` | Flattens everything into one self-contained file |
+| `serve.py` | Dev server with no-store |
+
+## What is built
+
+- **Shelf, product dossiers, add/edit** with live ingredient parsing and annotation
+- **Profiles** — per-person shelf, assessments, routine; switcher in the masthead
+- **Routine** — canonical step order, *multiple products per step* (serums layer),
+  live conflict warnings (retinoid + acid, missing SPF, etc.)
+- **Assessment** — rules engine always; with a key, Gemini reads the photograph
+  (opt-in tickbox, **off by default**) and adds observations / what's working /
+  what to change
+- **Chat** — floating panel, streamed, carries shelf + routine + latest reading
+- **Discoveries** — monthly J/K-beauty picks via Google Search grounding
+- **Briefing export** — the no-key path, works everywhere including the shared copy
+
+## Verified vs not
+
+**Verified by driving the real UI:** routine multi-serum + migration + reorder +
+delete cascade; briefing content; profile isolation and cascade delete; backup
+export/wipe/import incl. images; every route renders with no console errors;
+mobile and tablet layouts; the shared build is inert.
+
+**Verified against a mocked API** (no key in my browser — by design, the key
+lives only in the user's): the self-correcting retry, SSE streaming and its
+fallbacks, grounding-quota degradation, all three ingredient-source states.
+
+**Confirmed working by the user with a real key:** label reading (brand, name,
+category), chat.
+
+**Still unconfirmed end to end:** the skin assessment with the photo tickbox on.
+Discoveries returns results but the user's free tier has no grounding quota, so
+they arrive flagged "Not web-checked".
+
+## Gotchas
+
+**The Gemini API is newer than the model's training.** It is *not*
+`models/{id}:generateContent` with `contents`/`parts`. It is:
+
+```
+POST https://generativelanguage.googleapis.com/v1beta/interactions
+x-goog-api-key: <key>
+{ model, system_instruction, input: [turns], tools, response_format, store: false }
+```
+
+- Text out: `steps[type=model_output].content[type=text].text`
+- Streaming (`?alt=sse` + `stream:true`) is a *different shape*:
+  `{event_type:"step.delta", delta:{text:"…"}}`, incremental
+- Errors are **array-wrapped**: `[{"error":{…}}]`
+- Models are the 3.x series (`gemini-3.6-flash`, `gemini-3.5-flash-lite`)
+
+I got `system` and the streaming shape wrong from docs summaries. Verify against
+`ai.google.dev` before changing request shapes, and prefer raw curl examples over
+prose. The adapter now **self-corrects**: on "Unknown parameter 'x'" it drops `x`
+and retries, folding the system prompt into the conversation or asking for JSON
+in words. It also sheds `tools` on a grounding quota error and reports it via
+`dropped`, so callers can label results honestly.
+
+**The flattened share build shares one scope.** Two modules each declaring
+`fmtDate` throws at load and renders a blank page. `build_share.py` now detects
+duplicate top-level declarations and refuses to build. It also asserts no API
+hostname survives, and **stubs out every network-touching module** — so any new
+import from `ai.js`/`chat.js` must be added to `STUBS` or the shared copy breaks.
+
+## The shared copy
+
+`python3 build_share.py` → `dist/skincare-library.html`, one self-contained file
+with `AI_FEATURES = false`, zero external URLs, and the briefing export intact.
+
+Published as an artifact at
+**https://claude.ai/code/artifact/c16ffa1b-37fa-4eea-bca3-36d660088c7e**
+(private until shared from the page's share menu). Republishing the same file
+path from the conversation that created it keeps the URL; from a new conversation,
+pass that URL as the `url` parameter or you will mint a second artifact.
+
+## Open items
+
+1. Confirm the photo assessment works with a real key and the tickbox on.
+2. Discoveries is ungrounded on the free tier — grounding quota is separate from
+   ordinary requests and appears to be exhausted. Retry another day, or use the
+   briefing with the Gemini consumer app, which has search and no API quota.
+3. Clipboard copy of the briefing is unverified — the automation browser cannot
+   focus a document, and the Clipboard API refuses to write when unfocused. The
+   download path works.
+4. `index.html` carries `?v=2` on the app script to break a cache entry poisoned
+   before `serve.py` existed. Harmless; removable once nobody has that stale copy.
+
+## Working with this person
+
+Prefers concise answers and low token spend. Privacy-conscious — the photo
+tickbox defaults off for that reason, and they should never be asked to paste an
+API key anywhere. They dismiss option-questions they do not want to answer;
+recommend and proceed rather than re-asking.

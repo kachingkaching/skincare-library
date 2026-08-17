@@ -1,6 +1,6 @@
 # Handoff — Skincare Library
 
-State of the work as of 17 August 2026. `README.md` covers how to *use* the app;
+State of the work as of 17 August 2026 (second pass). `README.md` covers how to *use* the app;
 this covers how the code got here, what is proven, and what will bite you.
 
 ## What it is
@@ -33,7 +33,10 @@ server, one hard reload (Cmd+Shift+R) is needed to break out.
 
 | File | Holds |
 |---|---|
-| `js/store.js` | IndexedDB v2 — profiles, products, images, assessments, routines, chat, picks, settings |
+| `js/i18n.js` | Three language tables, `t()`, and the label helpers. **Imports nothing but data** |
+| `js/ingredients.i18n.js` | Generated: each ingredient's description in both Chinese scripts |
+| `tools_generate_ingredient_i18n.py` | Regenerates the above. Traditional is authored there by hand |
+| `js/store.js` | IndexedDB v2 — profiles, products, images, assessments, routines, chat, picks, settings, language |
 | `js/ingredients.js` | ~190-entry INCI dictionary: function, tags, cautions, aliases |
 | `js/rules.js` | Categories, routine step order, concern→ingredient map, layering conflicts |
 | `js/analysis.js` | `assessSkin()` — rules engine, and the AI branch |
@@ -89,6 +92,14 @@ server, one hard reload (Cmd+Shift+R) is needed to break out.
   "Details".
 - **Header marks** — one hairline line drawing per view (`headerArt()`, `ART` in
   views.js), decorative and `aria-hidden`
+- **Three languages** — English, 繁體中文, 简体中文, chosen from a button at the
+  right-hand end of the navigation or from Settings, and remembered in
+  IndexedDB under `lang`. With nothing stored, a Chinese browser opens in
+  Chinese. Switching redraws in place; nothing reloads. The model is told to
+  reply in the same language, and to leave brands, product names and INCI
+  alone. **INCI names are deliberately never translated** — matching the bottle
+  in your hand against the screen matters more than reading the name in your
+  own language — but every sentence *about* an ingredient is.
 - **Briefing export** — the no-key path, works everywhere including the shared copy
 
 ## Verified vs not
@@ -117,6 +128,16 @@ Previous/Next sit above the carousel track; details fold and unfold; and
 `pickUrl()` turns a `javascript:` URL, a malformed one and a missing one into a
 search link. All six routes render in the flattened share build.
 
+**Verified for the three languages:** every route renders in all three with no
+console errors, in both the module build and the flattened one; `missingKeys()`
+returns empty for both Chinese tables; the navigation button opens its menu,
+marks the current language and switches in place without a reload; the choice
+survives a reload and a browser with no stored choice opens in Chinese from
+`navigator.languages`; the rules engine returns translated concerns, evidence,
+step notes, gaps and caveat, and the layering warnings come back translated
+with product names left alone; a product page shows INCI in Latin with Chinese
+tags and Chinese descriptions; and English round-trips back unchanged.
+
 **Verified against a mocked API** (no key in my browser — by design, the key
 lives only in the user's): the self-correcting retry, SSE streaming and its
 fallbacks, grounding-quota degradation, all three ingredient-source states.
@@ -124,8 +145,11 @@ fallbacks, grounding-quota degradation, all three ingredient-source states.
 **Confirmed working by the user with a real key:** label reading (brand, name,
 category), chat.
 
-**Not exercised against a live model:** the two-pass ingredient lookup, and the
-`url` field now asked of `discover()`. Both were driven with fixtures only.
+**Not exercised against a live model:** the two-pass ingredient lookup, the
+`url` field now asked of `discover()`, and whether the model actually honours
+the "reply in this language" instruction. All three were driven with fixtures
+only. The Chinese wording throughout is mine and has not been read by a native
+speaker of either script — worth a pass before anyone else sees it.
 
 **Still unconfirmed end to end:** the skin assessment with the photo tickbox on.
 Discoveries returns results but the user's free tier has no grounding quota, so
@@ -134,6 +158,27 @@ unverified — the automation pane collapses to zero width and a zero-width
 container refuses to scroll; only the index maths was checked standalone.
 
 ## Gotchas
+
+**`js/i18n.js` must not import anything but data.** Everything else needs
+`t()` — store.js, rules.js, analysis.js, views.js — so anything i18n imported
+back would close a cycle. ES modules tolerate that; the flattened share build,
+which is one scope of `const`, throws on load instead. This is why reading and
+writing the stored preference is the caller's job (`chooseLang` / `applyLang`
+in app.js) rather than i18n's, and why `MODULES` in build_share.py puts
+`ingredients.i18n.js` and `i18n.js` at the very top.
+
+**Language is read at boot, then held in a module variable.** Views build their
+markup synchronously and cannot await, so `t()` is synchronous by necessity.
+`boot()` in app.js settles the language before the first render. Anything that
+is mounted once and outlives a render has to be re-labelled by hand rather than
+rebuilt — see `relabel()` in chat.js and `chrome()` in app.js, which is why the
+masthead and the chat panel change language along with everything else.
+
+**English is the source of truth for strings.** `t()` falls back to English for
+a missing key and returns the key itself if English has not got it either, so a
+gap shows up in the interface as a visible `like.this` rather than as a blank.
+`missingKeys()` is exported for checking from the console; both tables were
+complete at the time of writing.
 
 **Ingredient lookup runs twice on purpose.** The free tier's *search* quota is
 separate from its ordinary one and empties first. The first pass searches and is
@@ -221,11 +266,15 @@ artifact remains for anyone who should not have to.
    download path works.
 4. `index.html` carries `?v=2` on the app script to break a cache entry poisoned
    before `serve.py` existed. Harmless; removable once nobody has that stale copy.
-5. The carousel's scrolling has never run in a real viewport — see above. The
+5. The Chinese has not been proofread by a native speaker, and the Simplified
+   half is OpenCC-converted from the Traditional for the ingredient
+   descriptions (the interface strings are authored separately in both, because
+   the vocabulary differs — 設定/设置, 洗面/洁面 — not only the characters).
+6. The carousel's scrolling has never run in a real viewport — see above. The
    same session that built the day-first routine lost its viewport partway
    through, so that work was verified by reading the DOM rather than by
    screenshot from the point the pane collapsed.
-6. Republishing the artifact only keeps its URL from the conversation that created
+7. Republishing the artifact only keeps its URL from the conversation that created
    it. From a new session, pass the URL as the Artifact tool's `url` parameter, or
    a second artifact is minted and the shared link quietly stops updating.
 

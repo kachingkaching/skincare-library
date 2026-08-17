@@ -17,57 +17,44 @@
 import { weightedTags, tagsFor } from './ingredients.js';
 import { CONCERNS, STEPS, concernByKey } from './rules.js';
 import { assessWithAI, hasKey } from './ai.js';
+import { t, concernLabel, categoryLabel, stepLabel, tagLabel, listSep } from './i18n.js';
 
-export const QUESTIONS = [
+/* Built fresh on each call rather than held as a constant, so switching
+   language re-labels the questionnaire without a reload. */
+export const questions = () => [
   {
-    key: 'skinType', label: 'How does your skin behave by mid-afternoon?', multi: false,
-    options: [
-      { value: 'dry', label: 'Tight, flaking' },
-      { value: 'normal', label: 'Comfortable' },
-      { value: 'combination', label: 'Shine in the centre' },
-      { value: 'oily', label: 'Shine throughout' }
-    ]
+    key: 'skinType', label: t('q.skinType'), multi: false,
+    options: ['dry', 'normal', 'combination', 'oily']
+      .map(v => ({ value: v, label: t('q.skinType.' + v) }))
   },
   {
-    key: 'sensitivity', label: 'How readily does it react to something new?', multi: false,
-    options: [
-      { value: 'low', label: 'Rarely' },
-      { value: 'moderate', label: 'Sometimes' },
-      { value: 'high', label: 'Often' }
-    ]
+    key: 'sensitivity', label: t('q.sensitivity'), multi: false,
+    options: ['low', 'moderate', 'high']
+      .map(v => ({ value: v, label: t('q.sensitivity.' + v) }))
   },
   {
-    key: 'state', label: 'How is it at this moment?', multi: false,
-    options: [
-      { value: 'settled', label: 'Settled' },
-      { value: 'unsettled', label: 'Unsettled' },
-      { value: 'irritated', label: 'Irritated or stinging' }
-    ]
+    key: 'state', label: t('q.state'), multi: false,
+    options: ['settled', 'unsettled', 'irritated']
+      .map(v => ({ value: v, label: t('q.state.' + v) }))
   },
   {
-    key: 'texture', label: 'How does the surface feel to the hand?', multi: false,
-    options: [
-      { value: 'smooth', label: 'Smooth' },
-      { value: 'slight', label: 'Slightly uneven' },
-      { value: 'rough', label: 'Rough or bumpy' }
-    ]
+    key: 'texture', label: t('q.texture'), multi: false,
+    options: ['smooth', 'slight', 'rough']
+      .map(v => ({ value: v, label: t('q.texture.' + v) }))
   },
   {
-    key: 'sun', label: 'How much daylight do you take on?', multi: false,
-    options: [
-      { value: 'minimal', label: 'Little' },
-      { value: 'moderate', label: 'Moderate' },
-      { value: 'high', label: 'A great deal' }
-    ]
+    key: 'sun', label: t('q.sun'), multi: false,
+    options: ['minimal', 'moderate', 'high']
+      .map(v => ({ value: v, label: t('q.sun.' + v) }))
   },
   {
-    key: 'concerns', label: 'What would you most like to change?', multi: true,
-    options: CONCERNS.map(c => ({ value: c.key, label: c.label }))
+    key: 'concerns', label: t('q.concerns'), multi: true,
+    options: CONCERNS.map(c => ({ value: c.key, label: concernLabel(c) }))
   }
 ];
 
 const WEIGHT = { marked: 3, moderate: 2, mild: 1 };
-export const SEVERITY_LABEL = { marked: 'Marked', moderate: 'Moderate', mild: 'Mild' };
+
 
 /* ---------- reading the answers ---------- */
 
@@ -80,37 +67,37 @@ function readConcerns(answers) {
   };
 
   for (const key of answers.concerns || []) {
-    note(key, 'marked', 'You named this directly.');
+    note(key, 'marked', t('ev.named'));
   }
 
   if (answers.skinType === 'dry') {
-    note('dryness', 'moderate', 'Skin reads tight and flaking by mid-afternoon.');
-    note('dehydration', 'mild', 'Tightness usually means water loss as much as oil loss.');
+    note('dryness', 'moderate', t('ev.dryness'));
+    note('dehydration', 'mild', t('ev.dehydration'));
   }
   if (answers.skinType === 'oily' || answers.skinType === 'combination') {
-    note('oiliness', answers.skinType === 'oily' ? 'moderate' : 'mild', 'Shine returns through the day.');
-    note('pores', 'mild', 'Oilier skin tends to show pores more plainly.');
+    note('oiliness', answers.skinType === 'oily' ? 'moderate' : 'mild', t('ev.oiliness'));
+    note('pores', 'mild', t('ev.pores'));
   }
   if (answers.sensitivity === 'high') {
-    note('redness', 'moderate', 'Skin reacts often to new products.');
+    note('redness', 'moderate', t('ev.redness'));
   }
   if (answers.state === 'irritated') {
-    note('barrier', 'marked', 'Skin is currently irritated — the barrier comes first.');
+    note('barrier', 'marked', t('ev.barrierMarked'));
   } else if (answers.state === 'unsettled') {
-    note('barrier', 'mild', 'Skin is unsettled at present.');
+    note('barrier', 'mild', t('ev.barrierMild'));
   }
   if (answers.texture === 'rough') {
-    note('texture', 'moderate', 'The surface feels rough to the hand.');
+    note('texture', 'moderate', t('ev.textureRough'));
   } else if (answers.texture === 'slight') {
-    note('texture', 'mild', 'The surface feels slightly uneven.');
+    note('texture', 'mild', t('ev.textureSlight'));
   }
   if (answers.sun === 'high') {
-    note('pigmentation', 'mild', 'Considerable daylight exposure.');
-    note('lines', 'mild', 'Considerable daylight exposure.');
+    note('pigmentation', 'mild', t('ev.sun'));
+    note('lines', 'mild', t('ev.sun'));
   }
 
   return [...found.values()]
-    .map(c => ({ ...c, label: concernByKey(c.key)?.label || c.key }))
+    .map(c => ({ ...c, label: concernLabel(c.key) }))
     .sort((a, b) => WEIGHT[b.severity] - WEIGHT[a.severity]);
 }
 
@@ -185,10 +172,10 @@ function buildPeriod(period, products, concerns) {
         // Phrased without the period so a category missing morning and evening
         // is reported once rather than twice.
         gaps.push({
-          category: step.categories[0],
+          category: categoryLabel(step.categories[0]),
           reason: barrierFirst && step.categories[0] !== 'Sunscreen'
-            ? `Nothing on this shelf fills the ${step.label.toLowerCase()} step gently enough for skin in this state.`
-            : `Nothing on this shelf covers the ${step.label.toLowerCase()} step.`
+            ? t('gap.gentle', { step: stepLabel(step) })
+            : t('gap.step', { step: stepLabel(step) })
         });
       }
       continue;
@@ -209,15 +196,15 @@ function buildPeriod(period, products, concerns) {
 
       let note;
       if (candidates.length === 1) {
-        note = `The only ${step.categories[0].toLowerCase()} on the shelf.`;
+        note = t('note.only', { category: categoryLabel(step.categories[0]) });
       } else if (pick.top.length) {
-        note = `Chosen for its ${pick.top.join(' and ')}.`;
+        note = t('note.chosenFor', { tags: pick.top.map(tagLabel).join(listSep()) });
       } else {
-        note = `Chosen from ${ranked.length} in the same category.`;
+        note = t('note.chosenFrom', { n: ranked.length });
       }
-      if (i > 0) note = `Layered after the first. ${note}`;
+      if (i > 0) note = t('note.layered') + note;
 
-      out.push({ step: step.label, stepKey: step.key, productId: pick.product.id, note });
+      out.push({ step: stepLabel(step), stepKey: step.key, productId: pick.product.id, note });
     });
   }
 
@@ -238,8 +225,8 @@ function libraryGaps(products, concerns) {
     if (!def) continue;
     if (!def.helps.some(t => owned.has(t))) {
       gaps.push({
-        category: def.label,
-        reason: `Nothing on this shelf carries the ingredients that usually address this — look for ${def.helps.slice(0, 3).join(', ')}.`
+        category: concernLabel(def),
+        reason: t('gap.concern', { tags: def.helps.slice(0, 3).map(tagLabel).join(listSep()) })
       });
     }
   }
@@ -267,8 +254,7 @@ export function assessFromAnswers({ answers, library }) {
     concerns,
     routine: { am: am.steps, pm: pm.steps },
     gaps,
-    caveat:
-      'This reading is derived from your answers and the ingredient lists of the products you own — the photograph is stored for your own comparison over time, not analysed. It is a considered starting point, not a dermatological opinion.'
+    caveat: t('caveat.rules')
   };
 }
 

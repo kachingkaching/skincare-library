@@ -298,6 +298,12 @@ export const INGREDIENTS = {
   'ci 42090': D('CI 42090', 'Blue synthetic colourant.', ['dye'])
 };
 
+/* Stamp each entry with its own key, so a caller holding an entry can look up
+   the translated description without having to search for it again. Aliases
+   share the object they point at, which is what we want — an alias describes
+   the same ingredient. */
+for (const [key, entry] of Object.entries(INGREDIENTS)) entry.k = key;
+
 /* Common names, trade names and spellings that map onto a canonical entry. */
 const ALIASES = {
   'aqua': 'water', 'eau': 'water', 'purified water': 'water', 'distilled water': 'water',

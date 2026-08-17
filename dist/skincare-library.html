@@ -160,6 +160,58 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
   border-bottom: 1px solid var(--ink);
 }
 
+/* ---------- language ----------
+
+   At the right-hand end of the navigation: a button showing the language you
+   are in, and a short menu of the others under it. */
+
+.lang { position: relative; }
+
+.lang-btn {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  background: none;
+  border: 1px solid var(--rule);
+  border-radius: 0;
+  padding: 3px 10px;
+  cursor: pointer;
+  transition: color var(--ease), border-color var(--ease);
+}
+
+.lang-btn:hover, .lang-btn[aria-expanded="true"] { color: var(--ink); border-color: var(--ink); }
+.lang-btn:focus-visible { outline: 1px solid var(--amber); outline-offset: 2px; }
+
+.lang-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 30;
+  min-width: 132px;
+  background: var(--bone);
+  border: 1px solid var(--rule);
+  display: flex;
+  flex-direction: column;
+}
+
+.lang-option {
+  background: none;
+  border: none;
+  border-radius: 0;
+  padding: 10px 14px;
+  text-align: left;
+  white-space: nowrap;
+  font-size: 13px;
+  color: var(--ink-muted);
+  cursor: pointer;
+  transition: background var(--ease), color var(--ease);
+}
+
+.lang-option:hover { background: var(--bone-deep); color: var(--ink); }
+.lang-option.is-on { color: var(--ink); }
+.lang-option.is-on::before { content: '· '; }
+
 /* ---------- shell ---------- */
 
 .view {
@@ -1143,6 +1195,10 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
       <a href="#/routine" data-route="routine">Routine</a>
       <a href="#/discoveries" data-route="discoveries">Discoveries</a>
       <a href="#/settings" data-route="settings">Settings</a>
+      <div class="lang" id="lang">
+        <button class="lang-btn" id="lang-btn" aria-haspopup="true" aria-expanded="false"></button>
+        <div class="lang-menu" id="lang-menu" role="menu" hidden></div>
+      </div>
     </nav>
   </div>
 </header>
@@ -1150,13 +1206,1799 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
 <main id="view" class="view"></main>
 
 <footer class="colophon">
-  <span>Kept privately in this browser.</span>
+  <span id="colophon-note"></span>
   <span id="colophon-count"></span>
 </footer>
 
 <script>
 (() => {
 "use strict";
+/* ===== js/ingredients.i18n.js ===== */
+/* What each ingredient does, in Chinese.
+
+   INCI names themselves are left alone — they are printed in Latin on the pack
+   in every market, and matching the bottle in your hand against the screen
+   matters more than reading the name in your own language. This translates the
+   sentence that explains the ingredient, which is the part that carries meaning.
+
+   Traditional is authored by hand; Simplified is generated from it with OpenCC.
+   Neither is produced at runtime — this file is the finished output, and the
+   app carries no converter. Regenerate with the script kept alongside it if the
+   wording needs to change.
+
+   Keyed by the same normalised INCI key as INGREDIENTS in ingredients.js, and
+   checked against that list when generated, so the two cannot drift apart. */
+
+const ING_HANT = {
+  'water': '大多數配方的基底。',
+  'alcohol denat': '讓質地變得清爽、加快乾燥速度。若排在成分表前段，對本來就乾燥或敏感的皮膚可能造成缺水。',
+  'alcohol': '溶劑，帶來快乾、輕盈的膚感；用量大時會乾燥。',
+  'sd alcohol 40-b': '化妝品級變性酒精，作為溶劑使用。',
+  'isopropyl alcohol': '強效溶劑，對皮膚偏乾燥。',
+  'benzyl alcohol': '防腐劑兼溶劑 — 並非會讓皮膚乾燥的那類酒精。',
+  'butylene glycol': '輕盈的保濕劑，也幫助溶解其他活性成分。',
+  'propanediol': '植物來源的保濕劑兼溶劑，膚感清爽。',
+  'propylene glycol': '保濕劑兼溶劑；偶爾會引起敏感。',
+  'dipropylene glycol': '保濕型溶劑，用來稀釋較厚重的基底。',
+  'pentylene glycol': '保濕劑，兼有溫和的防腐作用。',
+  'hexylene glycol': '溶劑，並可降低稠度。',
+  'caprylyl glycol': '具調理作用的保濕劑，同時支援防腐系統。',
+  '1,2-hexanediol': '保濕劑，並可增強防腐效果。',
+  'glycerin': '最基本也最可靠的保濕劑 — 把水分吸入皮膚表層。',
+  'isododecane': '揮發性潤膚成分，薄薄推開後隨即揮發。',
+  'sodium hyaluronate': '玻尿酸的鹽類形式；在表層鎖住水分。',
+  'hyaluronic acid': '大分子保濕成分，可結合數倍於自身重量的水分。',
+  'hydrolyzed hyaluronic acid': '較小的分子片段，設計上比一般玻尿酸更深入一些。',
+  'sodium pca': '皮膚自身天然保濕因子的成分之一。',
+  'betaine': '溫和的保濕劑，帶有舒緩、抗刺激的特性。',
+  'trehalose': '糖類保濕劑，幫助皮膚在壓力下留住水分。',
+  'urea': '低濃度時保濕；高濃度時可軟化並鬆解粗糙角質。',
+  'panthenol': '前維他命 B5 — 保濕、鎮定，並有助屏障修護。',
+  'sorbitol': '糖醇類保濕劑。',
+  'saccharide isomerate': '植物糖複合物，能附著於皮膚提供長時間保濕。',
+  'polyglutamic acid': '發酵來源的保濕劑，能成膜且極為抓水。',
+  'beta-glucan': '來自燕麥或酵母；保濕，且鎮定效果明顯。',
+  'honey': '保濕成分，兼有輕微抗菌特性。',
+  'squalane': '輕盈穩定的潤膚成分，接近皮膚自身的脂質。',
+  'caprylic/capric triglyceride': '椰子來源的潤膚成分，膚感乾爽滑順。',
+  'cetearyl alcohol': '脂肪醇 — 柔潤並增稠。不會讓皮膚乾燥。',
+  'cetyl alcohol': '脂肪醇，用來讓乳霜更有厚度。',
+  'stearyl alcohol': '脂肪醇；兼具潤膚與增稠作用。',
+  'behenyl alcohol': '厚潤的脂肪醇，帶來有包覆感的質地。',
+  'simmondsia chinensis seed oil': '荷荷芭油。結構接近皮膚自身皮脂的液態蠟。',
+  'butyrospermum parkii butter': '乳木果油。厚潤的植物脂 — 柔軟並帶半封閉性。',
+  'helianthus annuus seed oil': '葵花籽油。亞油酸含量高，支持屏障。',
+  'rosa canina fruit oil': '玫瑰果油。含天然維他命 A 與抗氧化物。',
+  'argania spinosa kernel oil': '摩洛哥堅果油。清爽、富含維他命 E 的植物油。',
+  'persea gratissima oil': '酪梨油。較厚重的油，適合乾燥、耗損的皮膚。',
+  'cocos nucifera oil': '椰子油。封閉性很強；在易長痘的皮膚上以致粉刺聞名。',
+  'olea europaea fruit oil': '橄欖油。厚潤的油，具封閉性與柔軟效果。',
+  'prunus amygdalus dulcis oil': '甜杏仁油。溫和、柔軟膚質的植物油。',
+  'vitis vinifera seed oil': '葡萄籽油。清爽、亞油酸豐富，吸收快。',
+  'oenothera biennis oil': '月見草油。富含 γ-次亞麻油酸；對乾燥皮膚有安撫作用。',
+  'macadamia integrifolia seed oil': '澳洲堅果油。棕櫚油酸含量高，帶來包覆感。',
+  'isopropyl myristate': '吸收快的潤膚成分，但以容易致粉刺著稱。',
+  'isopropyl palmitate': '潤膚兼增稠成分；在易長痘的皮膚上可能致粉刺。',
+  'ethylhexyl palmitate': '清爽的潤膚酯類，膚感乾爽。',
+  'coco-caprylate': '植物來源的輕盈潤膚成分，可替代矽靈。',
+  'mineral oil': '性質穩定的封閉成分，減少水分流失。',
+  'paraffinum liquidum': '性質穩定的封閉成分，減少水分流失。',
+  'petrolatum': '目前最有效的封閉成分；把水分牢牢封在皮膚裡。',
+  'lanolin': '羊毛來源的封閉成分，對非常乾燥或龜裂的皮膚特別好用。',
+  'dimethicone': '矽靈，撫平表面並減緩水分流失。',
+  'cyclopentasiloxane': '揮發性矽靈，帶來瞬間滑順感後隨即揮發。',
+  'phenyl trimethicone': '矽靈，增添光澤與延展性。',
+  'dimethicone crosspolymer': '矽膠凝膠，可模糊毛孔紋理並吸附油脂。',
+  'ceramide np': '重要的屏障脂質；幫助重建皮膚的「水泥」。',
+  'ceramide ap': '屏障脂質，通常與 NP、EOP 搭配使用。',
+  'ceramide eop': '屏障脂質，有助留住水分。',
+  'ceramide ns': '角質層中天然存在的屏障脂質。',
+  'cholesterol': '與神經醯胺、脂肪酸一同作用，修復屏障。',
+  'phytosphingosine': '神經醯胺前驅物；鎮定並帶輕微抗菌作用。',
+  'lecithin': '磷脂類乳化劑，同時具調理作用。',
+  'linoleic acid': '必需脂肪酸，易長痘的皮膚常見不足。',
+  'stearic acid': '脂肪酸，用來增稠與柔潤。',
+  'palmitic acid': '脂肪酸，兼具潤膚與結構支撐。',
+  'myristic acid': '脂肪酸；與鹼作用後形成皂基清潔劑。',
+  'niacinamide': '維他命 B3。調理油脂、勻淨膚色、強化屏障 — 用途最廣的活性成分。',
+  'ascorbic acid': '純維他命 C。強效抗氧化與亮白；性質不穩定，最好早上使用。',
+  '3-o-ethyl ascorbic acid': '穩定的維他命 C 衍生物，刺激性低於純左旋。',
+  'sodium ascorbyl phosphate': '溫和穩定的維他命 C 衍生物；同時有抗痘作用。',
+  'magnesium ascorbyl phosphate': '溫和穩定的維他命 C 衍生物。',
+  'ascorbyl glucoside': '緩釋型維他命 C 衍生物。',
+  'tetrahexyldecyl ascorbate': '脂溶性維他命 C，滲透好且穩定。',
+  'retinol': '最具代表性的市售 A 醇。加快細胞更新；請慢慢建立耐受，並務必搭配防曬。',
+  'retinal': 'A 醛。比 A 醇更接近視黃酸一步，因此作用更快。',
+  'retinaldehyde': 'A 醛。比 A 醇更接近視黃酸一步，因此作用更快。',
+  'retinyl palmitate': '最溫和的 A 醇酯類；溫和但見效慢。',
+  'hydroxypinacolone retinoate': 'A 醇酯類，可直接作用於受體，刺激性較低。',
+  'adapalene': '處方等級的 A 酸類成分，在部分市場可直接購買用於痘痘。',
+  'tretinoin': '處方用視黃酸 — 這一家族中效果最強的。',
+  'bakuchiol': '植物萃取，作為 A 醇的溫和替代品。',
+  'glycolic acid': '分子最小的 AHA — 換膚力強，也最容易刺痛。',
+  'lactic acid': '分子較大的 AHA；去角質的同時也保濕。',
+  'mandelic acid': '分子大、作用慢的 AHA — 對敏感肌與深膚色最友善。',
+  'malic acid': '溫和的 AHA，通常作為配角。',
+  'tartaric acid': 'AHA，多用於調整複方酸類的 pH 值。',
+  'salicylic acid': '脂溶性 BHA，可深入毛孔內部清理。處理粉刺阻塞的首選。',
+  'betaine salicylate': '水楊酸較溫和的近親。',
+  'salix alba bark extract': '白柳樹皮萃取。天然水楊酸來源；輕微去角質並帶鎮定作用。',
+  'gluconolactone': 'PHA — 只作用於表層，同時具保濕效果。',
+  'lactobionic acid': '分子大的 PHA，敏感肌接受度高。',
+  'papain': '木瓜酵素，分解表面蛋白質達到溫和去角質。',
+  'bromelain': '鳳梨酵素，用於溫和去角質。',
+  'azelaic acid': '少見的三效成分 — 鎮定泛紅、改善痘痘、淡化痘印。',
+  'benzoyl peroxide': '直接殺滅痤瘡桿菌。會乾燥，並會漂白衣物布料。',
+  'sulfur': '傳統的抗痘與吸油成分。',
+  'zinc pca': '有助調節皮脂；帶輕微鎮定作用。',
+  'tranexamic acid': '針對頑固色素，包括肝斑。',
+  'alpha-arbutin': '溫和阻斷黑色素生成；耐受性良好。',
+  'arbutin': '植物來源的亮白成分，可中斷色素生成。',
+  'kojic acid': '真菌來源的亮白成分，用於淡化暗斑。',
+  'hydroquinone': '最強效的色素抑制劑；在許多市場受到管制。',
+  'glycyrrhiza glabra root extract': '甘草根萃取。鎮定，並可溫和淡化痘印。',
+  'adenosine': '訊息傳遞分子，用於緊緻與撫平細紋。',
+  'palmitoyl tripeptide-1': '訊息胜肽，與膠原蛋白支持有關。',
+  'palmitoyl tetrapeptide-7': '胜肽，用於緩和發炎訊號。',
+  'palmitoyl pentapeptide-4': '研究充分的訊息胜肽，用於緊緻。',
+  'acetyl hexapeptide-8': '針對表情紋的胜肽。',
+  'copper tripeptide-1': '銅胜肽，與傷口癒合及緊緻有關。',
+  'ubiquinone': '輔酶 Q10。皮膚中天然存在的抗氧化物。',
+  'ferulic acid': '抗氧化物，可穩定維他命 C 與 E。',
+  'tocopherol': '維他命 E。脂溶性抗氧化物；保護配方中的油脂與皮膚裡的脂質。',
+  'tocopheryl acetate': '穩定的維他命 E 酯類。',
+  'resveratrol': '白藜蘆醇。來自葡萄的多酚類抗氧化物。',
+  'camellia sinensis leaf extract': '綠茶萃取。多酚抗氧化物，對敏感皮膚有鎮定作用。',
+  'caffeine': '咖啡因。抗氧化物，能暫時收縮血管 — 因此常用於眼周。',
+  'ectoin': '依克多因。保護性分子，為細胞抵擋環境壓力。',
+  'allantoin': '尿囊素。低調的舒緩成分，並讓皮膚柔軟。',
+  'bisabolol': '甘菊萃取的鎮定成分。',
+  'centella asiatica extract': '積雪草。俗稱 Cica，鎮定泛紅並支持修護。',
+  'madecassoside': '積雪草中研究最多的成分；具抗發炎作用。',
+  'asiaticoside': '積雪草成分之一，與修護癒合有關。',
+  'aloe barbadensis leaf juice': '蘆薈。對受刺激的皮膚保濕並降溫。',
+  'avena sativa kernel extract': '燕麥萃取。經典的止癢、親屏障舒緩成分。',
+  'colloidal oatmeal': '膠體燕麥。臨床上公認可安撫濕疹傾向的皮膚。',
+  'chamomilla recutita flower extract': '洋甘菊萃取。傳統的鎮定植物成分。',
+  'calendula officinalis flower extract': '金盞花萃取。溫和、有助修護的植物成分。',
+  'dipotassium glycyrrhizate': '甘草來源的抗發炎成分。',
+  'snail secretion filtrate': '蝸牛分泌物濾液。韓系配方中常見的保濕修護成分。',
+  'galactomyces ferment filtrate': '酵母發酵濾液，與膚色透亮與細緻度有關。',
+  'saccharomyces ferment filtrate': '酵母發酵濾液，用於提亮與保濕。',
+  'bifida ferment lysate': '益生菌發酵物；鎮定並支持屏障。',
+  'lactobacillus ferment': '益生菌發酵物，支持屏障與皮膚菌叢。',
+  'hamamelis virginiana water': '金縷梅。收斂性植物成分；要留意是否以酒精蒸餾。',
+  'kaolin': '高嶺土。柔細的白色黏土，吸油但不過度剝奪。',
+  'bentonite': '膨潤土。吸附力強的黏土，用於面膜。',
+  'charcoal powder': '活性炭。吸附表面油脂；多半是質地與視覺上的成分。',
+  'zinc oxide': '氧化鋅。物理性防曬劑，UVA/UVB 覆蓋廣；並帶輕微鎮定作用。',
+  'titanium dioxide': '二氧化鈦。物理性防曬劑，對 UVB 效果最強。',
+  'butyl methoxydibenzoylmethane': 'Avobenzone。歐美防曬中主要的 UVA 濾劑；需要其他成分穩定。',
+  'ethylhexyl methoxycinnamate': 'Octinoxate。廣泛使用的 UVB 濾劑。',
+  'octocrylene': 'UVB 濾劑，同時可穩定 Avobenzone。',
+  'homosalate': 'UVB 濾劑，也作為其他濾劑的溶劑。',
+  'ethylhexyl salicylate': 'Octisalate。膚感清爽的 UVB 濾劑。',
+  'benzophenone-3': 'Oxybenzone。廣譜濾劑，限制日益增加。',
+  'bis-ethylhexyloxyphenol methoxyphenyl triazine': 'Tinosorb S。光穩定的廣譜濾劑，美國以外使用。',
+  'methylene bis-benzotriazolyl tetramethylbutylphenol': 'Tinosorb M。廣譜濾劑，兼具吸收與散射。',
+  'diethylamino hydroxybenzoyl hexyl benzoate': 'Uvinul A Plus。強效且光穩定的 UVA 濾劑。',
+  'ethylhexyl triazone': 'Uvinul T 150。效率極高的 UVB 濾劑。',
+  'terephthalylidene dicamphor sulfonic acid': 'Mexoryl SX。水溶性 UVA 濾劑。',
+  'drometrizole trisiloxane': 'Mexoryl XL。脂溶性廣譜濾劑。',
+  'polysilicone-15': '矽基 UVB 濾劑，膚感清爽。',
+  'sodium lauryl sulfate': '清潔力強；對臉部屏障偏刺激。',
+  'sodium laureth sulfate': '較溫和的硫酸鹽，仍屬強力起泡清潔劑。',
+  'cocamidopropyl betaine': '溫和的輔助界面活性劑，可緩和較刺激的成分。',
+  'coco-glucoside': '糖類來源的溫和清潔成分。',
+  'decyl glucoside': '非常溫和的非離子清潔成分。',
+  'lauryl glucoside': '溫和的糖類界面活性劑。',
+  'sodium cocoyl isethionate': '膚感綿密的溫和清潔成分，常見於合成潔膚皂。',
+  'sodium methyl cocoyl taurate': '溫和的起泡成分。',
+  'polysorbate 20': '增溶劑，讓油溶於水中。',
+  'polysorbate 60': '乳霜與乳液用的乳化劑。',
+  'polysorbate 80': '乳化劑兼增溶劑。',
+  'peg-40 hydrogenated castor oil': '增溶劑，常見於卸妝油與化妝水。',
+  'glyceryl stearate': '乳化劑，同時讓皮膚柔軟。',
+  'peg-100 stearate': '輔助乳化劑，幾乎總是與甘油硬脂酸酯搭配。',
+  'cetearyl glucoside': '植物來源的乳化劑。',
+  'carbomer': '膠化聚合物，用來增加稠度。',
+  'acrylates/c10-30 alkyl acrylate crosspolymer': '增稠與穩定成分，用於凝膠與乳化系統。',
+  'xanthan gum': '天然膠質，用來增稠與懸浮。',
+  'sclerotium gum': '天然膠質，膚感清爽不黏膩。',
+  'hydroxyethylcellulose': '纖維素增稠劑，用於透明凝膠。',
+  'sodium polyacrylate': '效率很高的合成增稠劑。',
+  'ammonium acryloyldimethyltaurate/vp copolymer': '增稠劑，帶來彈潤的凝膠質地。',
+  'hydroxyethyl acrylate/sodium acryloyldimethyl taurate copolymer': '凝乳質地的增稠兼乳化成分。',
+  'sodium chloride': '食鹽。用來調整清潔產品的稠度。',
+  'mica': '雲母。帶來柔和光線擴散效果的礦物。',
+  'phenoxyethanol': '最常見的廣譜防腐劑。',
+  'ethylhexylglycerin': '防腐增效劑，同時具膚質調理作用。',
+  'chlorphenesin': '防腐劑，通常與苯氧乙醇併用。',
+  'sodium benzoate': '在酸性配方中有效的防腐劑。',
+  'potassium sorbate': '溫和的防腐劑，針對黴菌與酵母。',
+  'methylparaben': '研究充分、刺激性低的防腐劑。',
+  'propylparaben': '對羥基苯甲酸酯類防腐劑。',
+  'ethylparaben': '對羥基苯甲酸酯類防腐劑。',
+  'butylparaben': '對羥基苯甲酸酯類防腐劑。',
+  'methylisothiazolinone': '防腐劑，接觸性過敏的記錄相當顯著。',
+  'dmdm hydantoin': '會釋放甲醛的防腐劑。',
+  'disodium edta': '螯合劑 — 避免微量金屬破壞配方。',
+  'tetrasodium edta': '螯合劑，可穩定配方。',
+  'sodium phytate': '植物來源的螯合劑。',
+  'sodium metabisulfite': '抗氧化劑，用來保護維他命 C 配方。',
+  'sodium hydroxide': '把 pH 值提高到適合皮膚的範圍。',
+  'citric acid': '檸檬酸。這裡多半是用來調整 pH 值，而不是去角質。',
+  'sodium citrate': '緩衝 pH 值。',
+  'triethanolamine': 'pH 調節劑兼乳化劑。',
+  'tromethamine': 'pH 緩衝劑。',
+  'aminomethyl propanol': 'pH 調節劑，搭配丙烯酸酯類增稠劑使用。',
+  'fragrance': '未公開的香料混合物。最常見的接觸性反應來源。',
+  'limonene': '柑橘類香料成分；氧化後會變成致敏物。',
+  'linalool': '花香調香料成分，已知的過敏原。',
+  'citronellol': '玫瑰調香料過敏原。',
+  'geraniol': '香料過敏原，歐盟規定須標示。',
+  'eugenol': '丁香調香料過敏原。',
+  'coumarin': '香豆素。甜乾草調的香料過敏原。',
+  'citral': '檸檬調香料過敏原。',
+  'benzyl salicylate': '香料成分，屬須標示的過敏原。',
+  'hexyl cinnamal': '茉莉調香料過敏原。',
+  'alpha-isomethyl ionone': '紫羅蘭調香料過敏原。',
+  'lavandula angustifolia oil': '薰衣草油。帶香氣的精油；長期使用可能刺激。',
+  'citrus aurantium dulcis peel oil': '甜橙皮油。柑橘類精油 — 有香氣，且可能造成光敏感。',
+  'citrus limon peel oil': '檸檬皮油。柑橘類精油；未經蒸餾者具光毒性。',
+  'citrus bergamia peel oil': '佛手柑油。典型具光毒性的柑橘精油。',
+  'melaleuca alternifolia leaf oil': '茶樹油。抗菌精油；對痘痘有效，用量大時會致敏。',
+  'mentha piperita oil': '薄荷油。清涼精油，經常造成刺激。',
+  'rosmarinus officinalis leaf oil': '迷迭香油。芳香精油。',
+  'eucalyptus globulus leaf oil': '尤加利油。氣味強烈的芳香精油。',
+  'pelargonium graveolens flower oil': '天竺葵油。玫瑰調精油。',
+  'cananga odorata flower oil': '依蘭油。濃郁的花香調精油。',
+  'santalum album oil': '檀香油。木質調精油。',
+  'rosa damascena flower water': '玫瑰花水。帶淡淡香氣的花水。',
+  'ci 77891': '二氧化鈦，作為白色著色劑使用。',
+  'ci 77491': '紅色氧化鐵著色劑。',
+  'ci 19140': '黃色合成著色劑。',
+  'ci 42090': '藍色合成著色劑。',
+};
+
+const ING_HANS = {
+  'water': '大多数配方的基底。',
+  'alcohol denat': '让质地变得清爽、加快干燥速度。若排在成分表前段，对本来就干燥或敏感的皮肤可能造成缺水。',
+  'alcohol': '溶剂，带来快干、轻盈的肤感；用量大时会干燥。',
+  'sd alcohol 40-b': '化妆品级变性酒精，作为溶剂使用。',
+  'isopropyl alcohol': '强效溶剂，对皮肤偏干燥。',
+  'benzyl alcohol': '防腐剂兼溶剂 — 并非会让皮肤干燥的那类酒精。',
+  'butylene glycol': '轻盈的保湿剂，也帮助溶解其他活性成分。',
+  'propanediol': '植物来源的保湿剂兼溶剂，肤感清爽。',
+  'propylene glycol': '保湿剂兼溶剂；偶尔会引起敏感。',
+  'dipropylene glycol': '保湿型溶剂，用来稀释较厚重的基底。',
+  'pentylene glycol': '保湿剂，兼有温和的防腐作用。',
+  'hexylene glycol': '溶剂，并可降低稠度。',
+  'caprylyl glycol': '具调理作用的保湿剂，同时支援防腐系统。',
+  '1,2-hexanediol': '保湿剂，并可增强防腐效果。',
+  'glycerin': '最基本也最可靠的保湿剂 — 把水分吸入皮肤表层。',
+  'isododecane': '挥发性润肤成分，薄薄推开后随即挥发。',
+  'sodium hyaluronate': '玻尿酸的盐类形式；在表层锁住水分。',
+  'hyaluronic acid': '大分子保湿成分，可结合数倍于自身重量的水分。',
+  'hydrolyzed hyaluronic acid': '较小的分子片段，设计上比一般玻尿酸更深入一些。',
+  'sodium pca': '皮肤自身天然保湿因子的成分之一。',
+  'betaine': '温和的保湿剂，带有舒缓、抗刺激的特性。',
+  'trehalose': '糖类保湿剂，帮助皮肤在压力下留住水分。',
+  'urea': '低浓度时保湿；高浓度时可软化并松解粗糙角质。',
+  'panthenol': '前维他命 B5 — 保湿、镇定，并有助屏障修护。',
+  'sorbitol': '糖醇类保湿剂。',
+  'saccharide isomerate': '植物糖复合物，能附著于皮肤提供长时间保湿。',
+  'polyglutamic acid': '发酵来源的保湿剂，能成膜且极为抓水。',
+  'beta-glucan': '来自燕麦或酵母；保湿，且镇定效果明显。',
+  'honey': '保湿成分，兼有轻微抗菌特性。',
+  'squalane': '轻盈稳定的润肤成分，接近皮肤自身的脂质。',
+  'caprylic/capric triglyceride': '椰子来源的润肤成分，肤感干爽滑顺。',
+  'cetearyl alcohol': '脂肪醇 — 柔润并增稠。不会让皮肤干燥。',
+  'cetyl alcohol': '脂肪醇，用来让乳霜更有厚度。',
+  'stearyl alcohol': '脂肪醇；兼具润肤与增稠作用。',
+  'behenyl alcohol': '厚润的脂肪醇，带来有包覆感的质地。',
+  'simmondsia chinensis seed oil': '荷荷芭油。结构接近皮肤自身皮脂的液态蜡。',
+  'butyrospermum parkii butter': '乳木果油。厚润的植物脂 — 柔软并带半封闭性。',
+  'helianthus annuus seed oil': '葵花籽油。亚油酸含量高，支持屏障。',
+  'rosa canina fruit oil': '玫瑰果油。含天然维他命 A 与抗氧化物。',
+  'argania spinosa kernel oil': '摩洛哥坚果油。清爽、富含维他命 E 的植物油。',
+  'persea gratissima oil': '酪梨油。较厚重的油，适合干燥、耗损的皮肤。',
+  'cocos nucifera oil': '椰子油。封闭性很强；在易长痘的皮肤上以致粉刺闻名。',
+  'olea europaea fruit oil': '橄榄油。厚润的油，具封闭性与柔软效果。',
+  'prunus amygdalus dulcis oil': '甜杏仁油。温和、柔软肤质的植物油。',
+  'vitis vinifera seed oil': '葡萄籽油。清爽、亚油酸丰富，吸收快。',
+  'oenothera biennis oil': '月见草油。富含 γ-次亚麻油酸；对干燥皮肤有安抚作用。',
+  'macadamia integrifolia seed oil': '澳洲坚果油。棕榈油酸含量高，带来包覆感。',
+  'isopropyl myristate': '吸收快的润肤成分，但以容易致粉刺著称。',
+  'isopropyl palmitate': '润肤兼增稠成分；在易长痘的皮肤上可能致粉刺。',
+  'ethylhexyl palmitate': '清爽的润肤酯类，肤感干爽。',
+  'coco-caprylate': '植物来源的轻盈润肤成分，可替代矽灵。',
+  'mineral oil': '性质稳定的封闭成分，减少水分流失。',
+  'paraffinum liquidum': '性质稳定的封闭成分，减少水分流失。',
+  'petrolatum': '目前最有效的封闭成分；把水分牢牢封在皮肤里。',
+  'lanolin': '羊毛来源的封闭成分，对非常干燥或龟裂的皮肤特别好用。',
+  'dimethicone': '矽灵，抚平表面并减缓水分流失。',
+  'cyclopentasiloxane': '挥发性矽灵，带来瞬间滑顺感后随即挥发。',
+  'phenyl trimethicone': '矽灵，增添光泽与延展性。',
+  'dimethicone crosspolymer': '矽胶凝胶，可模糊毛孔纹理并吸附油脂。',
+  'ceramide np': '重要的屏障脂质；帮助重建皮肤的「水泥」。',
+  'ceramide ap': '屏障脂质，通常与 NP、EOP 搭配使用。',
+  'ceramide eop': '屏障脂质，有助留住水分。',
+  'ceramide ns': '角质层中天然存在的屏障脂质。',
+  'cholesterol': '与神经醯胺、脂肪酸一同作用，修复屏障。',
+  'phytosphingosine': '神经醯胺前驱物；镇定并带轻微抗菌作用。',
+  'lecithin': '磷脂类乳化剂，同时具调理作用。',
+  'linoleic acid': '必需脂肪酸，易长痘的皮肤常见不足。',
+  'stearic acid': '脂肪酸，用来增稠与柔润。',
+  'palmitic acid': '脂肪酸，兼具润肤与结构支撑。',
+  'myristic acid': '脂肪酸；与碱作用后形成皂基清洁剂。',
+  'niacinamide': '维他命 B3。调理油脂、匀净肤色、强化屏障 — 用途最广的活性成分。',
+  'ascorbic acid': '纯维他命 C。强效抗氧化与亮白；性质不稳定，最好早上使用。',
+  '3-o-ethyl ascorbic acid': '稳定的维他命 C 衍生物，刺激性低于纯左旋。',
+  'sodium ascorbyl phosphate': '温和稳定的维他命 C 衍生物；同时有抗痘作用。',
+  'magnesium ascorbyl phosphate': '温和稳定的维他命 C 衍生物。',
+  'ascorbyl glucoside': '缓释型维他命 C 衍生物。',
+  'tetrahexyldecyl ascorbate': '脂溶性维他命 C，渗透好且稳定。',
+  'retinol': '最具代表性的市售 A 醇。加快细胞更新；请慢慢建立耐受，并务必搭配防晒。',
+  'retinal': 'A 醛。比 A 醇更接近视黄酸一步，因此作用更快。',
+  'retinaldehyde': 'A 醛。比 A 醇更接近视黄酸一步，因此作用更快。',
+  'retinyl palmitate': '最温和的 A 醇酯类；温和但见效慢。',
+  'hydroxypinacolone retinoate': 'A 醇酯类，可直接作用于受体，刺激性较低。',
+  'adapalene': '处方等级的 A 酸类成分，在部分市场可直接购买用于痘痘。',
+  'tretinoin': '处方用视黄酸 — 这一家族中效果最强的。',
+  'bakuchiol': '植物萃取，作为 A 醇的温和替代品。',
+  'glycolic acid': '分子最小的 AHA — 换肤力强，也最容易刺痛。',
+  'lactic acid': '分子较大的 AHA；去角质的同时也保湿。',
+  'mandelic acid': '分子大、作用慢的 AHA — 对敏感肌与深肤色最友善。',
+  'malic acid': '温和的 AHA，通常作为配角。',
+  'tartaric acid': 'AHA，多用于调整复方酸类的 pH 值。',
+  'salicylic acid': '脂溶性 BHA，可深入毛孔内部清理。处理粉刺阻塞的首选。',
+  'betaine salicylate': '水杨酸较温和的近亲。',
+  'salix alba bark extract': '白柳树皮萃取。天然水杨酸来源；轻微去角质并带镇定作用。',
+  'gluconolactone': 'PHA — 只作用于表层，同时具保湿效果。',
+  'lactobionic acid': '分子大的 PHA，敏感肌接受度高。',
+  'papain': '木瓜酵素，分解表面蛋白质达到温和去角质。',
+  'bromelain': '凤梨酵素，用于温和去角质。',
+  'azelaic acid': '少见的三效成分 — 镇定泛红、改善痘痘、淡化痘印。',
+  'benzoyl peroxide': '直接杀灭痤疮杆菌。会干燥，并会漂白衣物布料。',
+  'sulfur': '传统的抗痘与吸油成分。',
+  'zinc pca': '有助调节皮脂；带轻微镇定作用。',
+  'tranexamic acid': '针对顽固色素，包括肝斑。',
+  'alpha-arbutin': '温和阻断黑色素生成；耐受性良好。',
+  'arbutin': '植物来源的亮白成分，可中断色素生成。',
+  'kojic acid': '真菌来源的亮白成分，用于淡化暗斑。',
+  'hydroquinone': '最强效的色素抑制剂；在许多市场受到管制。',
+  'glycyrrhiza glabra root extract': '甘草根萃取。镇定，并可温和淡化痘印。',
+  'adenosine': '讯息传递分子，用于紧致与抚平细纹。',
+  'palmitoyl tripeptide-1': '讯息胜肽，与胶原蛋白支持有关。',
+  'palmitoyl tetrapeptide-7': '胜肽，用于缓和发炎讯号。',
+  'palmitoyl pentapeptide-4': '研究充分的讯息胜肽，用于紧致。',
+  'acetyl hexapeptide-8': '针对表情纹的胜肽。',
+  'copper tripeptide-1': '铜胜肽，与伤口愈合及紧致有关。',
+  'ubiquinone': '辅酶 Q10。皮肤中天然存在的抗氧化物。',
+  'ferulic acid': '抗氧化物，可稳定维他命 C 与 E。',
+  'tocopherol': '维他命 E。脂溶性抗氧化物；保护配方中的油脂与皮肤里的脂质。',
+  'tocopheryl acetate': '稳定的维他命 E 酯类。',
+  'resveratrol': '白藜芦醇。来自葡萄的多酚类抗氧化物。',
+  'camellia sinensis leaf extract': '绿茶萃取。多酚抗氧化物，对敏感皮肤有镇定作用。',
+  'caffeine': '咖啡因。抗氧化物，能暂时收缩血管 — 因此常用于眼周。',
+  'ectoin': '依克多因。保护性分子，为细胞抵挡环境压力。',
+  'allantoin': '尿囊素。低调的舒缓成分，并让皮肤柔软。',
+  'bisabolol': '甘菊萃取的镇定成分。',
+  'centella asiatica extract': '积雪草。俗称 Cica，镇定泛红并支持修护。',
+  'madecassoside': '积雪草中研究最多的成分；具抗发炎作用。',
+  'asiaticoside': '积雪草成分之一，与修护愈合有关。',
+  'aloe barbadensis leaf juice': '芦荟。对受刺激的皮肤保湿并降温。',
+  'avena sativa kernel extract': '燕麦萃取。经典的止痒、亲屏障舒缓成分。',
+  'colloidal oatmeal': '胶体燕麦。临床上公认可安抚湿疹倾向的皮肤。',
+  'chamomilla recutita flower extract': '洋甘菊萃取。传统的镇定植物成分。',
+  'calendula officinalis flower extract': '金盏花萃取。温和、有助修护的植物成分。',
+  'dipotassium glycyrrhizate': '甘草来源的抗发炎成分。',
+  'snail secretion filtrate': '蜗牛分泌物滤液。韩系配方中常见的保湿修护成分。',
+  'galactomyces ferment filtrate': '酵母发酵滤液，与肤色透亮与细致度有关。',
+  'saccharomyces ferment filtrate': '酵母发酵滤液，用于提亮与保湿。',
+  'bifida ferment lysate': '益生菌发酵物；镇定并支持屏障。',
+  'lactobacillus ferment': '益生菌发酵物，支持屏障与皮肤菌丛。',
+  'hamamelis virginiana water': '金缕梅。收敛性植物成分；要留意是否以酒精蒸馏。',
+  'kaolin': '高岭土。柔细的白色黏土，吸油但不过度剥夺。',
+  'bentonite': '膨润土。吸附力强的黏土，用于面膜。',
+  'charcoal powder': '活性炭。吸附表面油脂；多半是质地与视觉上的成分。',
+  'zinc oxide': '氧化锌。物理性防晒剂，UVA/UVB 覆盖广；并带轻微镇定作用。',
+  'titanium dioxide': '二氧化钛。物理性防晒剂，对 UVB 效果最强。',
+  'butyl methoxydibenzoylmethane': 'Avobenzone。欧美防晒中主要的 UVA 滤剂；需要其他成分稳定。',
+  'ethylhexyl methoxycinnamate': 'Octinoxate。广泛使用的 UVB 滤剂。',
+  'octocrylene': 'UVB 滤剂，同时可稳定 Avobenzone。',
+  'homosalate': 'UVB 滤剂，也作为其他滤剂的溶剂。',
+  'ethylhexyl salicylate': 'Octisalate。肤感清爽的 UVB 滤剂。',
+  'benzophenone-3': 'Oxybenzone。广谱滤剂，限制日益增加。',
+  'bis-ethylhexyloxyphenol methoxyphenyl triazine': 'Tinosorb S。光稳定的广谱滤剂，美国以外使用。',
+  'methylene bis-benzotriazolyl tetramethylbutylphenol': 'Tinosorb M。广谱滤剂，兼具吸收与散射。',
+  'diethylamino hydroxybenzoyl hexyl benzoate': 'Uvinul A Plus。强效且光稳定的 UVA 滤剂。',
+  'ethylhexyl triazone': 'Uvinul T 150。效率极高的 UVB 滤剂。',
+  'terephthalylidene dicamphor sulfonic acid': 'Mexoryl SX。水溶性 UVA 滤剂。',
+  'drometrizole trisiloxane': 'Mexoryl XL。脂溶性广谱滤剂。',
+  'polysilicone-15': '矽基 UVB 滤剂，肤感清爽。',
+  'sodium lauryl sulfate': '清洁力强；对脸部屏障偏刺激。',
+  'sodium laureth sulfate': '较温和的硫酸盐，仍属强力起泡清洁剂。',
+  'cocamidopropyl betaine': '温和的辅助界面活性剂，可缓和较刺激的成分。',
+  'coco-glucoside': '糖类来源的温和清洁成分。',
+  'decyl glucoside': '非常温和的非离子清洁成分。',
+  'lauryl glucoside': '温和的糖类界面活性剂。',
+  'sodium cocoyl isethionate': '肤感绵密的温和清洁成分，常见于合成洁肤皂。',
+  'sodium methyl cocoyl taurate': '温和的起泡成分。',
+  'polysorbate 20': '增溶剂，让油溶于水中。',
+  'polysorbate 60': '乳霜与乳液用的乳化剂。',
+  'polysorbate 80': '乳化剂兼增溶剂。',
+  'peg-40 hydrogenated castor oil': '增溶剂，常见于卸妆油与化妆水。',
+  'glyceryl stearate': '乳化剂，同时让皮肤柔软。',
+  'peg-100 stearate': '辅助乳化剂，几乎总是与甘油硬脂酸酯搭配。',
+  'cetearyl glucoside': '植物来源的乳化剂。',
+  'carbomer': '胶化聚合物，用来增加稠度。',
+  'acrylates/c10-30 alkyl acrylate crosspolymer': '增稠与稳定成分，用于凝胶与乳化系统。',
+  'xanthan gum': '天然胶质，用来增稠与悬浮。',
+  'sclerotium gum': '天然胶质，肤感清爽不黏腻。',
+  'hydroxyethylcellulose': '纤维素增稠剂，用于透明凝胶。',
+  'sodium polyacrylate': '效率很高的合成增稠剂。',
+  'ammonium acryloyldimethyltaurate/vp copolymer': '增稠剂，带来弹润的凝胶质地。',
+  'hydroxyethyl acrylate/sodium acryloyldimethyl taurate copolymer': '凝乳质地的增稠兼乳化成分。',
+  'sodium chloride': '食盐。用来调整清洁产品的稠度。',
+  'mica': '云母。带来柔和光线扩散效果的矿物。',
+  'phenoxyethanol': '最常见的广谱防腐剂。',
+  'ethylhexylglycerin': '防腐增效剂，同时具肤质调理作用。',
+  'chlorphenesin': '防腐剂，通常与苯氧乙醇并用。',
+  'sodium benzoate': '在酸性配方中有效的防腐剂。',
+  'potassium sorbate': '温和的防腐剂，针对霉菌与酵母。',
+  'methylparaben': '研究充分、刺激性低的防腐剂。',
+  'propylparaben': '对羟基苯甲酸酯类防腐剂。',
+  'ethylparaben': '对羟基苯甲酸酯类防腐剂。',
+  'butylparaben': '对羟基苯甲酸酯类防腐剂。',
+  'methylisothiazolinone': '防腐剂，接触性过敏的记录相当显著。',
+  'dmdm hydantoin': '会释放甲醛的防腐剂。',
+  'disodium edta': '螯合剂 — 避免微量金属破坏配方。',
+  'tetrasodium edta': '螯合剂，可稳定配方。',
+  'sodium phytate': '植物来源的螯合剂。',
+  'sodium metabisulfite': '抗氧化剂，用来保护维他命 C 配方。',
+  'sodium hydroxide': '把 pH 值提高到适合皮肤的范围。',
+  'citric acid': '柠檬酸。这里多半是用来调整 pH 值，而不是去角质。',
+  'sodium citrate': '缓冲 pH 值。',
+  'triethanolamine': 'pH 调节剂兼乳化剂。',
+  'tromethamine': 'pH 缓冲剂。',
+  'aminomethyl propanol': 'pH 调节剂，搭配丙烯酸酯类增稠剂使用。',
+  'fragrance': '未公开的香料混合物。最常见的接触性反应来源。',
+  'limonene': '柑橘类香料成分；氧化后会变成致敏物。',
+  'linalool': '花香调香料成分，已知的过敏原。',
+  'citronellol': '玫瑰调香料过敏原。',
+  'geraniol': '香料过敏原，欧盟规定须标示。',
+  'eugenol': '丁香调香料过敏原。',
+  'coumarin': '香豆素。甜干草调的香料过敏原。',
+  'citral': '柠檬调香料过敏原。',
+  'benzyl salicylate': '香料成分，属须标示的过敏原。',
+  'hexyl cinnamal': '茉莉调香料过敏原。',
+  'alpha-isomethyl ionone': '紫罗兰调香料过敏原。',
+  'lavandula angustifolia oil': '薰衣草油。带香气的精油；长期使用可能刺激。',
+  'citrus aurantium dulcis peel oil': '甜橙皮油。柑橘类精油 — 有香气，且可能造成光敏感。',
+  'citrus limon peel oil': '柠檬皮油。柑橘类精油；未经蒸馏者具光毒性。',
+  'citrus bergamia peel oil': '佛手柑油。典型具光毒性的柑橘精油。',
+  'melaleuca alternifolia leaf oil': '茶树油。抗菌精油；对痘痘有效，用量大时会致敏。',
+  'mentha piperita oil': '薄荷油。清凉精油，经常造成刺激。',
+  'rosmarinus officinalis leaf oil': '迷迭香油。芳香精油。',
+  'eucalyptus globulus leaf oil': '尤加利油。气味强烈的芳香精油。',
+  'pelargonium graveolens flower oil': '天竺葵油。玫瑰调精油。',
+  'cananga odorata flower oil': '依兰油。浓郁的花香调精油。',
+  'santalum album oil': '檀香油。木质调精油。',
+  'rosa damascena flower water': '玫瑰花水。带淡淡香气的花水。',
+  'ci 77891': '二氧化钛，作为白色著色剂使用。',
+  'ci 77491': '红色氧化铁著色剂。',
+  'ci 19140': '黄色合成著色剂。',
+  'ci 42090': '蓝色合成著色剂。',
+};
+
+
+
+/* ===== js/i18n.js ===== */
+/* Interface language.
+
+   Three languages, one flat dictionary each, keyed by dotted names. `t()` is
+   synchronous and never throws: an untranslated key falls back to English and
+   an unknown key returns itself, so a missing string shows up in the interface
+   as a visible key rather than as a blank space or a crash.
+
+   The chosen language is read from IndexedDB once at boot, before the first
+   render, and held in a module variable — every view calls `t()` while building
+   its markup, and none of them can await.
+
+   INCI names are deliberately left as printed. They appear in Latin on the pack
+   in every market, and matching what you are holding against what is on screen
+   matters more than reading it in your own language. Everything *about* an
+   ingredient — what it does, and its tags — is translated. */
+
+
+
+/* This module imports nothing but data, on purpose. Everything else in the app
+   needs `t()`, including store.js and rules.js, so anything it imported back
+   would close a cycle — which ES modules tolerate and the flattened share build
+   does not. Reading and writing the stored preference is therefore the caller's
+   job; see `applyLang` and app.js. */
+
+const LANGS = [
+  { id: 'en',      label: 'English',  short: 'EN' },
+  { id: 'zh-Hant', label: '繁體中文', short: '繁' },
+  { id: 'zh-Hans', label: '简体中文', short: '简' }
+];
+
+let current = 'en';
+
+const lang = () => current;
+
+/* What the model is told to write in. */
+const LANG_NAME = {
+  en: 'English',
+  'zh-Hant': 'Traditional Chinese (繁體中文), as written in Hong Kong and Taiwan',
+  'zh-Hans': 'Simplified Chinese (简体中文)'
+};
+
+/* A stored choice wins; failing that, take the browser's own preference, so a
+   Chinese-language browser opens in Chinese without being asked. */
+function chooseLang(stored) {
+  if (stored && LANGS.some(l => l.id === stored)) return stored;
+  const tags = navigator.languages || [navigator.language || 'en'];
+  const zh = tags.find(x => /^zh/i.test(x));
+  if (zh) return /hant|tw|hk|mo/i.test(zh) ? 'zh-Hant' : 'zh-Hans';
+  return 'en';
+}
+
+function applyLang(id) {
+  current = LANGS.some(l => l.id === id) ? id : 'en';
+  document.documentElement.lang = current;
+  return current;
+}
+
+/* t('key') or t('key', { n: 3 }) — {n} in the string is replaced. */
+function t(key, vars) {
+  const table = DICT[current] || DICT.en;
+  let s = table[key];
+  if (s === undefined) s = DICT.en[key];
+  if (s === undefined) return key;
+  if (vars) {
+    for (const [k, v] of Object.entries(vars)) s = s.split(`{${k}}`).join(v);
+  }
+  return s;
+}
+
+/* English pluralises, Chinese does not. */
+const plural = (n, one, many) =>
+  (current === 'en' ? t(n === 1 ? one : many, { n }) : t(many, { n }));
+
+/* Chinese separates a list with an ideographic comma, not a Latin one. */
+const listSep = () => (current === 'en' ? ', ' : '、');
+
+/* Labels that live as data elsewhere — the English in rules.js and
+   ingredients.js stays the source, and these translate it on the way out.
+   An unknown value falls through to itself rather than showing a raw key. */
+const viaKey = (prefix, value) => {
+  const key = prefix + value;
+  const s = t(key);
+  return s === key ? value : s;
+};
+
+const tagLabel = tag => viaKey('tag.', tag);
+const statusLabel = status => viaKey('status.', status);
+const severityLabel = sev => viaKey('sev.', sev);
+const categoryLabel = cat => viaKey('cat.', cat);
+const stepLabel = step => viaKey('step.', step.key ?? step);
+const concernLabel = concern => viaKey('concern.', concern.key ?? concern);
+const dayLabel = day => viaKey('day.', day);
+
+/* The sentence explaining an ingredient. The INCI name is left as printed. */
+function ingredientText(entry) {
+  if (!entry) return '';
+  const table = current === 'zh-Hant' ? ING_HANT : current === 'zh-Hans' ? ING_HANS : null;
+  return (table && table[entry.k]) || entry.f;
+}
+
+/* ============================================================
+   English — the source of truth. Every other table is checked
+   against this one by `npm`-less eye; see t()'s fallback.
+   ============================================================ */
+
+const en = {
+  /* chrome */
+  'app.title': 'Skincare Library',
+  'app.wordmark': 'Skincare Library',
+  'nav.shelf': 'Shelf',
+  'nav.add': 'Add',
+  'nav.assess': 'Assessment',
+  'nav.routine': 'Routine',
+  'nav.discoveries': 'Discoveries',
+  'nav.settings': 'Settings',
+  'nav.language': 'Language',
+  'chrome.whoseShelf': 'Whose shelf',
+  'chrome.colophon': 'Kept privately in this browser.',
+  'chrome.countOne': '{n} product',
+  'chrome.countMany': '{n} products',
+  'chrome.noRoute': 'There is nothing at that address.',
+  'chrome.backToShelf': 'Return to the shelf',
+  'chrome.renderError': 'Something went wrong rendering this page: {msg}',
+
+  /* shared */
+  'common.cancel': 'Cancel',
+  'common.save': 'Save',
+  'common.edit': 'Edit',
+  'common.remove': 'Remove',
+  'common.saved': 'Saved.',
+  'common.all': 'All',
+  'common.anything': 'Anything',
+  'common.nothing': 'nothing',
+  'common.details': 'Details',
+  'common.close': 'Close',
+  'common.clear': 'Clear',
+  'common.send': 'Send',
+  'common.morning': 'Morning',
+  'common.evening': 'Evening',
+  'common.am': 'AM',
+  'common.pm': 'PM',
+  'common.today': 'Today',
+  'common.takeCare': 'Take care',
+  'common.consider': 'Consider',
+  'common.note': 'Note',
+  'common.reading': 'Reading',
+  'common.searching': 'Searching',
+  'common.lookingUp': 'Looking up',
+
+  /* shelf */
+  'shelf.title': 'The Shelf',
+  'shelf.add': 'Add a product',
+  'shelf.addFirst': 'Add the first product',
+  'shelf.emptyNamed': '{name}’s shelf is presently empty. Photograph a product, record what is in it, and it will be kept here.',
+  'shelf.empty': 'The shelf is presently empty. Photograph a product, record what is in it, and it will be kept here.',
+  'shelf.filterCategory': 'Category',
+  'shelf.filterStatus': 'Status',
+  'shelf.filterContains': 'Contains',
+  'shelf.count': '{shown} of {total}',
+  'shelf.noMatch': 'Nothing matches that combination.',
+  'shelf.noPhoto': 'No photograph',
+
+  /* product */
+  'product.back': '← The shelf',
+  'product.gone': 'That product is no longer in the library.',
+  'product.otherProfile': 'That product sits on another profile’s shelf. Switch profiles at the top of the page to see it.',
+  'product.backToThisShelf': 'Return to this shelf',
+  'product.category': 'Category',
+  'product.status': 'Status',
+  'product.size': 'Size',
+  'product.price': 'Price',
+  'product.purchased': 'Purchased',
+  'product.opened': 'Opened',
+  'product.notes': 'Notes',
+  'product.ingredients': 'Ingredients',
+  'product.ingredientsAnnotated': 'Ingredients — {matched} of {total} annotated',
+  'product.noIngredients': 'No ingredient list recorded yet.',
+  'product.notInReference': 'Not in the reference — recorded as written.',
+  'product.shared': 'Shared with the household',
+  'product.sharedNote': 'If someone else uses this bottle too, put a copy on their shelf rather than photographing it twice. The two records are separate from then on.',
+  'product.copyAcross': 'Copy across',
+  'product.copiedTo': 'Copied to {name}’s shelf.',
+  'product.delete': 'Remove from library',
+  'product.confirmDelete': 'Remove {name} from the library? This cannot be undone.',
+
+  /* add / edit */
+  'form.addTitle': 'Add a product',
+  'form.editTitle': 'Edit product',
+  'form.dropPhoto': 'Drop a photograph, or select one',
+  'form.readLabel': 'Read the label',
+  'form.readLabelHint': 'Reads brand, name and ingredients off a photograph of the packaging. If the ingredient print is not legible, it searches the web for the product’s published list instead.',
+  'form.photoHint': 'Photographs are resized and kept in this browser.',
+  'form.selectedPhoto': 'Selected photograph',
+  'form.brand': 'Brand',
+  'form.name': 'Product name',
+  'form.notesPlaceholder': 'How it wears, what it sits well under, whether you would buy it again.',
+  'form.ingredientsPlaceholder': 'Paste the list straight from the packaging. Commas are enough.',
+  'form.lookUp': 'Look these up online',
+  'form.submitAdd': 'Add to the library',
+  'form.submitEdit': 'Save changes',
+  'form.needName': 'A product name is needed.',
+  'form.parsed': '{n} ingredients read, {known} recognised.',
+  'form.parsedNone': 'Nothing read yet.',
+  'form.needPhoto': 'Add a photograph of the packaging first.',
+  'form.readingPhoto': 'Reading the photograph',
+  'form.readOff': 'Read {n} ingredients off the pack. Check them before saving.',
+  'form.noListOnPack': 'No list visible on the pack. ',
+  'form.needBrandOrName': 'Type a brand or product name first — that is what gets looked up.',
+  'form.nothingToLookUp': 'No ingredient list was legible in that photograph, and there is no brand or product name to look one up by. Type either in, or photograph the front of the pack first.',
+  'form.lookupFailedSearched': 'Searched the web and could not find an ingredient list for this product. Check the brand and product name are right, or photograph the back of the pack.',
+  'form.lookupFailedNoSearch': 'No ingredient list could be found for this product, on the web or from memory. Check the brand and product name are right, or photograph the back of the pack.',
+  'form.foundOnline': 'Found {n} ingredients online — <strong>not read off your pack</strong>, so check them against it. ',
+  'form.foundFromMemory': 'Found {n} ingredients, but <strong>web search was unavailable</strong>, so these came from the model’s memory rather than a source. Formulations change — check them against your pack carefully before trusting them. ',
+
+  /* assessment */
+  'assess.title': 'Assessment',
+  'assess.copyBriefing': 'Copy briefing for another assistant',
+  'assess.photoPrompt': 'A photograph of your skin',
+  'assess.photoHint': 'Even daylight, no makeup, the same angle each time. Kept in this browser so you can compare one month against the next.',
+  'assess.letModelLook': 'Let the model look at it',
+  'assess.submit': 'Read my skin',
+  'assess.staysHere': 'Answers and photograph stay on this machine.',
+  'assess.previous': 'Previous readings — {n}',
+  'assess.nothingMarked': 'Nothing marked',
+  'assess.gone': 'That assessment is no longer kept.',
+  'assess.back': '← Assessment',
+  'assess.removeRecord': 'Remove this record',
+  'assess.confirmRemove': 'Remove this assessment and its photograph?',
+  'assess.adopt': 'Adopt this as my routine',
+  'assess.adopted': 'Saved. It is now under Routine.',
+  'assess.archived': 'Kept in your archive as of today.',
+  'assess.briefingCopied': 'Copied. Paste it alongside your photograph.',
+  'assess.briefingFailed': 'Could not reach the clipboard — try Settings.',
+  'assess.skinPhotoAlt': 'Skin photograph',
+  'assess.degraded': '<strong>Read offline</strong> — the model could not be reached ({why}), so this is the rules-based reading from your answers.',
+  'assess.photoHard': '<strong>The photograph is hard to judge</strong> — {note}',
+  'assess.visible': 'What is visible',
+  'assess.working': 'Earning its place',
+  'assess.changes': 'What to change',
+  'assess.theReading': 'The reading',
+  'assess.nothingStands': 'Nothing stands out from your answers. Keep to what is working.',
+  'assess.suggests': 'The routine this suggests',
+  'assess.noMorning': 'No morning routine could be built from the shelf.',
+  'assess.noEvening': 'No evening routine could be built from the shelf.',
+  'assess.missing': 'What is missing',
+  'assess.nothingSuitable': 'Nothing suitable on the shelf',
+
+  /* routine */
+  'routine.title': 'Routine',
+  'routine.emptyShelf': 'A routine is assembled from what is on the shelf. Add a product first.',
+  'routine.yourWeek': 'Your week',
+  'routine.weekHint': 'Choose a day to see what you are using and change it. What you add belongs to that day alone — the rest of the week keeps whatever it had.',
+  'routine.stepsOne': '{n} step',
+  'routine.stepsMany': '{n} steps',
+  'routine.nothingYet': 'Nothing yet',
+  'routine.nothingOnDay': 'Nothing on this day',
+  'routine.addProduct': '＋ add a product',
+  'routine.addAnother': '＋ add another',
+  'routine.thisDayOnly': 'This day only',
+  'routine.save': 'Save routine',
+  'routine.unsaved': 'Unsaved changes.',
+  'routine.complete': 'Complete routine',
+  'routine.completeHint': 'Every step, and which days each product is used',
+  'routine.nothingInCategory': 'Nothing in this category',
+  'routine.moveUp': 'Move up',
+  'routine.done': 'Done',
+  'routine.everyDay': 'Every day',
+  'routine.noDays': 'No days',
+  'routine.worthKnowing': 'Worth knowing',
+  'routine.noConflicts': 'Nothing conflicts on any day.',
+
+  /* discoveries */
+  'disc.title': 'Discoveries',
+  'disc.intro': 'This looks for Japanese and Korean products that suit your latest reading and fill a gap on your shelf.',
+  'disc.needsModel': 'It needs a model connected under Settings.',
+  'disc.connectOne': 'Connect one',
+  'disc.noModelHere': 'This copy of the library does not talk to any model. Copy a briefing from Settings and ask an assistant of your own instead.',
+  'disc.copyBriefing': 'Copy a briefing',
+  'disc.look': 'Look for something new',
+  'disc.lookAgain': 'Look again',
+  'disc.nothingYet': 'Nothing looked up yet.',
+  'disc.takesAMoment': 'This takes a moment',
+  'disc.found': 'Found {n}.',
+  'disc.notWebChecked': '<strong>Not web-checked</strong> — search was unavailable, so these come from the model’s memory. Products may be discontinued or misremembered. Verify each one before buying.',
+  'disc.foundOn': 'Found {date}',
+  'disc.stale': ' — over a month ago, worth looking again.',
+  'disc.checkYourself': 'Searched on the web, but check the details yourself before buying.',
+  'disc.prev': '← Previous',
+  'disc.next': 'Next →',
+  'disc.goTo': 'Go to {n}',
+  'disc.whatItIs': 'What it is',
+  'disc.actives': 'Actives',
+  'disc.caution': 'Caution',
+  'disc.whereFound': 'Where this was found ↗',
+  'disc.searchFor': 'Search for this product ↗',
+  'disc.opensFound': 'Opens where this was found',
+  'disc.opensSearch': 'Opens a search for this product',
+  'disc.sources': 'Where this came from',
+
+  /* settings */
+  'set.title': 'Settings',
+  'set.profiles': 'Profiles',
+  'set.profilesNote': 'Everyone at home can have their own shelf, readings and routine. Switch between them at the top of the page. They are kept apart for tidiness, not for privacy — anyone at this browser can look at any of them.',
+  'set.profileName': 'Profile name',
+  'set.productsOne': '{n} product',
+  'set.productsMany': '{n} products',
+  'set.readingsOne': '{n} reading',
+  'set.readingsMany': '{n} readings',
+  'set.showing': 'Showing',
+  'set.addSomeone': 'Add someone',
+  'set.theirName': 'Their name',
+  'set.addProfile': 'Add profile',
+  'set.profileAdded': '{name} added, and now showing.',
+  'set.profileRemoved': '{name} removed.',
+  'set.confirmRemoveProfile': 'Remove {name}? Their {products} products, {readings} readings and their routine go with them, and this cannot be undone.',
+  'set.language': 'Language',
+  'set.languageNote': 'Changes the interface, and the language the model writes back in. Ingredient names are left as printed on the pack — they are Latin everywhere.',
+  'set.yourLibrary': 'Your library',
+  'set.libraryNote': '{products} products and {assessments} assessments across {profiles} profiles, held in this browser’s storage. Clearing site data would remove them, so keep a backup.',
+  'set.export': 'Export a backup',
+  'set.import': 'Restore from a backup',
+  'set.exported': 'Exported {n} products.',
+  'set.keyOmitted': ' The API key was left out.',
+  'set.confirmImport': 'Restoring replaces everything currently in the library. Continue?',
+  'set.restored': 'Restored {products} products and {assessments} assessments across {profiles} profiles.',
+  'set.askAnother': 'Ask another assistant',
+  'set.askAnotherNote': 'Copies your shelf, your routine and your last self-assessment as text you can paste into Gemini, Claude or anything else, along with a photograph of your skin. Nothing is sent by this app — you paste it yourself, so you can read exactly what you are sharing first.',
+  'set.copyBriefing': 'Copy briefing',
+  'set.downloadBriefing': 'Download as a file',
+  'set.briefingCopied': 'Copied — about {n} words. Paste it wherever you like.',
+  'set.briefingClipboardFailed': 'Could not reach the clipboard. Use the file instead.',
+  'set.briefingSaved': 'Saved to your downloads.',
+  'set.connecting': 'Connecting a model',
+  'set.connectingNote': 'With a key saved here, the app can read product labels for you, read your skin photograph, answer questions in the chat panel, and look for new products each month. Without one, everything else still works and nothing is ever sent anywhere.',
+  'set.privacyNote': '<strong>What leaves this Mac, and when.</strong> Reading a label sends that photograph. An assessment sends your answers, your shelf and your routine — and your skin photograph only if you tick the box, which is off by default. Chat sends your shelf and routine with each message. Google’s free tier commonly uses what you submit to improve their products; that is the trade for it costing nothing. The app asks Google not to retain each request, but that setting does not override their terms. Your key is kept in this browser and is left out of backups.',
+  'set.provider': 'Provider',
+  'set.model': 'Model',
+  'set.apiKey': 'API key',
+  'set.removeKey': 'Remove key',
+  'set.keyRemoved': 'Key removed.',
+  'set.keyHint': 'A Gemini key is free from <code>aistudio.google.com</code>. If a model name is refused, your tier may not include it — try <code>gemini-3.5-flash-lite</code>.',
+  'set.erase': 'Erase',
+  'set.eraseNote': 'Removes every product, photograph, assessment and routine from this browser.',
+  'set.eraseAll': 'Erase everything',
+  'set.confirmErase': 'Erase the entire library? Export a backup first if you want to keep it.',
+  'set.confirmErase2': 'This is permanent. Erase everything?',
+
+  /* chat */
+  'chat.ask': 'Ask',
+  'chat.launcher': 'Ask about your skincare',
+  'chat.placeholder': 'Ask a question',
+  'chat.empty': 'Ask about anything on your shelf — whether two things clash, what to use when your skin is unhappy, what a particular ingredient is for. It can see your shelf and your routine.',
+  'chat.you': 'You',
+  'chat.reply': 'Reply',
+  'chat.noReply': 'No reply came back.',
+
+  /* statuses, severities, days */
+  'status.active': 'In use',
+  'status.backup': 'In reserve',
+  'status.finished': 'Finished',
+  'status.retired': 'Set aside',
+  'sev.marked': 'Marked',
+  'sev.moderate': 'Moderate',
+  'sev.mild': 'Mild',
+  'day.0': 'Mon', 'day.1': 'Tue', 'day.2': 'Wed',
+  'day.3': 'Thu', 'day.4': 'Fri', 'day.5': 'Sat', 'day.6': 'Sun',
+
+  /* product categories */
+  'cat.Oil cleanser': 'Oil cleanser',
+  'cat.Cleanser': 'Cleanser',
+  'cat.Exfoliant': 'Exfoliant',
+  'cat.Toner': 'Toner',
+  'cat.Essence': 'Essence',
+  'cat.Serum': 'Serum',
+  'cat.Treatment': 'Treatment',
+  'cat.Eye cream': 'Eye cream',
+  'cat.Moisturiser': 'Moisturiser',
+  'cat.Face oil': 'Face oil',
+  'cat.Sunscreen': 'Sunscreen',
+  'cat.Mask': 'Mask',
+  'cat.Mist': 'Mist',
+  'cat.Spot treatment': 'Spot treatment',
+  'cat.Lip care': 'Lip care',
+  'cat.Body': 'Body',
+  'cat.Other': 'Other',
+
+  /* routine steps */
+  'step.pm-oil-cleanse': 'First cleanse',
+  'step.am-cleanse': 'Cleanse',
+  'step.pm-cleanse': 'Cleanse',
+  'step.pm-exfoliate': 'Exfoliate',
+  'step.am-tone': 'Tone',
+  'step.pm-tone': 'Tone',
+  'step.am-essence': 'Essence',
+  'step.pm-essence': 'Essence',
+  'step.am-treat': 'Serum',
+  'step.pm-treat': 'Serum',
+  'step.am-eye': 'Eye',
+  'step.pm-eye': 'Eye',
+  'step.am-moisturise': 'Moisturise',
+  'step.pm-moisturise': 'Moisturise',
+  'step.pm-oil': 'Seal',
+  'step.am-protect': 'Protect',
+
+  /* concerns */
+  'concern.dehydration': 'Dehydration',
+  'concern.dryness': 'Dryness',
+  'concern.oiliness': 'Excess oil',
+  'concern.blemishes': 'Blemishes',
+  'concern.pigmentation': 'Pigmentation and marks',
+  'concern.texture': 'Uneven texture',
+  'concern.dullness': 'Dullness',
+  'concern.redness': 'Redness and reactivity',
+  'concern.lines': 'Fine lines',
+  'concern.pores': 'Visible pores',
+  'concern.barrier': 'Compromised barrier',
+
+  /* assessment questions */
+  'q.skinType': 'How does your skin behave by mid-afternoon?',
+  'q.skinType.dry': 'Tight, flaking',
+  'q.skinType.normal': 'Comfortable',
+  'q.skinType.combination': 'Shine in the centre',
+  'q.skinType.oily': 'Shine throughout',
+  'q.sensitivity': 'How readily does it react to something new?',
+  'q.sensitivity.low': 'Rarely',
+  'q.sensitivity.moderate': 'Sometimes',
+  'q.sensitivity.high': 'Often',
+  'q.state': 'How is it at this moment?',
+  'q.state.settled': 'Settled',
+  'q.state.unsettled': 'Unsettled',
+  'q.state.irritated': 'Irritated or stinging',
+  'q.texture': 'How does the surface feel to the hand?',
+  'q.texture.smooth': 'Smooth',
+  'q.texture.slight': 'Slightly uneven',
+  'q.texture.rough': 'Rough or bumpy',
+  'q.sun': 'How much daylight do you take on?',
+  'q.sun.minimal': 'Little',
+  'q.sun.moderate': 'Moderate',
+  'q.sun.high': 'A great deal',
+  'q.concerns': 'What would you most like to change?',
+
+  /* rules-engine sentences */
+  'ev.named': 'You named this directly.',
+  'ev.dryness': 'Skin reads tight and flaking by mid-afternoon.',
+  'ev.dehydration': 'Tightness usually means water loss as much as oil loss.',
+  'ev.oiliness': 'Shine returns through the day.',
+  'ev.pores': 'Oilier skin tends to show pores more plainly.',
+  'ev.redness': 'Skin reacts often to new products.',
+  'ev.barrierMarked': 'Skin is currently irritated — the barrier comes first.',
+  'ev.barrierMild': 'Skin is unsettled at present.',
+  'ev.textureRough': 'The surface feels rough to the hand.',
+  'ev.textureSlight': 'The surface feels slightly uneven.',
+  'ev.sun': 'Considerable daylight exposure.',
+  'gap.gentle': 'Nothing on this shelf fills the {step} step gently enough for skin in this state.',
+  'gap.step': 'Nothing on this shelf covers the {step} step.',
+  'gap.concern': 'Nothing on this shelf carries the ingredients that usually address this — look for {tags}.',
+  'note.only': 'The only {category} on the shelf.',
+  'note.chosenFor': 'Chosen for its {tags}.',
+  'note.chosenFrom': 'Chosen from {n} in the same category.',
+  'note.layered': 'Layered after the first. ',
+  'caveat.rules': 'This reading is derived from your answers and the ingredient lists of the products you own — the photograph is stored for your own comparison over time, not analysed. It is a considered starting point, not a dermatological opinion.',
+  'caveat.aiPhoto': 'Read by Gemini from your photograph, your answers and the ingredient lists of what you own. Cosmetic guidance, not a dermatological opinion — see a professional for anything that looks medical.',
+  'caveat.aiNoPhoto': 'Read by Gemini from your answers and the ingredient lists of what you own. The photograph was not sent. Cosmetic guidance, not a dermatological opinion.',
+
+  /* layering conflicts */
+  'clash.retinoidAcid': '{a} and {b} in one routine is a common cause of irritation. Alternate them on different evenings rather than layering.',
+  'clash.ahaBha': 'An AHA and a BHA together is a lot of exfoliation for one sitting. Consider keeping one of them for a separate night.',
+  'clash.twoRetinoids': 'Two retinoids in the same routine gives no extra benefit, only extra irritation.',
+  'clash.amActives': 'Retinoids and acids leave skin more sun-sensitive. They sit more comfortably in the evening.',
+  'clash.noSunscreen': 'No sunscreen in the morning routine. Everything else you do for tone and lines depends on it.',
+  'clash.bpRetinoid': 'Benzoyl peroxide can degrade a retinoid applied at the same time. Use them at opposite ends of the day.',
+  'clash.vitcRetinoid': 'Vitamin C and a retinoid together is tolerable but busy. Vitamin C in the morning, retinoid at night, is the easier split.',
+  'clash.fragrance': 'Three or more fragranced products in one routine. Worth thinning out if your skin ever runs reactive.',
+
+  /* ingredient tags */
+  'tag.solvent': 'Solvent',
+  'tag.humectant': 'Humectant',
+  'tag.emollient': 'Emollient',
+  'tag.occlusive': 'Occlusive',
+  'tag.emulsifier': 'Emulsifier',
+  'tag.surfactant': 'Cleansing agent',
+  'tag.preservative': 'Preservative',
+  'tag.thickener': 'Texture',
+  'tag.ph': 'pH adjuster',
+  'tag.antioxidant': 'Antioxidant',
+  'tag.soothing': 'Soothing',
+  'tag.barrier': 'Barrier support',
+  'tag.aha': 'AHA',
+  'tag.bha': 'BHA',
+  'tag.pha': 'PHA',
+  'tag.enzyme': 'Enzyme exfoliant',
+  'tag.retinoid': 'Retinoid',
+  'tag.vitamin-c': 'Vitamin C',
+  'tag.niacinamide': 'Niacinamide',
+  'tag.peptide': 'Peptide',
+  'tag.ceramide': 'Ceramide',
+  'tag.uv-filter': 'UV filter',
+  'tag.brightening': 'Brightening',
+  'tag.anti-acne': 'Anti-blemish',
+  'tag.oil': 'Plant oil',
+  'tag.texture': 'Texture',
+  'tag.fragrance': 'Fragrance',
+  'tag.essential-oil': 'Essential oil',
+  'tag.alcohol': 'Drying alcohol',
+  'tag.photosensitising': 'Photosensitising',
+  'tag.comedogenic': 'May clog',
+  'tag.dye': 'Colourant'
+};
+
+/* ============================================================
+   繁體中文
+   ============================================================ */
+
+const zhHant = {
+  'app.title': '護膚品圖書館',
+  'app.wordmark': '護膚品圖書館',
+  'nav.shelf': '產品架',
+  'nav.add': '新增',
+  'nav.assess': '膚況評估',
+  'nav.routine': '保養流程',
+  'nav.discoveries': '探索',
+  'nav.settings': '設定',
+  'nav.language': '語言',
+  'chrome.whoseShelf': '誰的產品架',
+  'chrome.colophon': '只存放在這部瀏覽器裡。',
+  'chrome.countOne': '{n} 件產品',
+  'chrome.countMany': '{n} 件產品',
+  'chrome.noRoute': '這個位址沒有內容。',
+  'chrome.backToShelf': '回到產品架',
+  'chrome.renderError': '這一頁顯示時出了問題：{msg}',
+
+  'common.cancel': '取消',
+  'common.save': '儲存',
+  'common.edit': '編輯',
+  'common.remove': '移除',
+  'common.saved': '已儲存。',
+  'common.all': '全部',
+  'common.anything': '不限',
+  'common.nothing': '沒有',
+  'common.details': '詳細',
+  'common.close': '關閉',
+  'common.clear': '清除',
+  'common.send': '送出',
+  'common.morning': '早晨',
+  'common.evening': '晚上',
+  'common.am': '早',
+  'common.pm': '晚',
+  'common.today': '今天',
+  'common.takeCare': '請留意',
+  'common.consider': '可以考慮',
+  'common.note': '附註',
+  'common.reading': '判讀中',
+  'common.searching': '搜尋中',
+  'common.lookingUp': '查詢中',
+
+  'shelf.title': '產品架',
+  'shelf.add': '新增產品',
+  'shelf.addFirst': '新增第一件產品',
+  'shelf.emptyNamed': '{name} 的產品架目前是空的。拍下一件產品、記下它的成分，就會保存在這裡。',
+  'shelf.empty': '產品架目前是空的。拍下一件產品、記下它的成分，就會保存在這裡。',
+  'shelf.filterCategory': '類別',
+  'shelf.filterStatus': '狀態',
+  'shelf.filterContains': '含有',
+  'shelf.count': '{total} 件中的 {shown} 件',
+  'shelf.noMatch': '沒有符合這組條件的產品。',
+  'shelf.noPhoto': '沒有照片',
+
+  'product.back': '← 產品架',
+  'product.gone': '這件產品已不在圖書館裡。',
+  'product.otherProfile': '這件產品在另一位使用者的產品架上。請在頁面上方切換使用者才看得到。',
+  'product.backToThisShelf': '回到這個產品架',
+  'product.category': '類別',
+  'product.status': '狀態',
+  'product.size': '容量',
+  'product.price': '價格',
+  'product.purchased': '購買日期',
+  'product.opened': '開封日期',
+  'product.notes': '筆記',
+  'product.ingredients': '成分',
+  'product.ingredientsAnnotated': '成分 — 共 {total} 項，已註解 {matched} 項',
+  'product.noIngredients': '尚未記錄成分表。',
+  'product.notInReference': '不在成分字典中 — 按原文記錄。',
+  'product.shared': '家中共用',
+  'product.sharedNote': '如果家裡還有人用同一瓶，把它複製到對方的產品架上，不必再拍一次。複製之後兩筆記錄各自獨立。',
+  'product.copyAcross': '複製過去',
+  'product.copiedTo': '已複製到 {name} 的產品架。',
+  'product.delete': '從圖書館移除',
+  'product.confirmDelete': '要把 {name} 從圖書館移除嗎？此動作無法復原。',
+
+  'form.addTitle': '新增產品',
+  'form.editTitle': '編輯產品',
+  'form.dropPhoto': '把照片拖進來，或選一張',
+  'form.readLabel': '讀取標籤',
+  'form.readLabelHint': '從包裝照片讀出品牌、名稱與成分。如果成分字太小看不清楚，會改為上網搜尋這件產品公布的成分表。',
+  'form.photoHint': '照片會縮小後存在這部瀏覽器裡。',
+  'form.selectedPhoto': '已選擇的照片',
+  'form.brand': '品牌',
+  'form.name': '產品名稱',
+  'form.notesPlaceholder': '用起來的感覺、適合疊在什麼下面、會不會再買。',
+  'form.ingredientsPlaceholder': '直接把包裝上的成分表貼進來，用逗號分隔就可以。',
+  'form.lookUp': '上網查成分',
+  'form.submitAdd': '加入圖書館',
+  'form.submitEdit': '儲存變更',
+  'form.needName': '請填寫產品名稱。',
+  'form.parsed': '讀到 {n} 項成分，其中 {known} 項可辨識。',
+  'form.parsedNone': '還沒有讀到成分。',
+  'form.needPhoto': '請先加入一張包裝照片。',
+  'form.readingPhoto': '正在讀取照片',
+  'form.readOff': '從包裝上讀到 {n} 項成分。儲存前請核對一次。',
+  'form.noListOnPack': '包裝上看不到成分表。',
+  'form.needBrandOrName': '請先填品牌或產品名稱 — 查詢是依這個進行的。',
+  'form.nothingToLookUp': '這張照片裡看不清楚成分表，也沒有可供查詢的品牌或產品名稱。請填入其中一項，或先拍下包裝正面。',
+  'form.lookupFailedSearched': '已上網搜尋，但找不到這件產品的成分表。請確認品牌與產品名稱是否正確，或拍下包裝背面。',
+  'form.lookupFailedNoSearch': '無論上網或依模型記憶，都找不到這件產品的成分表。請確認品牌與產品名稱是否正確，或拍下包裝背面。',
+  'form.foundOnline': '在網路上找到 {n} 項成分 — <strong>並非讀自你的包裝</strong>，請自行核對。',
+  'form.foundFromMemory': '找到 {n} 項成分，但<strong>當時無法使用網路搜尋</strong>，這些來自模型的記憶而非實際來源。配方會改版 — 請仔細對照包裝後再採信。',
+
+  'assess.title': '膚況評估',
+  'assess.copyBriefing': '複製摘要給其他助理',
+  'assess.photoPrompt': '一張你皮膚的照片',
+  'assess.photoHint': '自然光、素顏、每次同一個角度。照片存在這部瀏覽器裡，方便你逐月比較。',
+  'assess.letModelLook': '讓模型看這張照片',
+  'assess.submit': '判讀我的膚況',
+  'assess.staysHere': '你的回答與照片都留在這部機器上。',
+  'assess.previous': '過往判讀 — 共 {n} 次',
+  'assess.nothingMarked': '沒有特別標記',
+  'assess.gone': '這筆判讀已經不在了。',
+  'assess.back': '← 膚況評估',
+  'assess.removeRecord': '刪除這筆記錄',
+  'assess.confirmRemove': '要刪除這筆判讀和它的照片嗎？',
+  'assess.adopt': '採用這套流程',
+  'assess.adopted': '已儲存，現在可在「保養流程」看到。',
+  'assess.archived': '已存入你的記錄，日期為今天。',
+  'assess.briefingCopied': '已複製。連同你的照片一起貼上即可。',
+  'assess.briefingFailed': '無法存取剪貼簿 — 請到「設定」試試。',
+  'assess.skinPhotoAlt': '皮膚照片',
+  'assess.degraded': '<strong>離線判讀</strong> — 無法連上模型（{why}），因此這是依你的回答所做的規則判讀。',
+  'assess.photoHard': '<strong>這張照片不容易判斷</strong> — {note}',
+  'assess.visible': '照片上看得到的',
+  'assess.working': '值得留下的',
+  'assess.changes': '建議調整的',
+  'assess.theReading': '膚況判讀',
+  'assess.nothingStands': '你的回答中沒有特別突出的問題。維持目前有效的做法就好。',
+  'assess.suggests': '據此建議的流程',
+  'assess.noMorning': '無法用架上的產品組出早晨流程。',
+  'assess.noEvening': '無法用架上的產品組出晚間流程。',
+  'assess.missing': '目前缺少的',
+  'assess.nothingSuitable': '架上沒有合適的產品',
+
+  'routine.title': '保養流程',
+  'routine.emptyShelf': '保養流程是用架上的產品組成的。請先新增一件產品。',
+  'routine.yourWeek': '你的一週',
+  'routine.weekHint': '選一天，看看那天用什麼、並在這裡調整。你加入的只屬於那一天 — 其餘幾天維持原樣。',
+  'routine.stepsOne': '{n} 個步驟',
+  'routine.stepsMany': '{n} 個步驟',
+  'routine.nothingYet': '還沒有安排',
+  'routine.nothingOnDay': '這天沒有安排',
+  'routine.addProduct': '＋ 加入產品',
+  'routine.addAnother': '＋ 再加一件',
+  'routine.thisDayOnly': '只有這天',
+  'routine.save': '儲存流程',
+  'routine.unsaved': '有尚未儲存的變更。',
+  'routine.complete': '完整流程',
+  'routine.completeHint': '所有步驟，以及每件產品在星期幾使用',
+  'routine.nothingInCategory': '這個類別沒有產品',
+  'routine.moveUp': '往前移',
+  'routine.done': '完成',
+  'routine.everyDay': '每天',
+  'routine.noDays': '沒有選定日子',
+  'routine.worthKnowing': '值得注意',
+  'routine.noConflicts': '每一天都沒有衝突。',
+
+  'disc.title': '探索',
+  'disc.intro': '這裡會尋找適合你最近膚況、又能補上產品架空缺的日韓保養品。',
+  'disc.needsModel': '需要先在「設定」裡連接模型。',
+  'disc.connectOne': '前往連接',
+  'disc.noModelHere': '這一份圖書館不會連接任何模型。請從「設定」複製摘要，交給你自己的助理詢問。',
+  'disc.copyBriefing': '複製摘要',
+  'disc.look': '找點新東西',
+  'disc.lookAgain': '再找一次',
+  'disc.nothingYet': '還沒有查詢過。',
+  'disc.takesAMoment': '這需要一點時間',
+  'disc.found': '找到 {n} 件。',
+  'disc.notWebChecked': '<strong>未經網路查證</strong> — 當時無法使用搜尋，這些來自模型的記憶。產品可能已停產或記錯。購買前請逐一查證。',
+  'disc.foundOn': '查詢於 {date}',
+  'disc.stale': ' — 已是一個月前，值得再找一次。',
+  'disc.checkYourself': '已在網路上搜尋，但購買前仍請自行確認細節。',
+  'disc.prev': '← 上一件',
+  'disc.next': '下一件 →',
+  'disc.goTo': '前往第 {n} 件',
+  'disc.whatItIs': '產品類型',
+  'disc.actives': '主要成分',
+  'disc.caution': '注意',
+  'disc.whereFound': '在哪裡找到的 ↗',
+  'disc.searchFor': '搜尋這件產品 ↗',
+  'disc.opensFound': '開啟找到這件產品的網頁',
+  'disc.opensSearch': '開啟這件產品的搜尋結果',
+  'disc.sources': '資料來源',
+
+  'set.title': '設定',
+  'set.profiles': '使用者',
+  'set.profilesNote': '家裡每個人都可以有自己的產品架、判讀與保養流程，在頁面上方切換。分開只是為了整齊，不是為了保密 — 用這部瀏覽器的人都看得到全部。',
+  'set.profileName': '使用者名稱',
+  'set.productsOne': '{n} 件產品',
+  'set.productsMany': '{n} 件產品',
+  'set.readingsOne': '{n} 次判讀',
+  'set.readingsMany': '{n} 次判讀',
+  'set.showing': '顯示中',
+  'set.addSomeone': '新增使用者',
+  'set.theirName': '他的名字',
+  'set.addProfile': '新增使用者',
+  'set.profileAdded': '已新增 {name}，並切換為顯示中。',
+  'set.profileRemoved': '已移除 {name}。',
+  'set.confirmRemoveProfile': '要移除 {name} 嗎？他的 {products} 件產品、{readings} 次判讀與保養流程都會一併刪除，且無法復原。',
+  'set.language': '語言',
+  'set.languageNote': '會改變介面語言，也會改變模型回覆時使用的語言。成分名稱維持包裝上的寫法 — 那在各地都是拉丁文。',
+  'set.yourLibrary': '你的圖書館',
+  'set.libraryNote': '{profiles} 位使用者共有 {products} 件產品與 {assessments} 次判讀，存在這部瀏覽器裡。清除網站資料會一併刪除，請記得備份。',
+  'set.export': '匯出備份',
+  'set.import': '從備份還原',
+  'set.exported': '已匯出 {n} 件產品。',
+  'set.keyOmitted': ' API 金鑰沒有包含在內。',
+  'set.confirmImport': '還原會取代圖書館目前的全部內容。要繼續嗎？',
+  'set.restored': '已還原 {profiles} 位使用者的 {products} 件產品與 {assessments} 次判讀。',
+  'set.askAnother': '詢問其他助理',
+  'set.askAnotherNote': '把你的產品架、保養流程與最近一次自我評估複製成文字，連同皮膚照片，貼到 Gemini、Claude 或任何其他助理。這個應用程式不會自行送出 — 由你自己貼上，所以你能先看清楚分享的內容。',
+  'set.copyBriefing': '複製摘要',
+  'set.downloadBriefing': '下載成檔案',
+  'set.briefingCopied': '已複製 — 約 {n} 個字。可以貼到任何地方。',
+  'set.briefingClipboardFailed': '無法存取剪貼簿，請改用檔案。',
+  'set.briefingSaved': '已存到你的下載資料夾。',
+  'set.connecting': '連接模型',
+  'set.connectingNote': '存入金鑰之後，這個應用程式就能替你讀產品標籤、看皮膚照片、在對話面板回答問題，並每月尋找新產品。沒有金鑰時其餘功能一樣可用，也不會送出任何資料。',
+  'set.privacyNote': '<strong>什麼時候、有什麼會離開這部電腦。</strong>讀取標籤會送出那張照片。膚況評估會送出你的回答、產品架與保養流程 — 皮膚照片只有在你勾選時才送出，預設為不勾選。對話每則訊息都會附上你的產品架與流程。Google 免費方案通常會使用你提交的內容來改善他們的產品；這是免費的代價。這個應用程式會要求 Google 不要保留每次請求，但該設定並不能凌駕他們的條款。金鑰只存在這部瀏覽器，且不會包含在備份裡。',
+  'set.provider': '服務供應商',
+  'set.model': '模型',
+  'set.apiKey': 'API 金鑰',
+  'set.removeKey': '移除金鑰',
+  'set.keyRemoved': '已移除金鑰。',
+  'set.keyHint': 'Gemini 金鑰可在 <code>aistudio.google.com</code> 免費取得。如果某個模型名稱被拒絕，可能是你的方案不含該模型 — 可以試試 <code>gemini-3.5-flash-lite</code>。',
+  'set.erase': '清除全部',
+  'set.eraseNote': '會從這部瀏覽器刪除所有產品、照片、判讀與保養流程。',
+  'set.eraseAll': '清除全部資料',
+  'set.confirmErase': '要清除整個圖書館嗎？想保留的話請先匯出備份。',
+  'set.confirmErase2': '此動作無法復原。確定要全部清除嗎？',
+
+  'chat.ask': '提問',
+  'chat.launcher': '詢問你的保養問題',
+  'chat.placeholder': '輸入你的問題',
+  'chat.empty': '架上的任何事都可以問 — 兩件產品會不會衝突、皮膚不舒服時該用什麼、某個成分是做什麼的。它看得到你的產品架與保養流程。',
+  'chat.you': '你',
+  'chat.reply': '回覆',
+  'chat.noReply': '沒有收到回覆。',
+
+  'status.active': '使用中',
+  'status.backup': '備用',
+  'status.finished': '已用完',
+  'status.retired': '已收起',
+  'sev.marked': '明顯',
+  'sev.moderate': '中等',
+  'sev.mild': '輕微',
+  'day.0': '一', 'day.1': '二', 'day.2': '三',
+  'day.3': '四', 'day.4': '五', 'day.5': '六', 'day.6': '日',
+
+  'cat.Oil cleanser': '卸妝油',
+  'cat.Cleanser': '洗面產品',
+  'cat.Exfoliant': '去角質',
+  'cat.Toner': '化妝水',
+  'cat.Essence': '精華水',
+  'cat.Serum': '精華',
+  'cat.Treatment': '加強護理',
+  'cat.Eye cream': '眼霜',
+  'cat.Moisturiser': '乳霜',
+  'cat.Face oil': '面油',
+  'cat.Sunscreen': '防曬',
+  'cat.Mask': '面膜',
+  'cat.Mist': '噴霧',
+  'cat.Spot treatment': '局部護理',
+  'cat.Lip care': '唇部護理',
+  'cat.Body': '身體',
+  'cat.Other': '其他',
+
+  'step.pm-oil-cleanse': '第一次清潔',
+  'step.am-cleanse': '清潔',
+  'step.pm-cleanse': '清潔',
+  'step.pm-exfoliate': '去角質',
+  'step.am-tone': '化妝水',
+  'step.pm-tone': '化妝水',
+  'step.am-essence': '精華水',
+  'step.pm-essence': '精華水',
+  'step.am-treat': '精華',
+  'step.pm-treat': '精華',
+  'step.am-eye': '眼部',
+  'step.pm-eye': '眼部',
+  'step.am-moisturise': '保濕',
+  'step.pm-moisturise': '保濕',
+  'step.pm-oil': '鎖水',
+  'step.am-protect': '防曬',
+
+  'concern.dehydration': '缺水',
+  'concern.dryness': '乾燥',
+  'concern.oiliness': '出油過多',
+  'concern.blemishes': '痘痘粉刺',
+  'concern.pigmentation': '色素與痘印',
+  'concern.texture': '膚質不勻',
+  'concern.dullness': '暗沉',
+  'concern.redness': '泛紅與敏感',
+  'concern.lines': '細紋',
+  'concern.pores': '毛孔明顯',
+  'concern.barrier': '屏障受損',
+
+  'q.skinType': '到了下午，你的皮膚通常是什麼狀態？',
+  'q.skinType.dry': '緊繃、脫屑',
+  'q.skinType.normal': '舒服',
+  'q.skinType.combination': '中間泛油',
+  'q.skinType.oily': '整臉泛油',
+  'q.sensitivity': '換新產品時，皮膚多容易有反應？',
+  'q.sensitivity.low': '很少',
+  'q.sensitivity.moderate': '有時候',
+  'q.sensitivity.high': '經常',
+  'q.state': '此刻的狀態如何？',
+  'q.state.settled': '穩定',
+  'q.state.unsettled': '不太穩定',
+  'q.state.irritated': '刺痛或發炎',
+  'q.texture': '用手摸起來的觸感如何？',
+  'q.texture.smooth': '平滑',
+  'q.texture.slight': '略為不勻',
+  'q.texture.rough': '粗糙或有顆粒',
+  'q.sun': '你每天曬到多少日光？',
+  'q.sun.minimal': '很少',
+  'q.sun.moderate': '中等',
+  'q.sun.high': '相當多',
+  'q.concerns': '你最想改善哪些問題？',
+
+  'ev.named': '你自己指明了這一項。',
+  'ev.dryness': '到了下午皮膚會緊繃、脫屑。',
+  'ev.dehydration': '緊繃通常代表缺水，而不只是缺油。',
+  'ev.oiliness': '一天之中油光會再回來。',
+  'ev.pores': '偏油的皮膚毛孔通常比較明顯。',
+  'ev.redness': '換新產品時皮膚經常有反應。',
+  'ev.barrierMarked': '皮膚目前處於發炎狀態 — 先修護屏障。',
+  'ev.barrierMild': '皮膚目前不太穩定。',
+  'ev.textureRough': '表面摸起來粗糙。',
+  'ev.textureSlight': '表面摸起來略為不勻。',
+  'ev.sun': '日光曝曬量相當多。',
+  'gap.gentle': '以目前的膚況而言，架上沒有夠溫和的產品可以擔任「{step}」這一步。',
+  'gap.step': '架上沒有產品可以擔任「{step}」這一步。',
+  'gap.concern': '架上沒有通常用來處理這個問題的成分 — 可以留意 {tags}。',
+  'note.only': '架上唯一的{category}。',
+  'note.chosenFor': '選它是因為含有 {tags}。',
+  'note.chosenFrom': '從同類別的 {n} 件中選出。',
+  'note.layered': '疊在前一件之後。',
+  'caveat.rules': '這份判讀來自你的回答與你所擁有產品的成分表 — 照片只是保存下來供你自己逐月比較，並未經過分析。它是一個經過思考的起點，而不是皮膚科的診斷意見。',
+  'caveat.aiPhoto': '由 Gemini 依據你的照片、你的回答與你所擁有產品的成分表判讀。這是保養建議，不是皮膚科診斷 — 任何看起來需要就醫的狀況請找專業醫師。',
+  'caveat.aiNoPhoto': '由 Gemini 依據你的回答與你所擁有產品的成分表判讀，照片並未送出。這是保養建議，不是皮膚科診斷。',
+
+  'clash.retinoidAcid': '{a} 與 {b} 放在同一套流程裡，是常見的刺激來源。建議分在不同晚上交替使用，不要疊擦。',
+  'clash.ahaBha': 'AHA 與 BHA 一起用，對一次保養來說去角質過度。可以考慮把其中一種留到另一晚。',
+  'clash.twoRetinoids': '同一套流程用兩種 A 醇不會加倍效果，只會加倍刺激。',
+  'clash.amActives': 'A 醇與酸類會讓皮膚對日光更敏感，放在晚上比較合適。',
+  'clash.noSunscreen': '早晨流程裡沒有防曬。你為膚色與細紋所做的一切，都以防曬為前提。',
+  'clash.bpRetinoid': '過氧化苯甲醯會分解同時擦上的 A 醇。請分別放在一天的兩端使用。',
+  'clash.vitcRetinoid': '維他命 C 與 A 醇同用可以接受，但略嫌繁重。早上維他命 C、晚上 A 醇是比較輕鬆的分法。',
+  'clash.fragrance': '同一套流程裡有三件以上含香料的產品。如果皮膚容易敏感，值得精簡一些。',
+
+  'tag.solvent': '溶劑',
+  'tag.humectant': '保濕劑',
+  'tag.emollient': '潤膚劑',
+  'tag.occlusive': '封閉劑',
+  'tag.emulsifier': '乳化劑',
+  'tag.surfactant': '清潔成分',
+  'tag.preservative': '防腐劑',
+  'tag.thickener': '質地',
+  'tag.ph': 'pH 調節',
+  'tag.antioxidant': '抗氧化',
+  'tag.soothing': '舒緩',
+  'tag.barrier': '屏障修護',
+  'tag.aha': 'AHA 果酸',
+  'tag.bha': 'BHA 水楊酸',
+  'tag.pha': 'PHA 多元酸',
+  'tag.enzyme': '酵素去角質',
+  'tag.retinoid': 'A 醇類',
+  'tag.vitamin-c': '維他命 C',
+  'tag.niacinamide': '菸鹼醯胺',
+  'tag.peptide': '胜肽',
+  'tag.ceramide': '神經醯胺',
+  'tag.uv-filter': '防曬成分',
+  'tag.brightening': '亮白',
+  'tag.anti-acne': '抗痘',
+  'tag.oil': '植物油',
+  'tag.texture': '質地',
+  'tag.fragrance': '香料',
+  'tag.essential-oil': '精油',
+  'tag.alcohol': '揮發性酒精',
+  'tag.photosensitising': '光敏感',
+  'tag.comedogenic': '可能致粉刺',
+  'tag.dye': '色素'
+};
+
+/* 简体中文 — authored separately rather than converted, because the wording
+   differs in places and not only the characters. */
+
+const zhHans = {
+  'app.title': '护肤品图书馆',
+  'app.wordmark': '护肤品图书馆',
+  'nav.shelf': '产品架',
+  'nav.add': '新增',
+  'nav.assess': '肤况评估',
+  'nav.routine': '护肤流程',
+  'nav.discoveries': '探索',
+  'nav.settings': '设置',
+  'nav.language': '语言',
+  'chrome.whoseShelf': '谁的产品架',
+  'chrome.colophon': '只存放在这个浏览器里。',
+  'chrome.countOne': '{n} 件产品',
+  'chrome.countMany': '{n} 件产品',
+  'chrome.noRoute': '这个地址没有内容。',
+  'chrome.backToShelf': '回到产品架',
+  'chrome.renderError': '这一页显示时出了问题：{msg}',
+
+  'common.cancel': '取消',
+  'common.save': '保存',
+  'common.edit': '编辑',
+  'common.remove': '移除',
+  'common.saved': '已保存。',
+  'common.all': '全部',
+  'common.anything': '不限',
+  'common.nothing': '没有',
+  'common.details': '详情',
+  'common.close': '关闭',
+  'common.clear': '清除',
+  'common.send': '发送',
+  'common.morning': '早晨',
+  'common.evening': '晚上',
+  'common.am': '早',
+  'common.pm': '晚',
+  'common.today': '今天',
+  'common.takeCare': '请留意',
+  'common.consider': '可以考虑',
+  'common.note': '附注',
+  'common.reading': '判读中',
+  'common.searching': '搜索中',
+  'common.lookingUp': '查询中',
+
+  'shelf.title': '产品架',
+  'shelf.add': '新增产品',
+  'shelf.addFirst': '新增第一件产品',
+  'shelf.emptyNamed': '{name} 的产品架目前是空的。拍下一件产品、记下它的成分，就会保存在这里。',
+  'shelf.empty': '产品架目前是空的。拍下一件产品、记下它的成分，就会保存在这里。',
+  'shelf.filterCategory': '类别',
+  'shelf.filterStatus': '状态',
+  'shelf.filterContains': '含有',
+  'shelf.count': '{total} 件中的 {shown} 件',
+  'shelf.noMatch': '没有符合这组条件的产品。',
+  'shelf.noPhoto': '没有照片',
+
+  'product.back': '← 产品架',
+  'product.gone': '这件产品已不在图书馆里。',
+  'product.otherProfile': '这件产品在另一位使用者的产品架上。请在页面上方切换使用者才能看到。',
+  'product.backToThisShelf': '回到这个产品架',
+  'product.category': '类别',
+  'product.status': '状态',
+  'product.size': '容量',
+  'product.price': '价格',
+  'product.purchased': '购买日期',
+  'product.opened': '开封日期',
+  'product.notes': '笔记',
+  'product.ingredients': '成分',
+  'product.ingredientsAnnotated': '成分 — 共 {total} 项，已注解 {matched} 项',
+  'product.noIngredients': '尚未记录成分表。',
+  'product.notInReference': '不在成分词典中 — 按原文记录。',
+  'product.shared': '家中共用',
+  'product.sharedNote': '如果家里还有人用同一瓶，把它复制到对方的产品架上，不必再拍一次。复制之后两条记录各自独立。',
+  'product.copyAcross': '复制过去',
+  'product.copiedTo': '已复制到 {name} 的产品架。',
+  'product.delete': '从图书馆移除',
+  'product.confirmDelete': '要把 {name} 从图书馆移除吗？此操作无法撤销。',
+
+  'form.addTitle': '新增产品',
+  'form.editTitle': '编辑产品',
+  'form.dropPhoto': '把照片拖进来，或选一张',
+  'form.readLabel': '读取标签',
+  'form.readLabelHint': '从包装照片读出品牌、名称与成分。如果成分字太小看不清楚，会改为上网搜索这件产品公布的成分表。',
+  'form.photoHint': '照片会缩小后存在这个浏览器里。',
+  'form.selectedPhoto': '已选择的照片',
+  'form.brand': '品牌',
+  'form.name': '产品名称',
+  'form.notesPlaceholder': '用起来的感觉、适合叠在什么下面、会不会再买。',
+  'form.ingredientsPlaceholder': '直接把包装上的成分表贴进来，用逗号分隔就可以。',
+  'form.lookUp': '上网查成分',
+  'form.submitAdd': '加入图书馆',
+  'form.submitEdit': '保存修改',
+  'form.needName': '请填写产品名称。',
+  'form.parsed': '读到 {n} 项成分，其中 {known} 项可识别。',
+  'form.parsedNone': '还没有读到成分。',
+  'form.needPhoto': '请先加入一张包装照片。',
+  'form.readingPhoto': '正在读取照片',
+  'form.readOff': '从包装上读到 {n} 项成分。保存前请核对一次。',
+  'form.noListOnPack': '包装上看不到成分表。',
+  'form.needBrandOrName': '请先填品牌或产品名称 — 查询是依这个进行的。',
+  'form.nothingToLookUp': '这张照片里看不清楚成分表，也没有可供查询的品牌或产品名称。请填入其中一项，或先拍下包装正面。',
+  'form.lookupFailedSearched': '已上网搜索，但找不到这件产品的成分表。请确认品牌与产品名称是否正确，或拍下包装背面。',
+  'form.lookupFailedNoSearch': '无论上网还是依模型记忆，都找不到这件产品的成分表。请确认品牌与产品名称是否正确，或拍下包装背面。',
+  'form.foundOnline': '在网上找到 {n} 项成分 — <strong>并非读自你的包装</strong>，请自行核对。',
+  'form.foundFromMemory': '找到 {n} 项成分，但<strong>当时无法使用网络搜索</strong>，这些来自模型的记忆而非实际来源。配方会改版 — 请仔细对照包装后再采信。',
+
+  'assess.title': '肤况评估',
+  'assess.copyBriefing': '复制摘要给其他助手',
+  'assess.photoPrompt': '一张你皮肤的照片',
+  'assess.photoHint': '自然光、素颜、每次同一个角度。照片存在这个浏览器里，方便你逐月比较。',
+  'assess.letModelLook': '让模型看这张照片',
+  'assess.submit': '判读我的肤况',
+  'assess.staysHere': '你的回答与照片都留在这台机器上。',
+  'assess.previous': '过往判读 — 共 {n} 次',
+  'assess.nothingMarked': '没有特别标记',
+  'assess.gone': '这条判读已经不在了。',
+  'assess.back': '← 肤况评估',
+  'assess.removeRecord': '删除这条记录',
+  'assess.confirmRemove': '要删除这条判读和它的照片吗？',
+  'assess.adopt': '采用这套流程',
+  'assess.adopted': '已保存，现在可在「护肤流程」看到。',
+  'assess.archived': '已存入你的记录，日期为今天。',
+  'assess.briefingCopied': '已复制。连同你的照片一起粘贴即可。',
+  'assess.briefingFailed': '无法访问剪贴板 — 请到「设置」试试。',
+  'assess.skinPhotoAlt': '皮肤照片',
+  'assess.degraded': '<strong>离线判读</strong> — 无法连上模型（{why}），因此这是依你的回答所做的规则判读。',
+  'assess.photoHard': '<strong>这张照片不容易判断</strong> — {note}',
+  'assess.visible': '照片上看得到的',
+  'assess.working': '值得留下的',
+  'assess.changes': '建议调整的',
+  'assess.theReading': '肤况判读',
+  'assess.nothingStands': '你的回答中没有特别突出的问题。维持目前有效的做法就好。',
+  'assess.suggests': '据此建议的流程',
+  'assess.noMorning': '无法用架上的产品组出早晨流程。',
+  'assess.noEvening': '无法用架上的产品组出晚间流程。',
+  'assess.missing': '目前缺少的',
+  'assess.nothingSuitable': '架上没有合适的产品',
+
+  'routine.title': '护肤流程',
+  'routine.emptyShelf': '护肤流程是用架上的产品组成的。请先新增一件产品。',
+  'routine.yourWeek': '你的一周',
+  'routine.weekHint': '选一天，看看那天用什么、并在这里调整。你加入的只属于那一天 — 其余几天保持原样。',
+  'routine.stepsOne': '{n} 个步骤',
+  'routine.stepsMany': '{n} 个步骤',
+  'routine.nothingYet': '还没有安排',
+  'routine.nothingOnDay': '这天没有安排',
+  'routine.addProduct': '＋ 加入产品',
+  'routine.addAnother': '＋ 再加一件',
+  'routine.thisDayOnly': '只有这天',
+  'routine.save': '保存流程',
+  'routine.unsaved': '有尚未保存的修改。',
+  'routine.complete': '完整流程',
+  'routine.completeHint': '所有步骤，以及每件产品在星期几使用',
+  'routine.nothingInCategory': '这个类别没有产品',
+  'routine.moveUp': '往前移',
+  'routine.done': '完成',
+  'routine.everyDay': '每天',
+  'routine.noDays': '没有选定日子',
+  'routine.worthKnowing': '值得注意',
+  'routine.noConflicts': '每一天都没有冲突。',
+
+  'disc.title': '探索',
+  'disc.intro': '这里会寻找适合你最近肤况、又能补上产品架空缺的日韩护肤品。',
+  'disc.needsModel': '需要先在「设置」里连接模型。',
+  'disc.connectOne': '前往连接',
+  'disc.noModelHere': '这一份图书馆不会连接任何模型。请从「设置」复制摘要，交给你自己的助手询问。',
+  'disc.copyBriefing': '复制摘要',
+  'disc.look': '找点新东西',
+  'disc.lookAgain': '再找一次',
+  'disc.nothingYet': '还没有查询过。',
+  'disc.takesAMoment': '这需要一点时间',
+  'disc.found': '找到 {n} 件。',
+  'disc.notWebChecked': '<strong>未经网络查证</strong> — 当时无法使用搜索，这些来自模型的记忆。产品可能已停产或记错。购买前请逐一查证。',
+  'disc.foundOn': '查询于 {date}',
+  'disc.stale': ' — 已是一个月前，值得再找一次。',
+  'disc.checkYourself': '已在网上搜索，但购买前仍请自行确认细节。',
+  'disc.prev': '← 上一件',
+  'disc.next': '下一件 →',
+  'disc.goTo': '前往第 {n} 件',
+  'disc.whatItIs': '产品类型',
+  'disc.actives': '主要成分',
+  'disc.caution': '注意',
+  'disc.whereFound': '在哪里找到的 ↗',
+  'disc.searchFor': '搜索这件产品 ↗',
+  'disc.opensFound': '打开找到这件产品的网页',
+  'disc.opensSearch': '打开这件产品的搜索结果',
+  'disc.sources': '资料来源',
+
+  'set.title': '设置',
+  'set.profiles': '使用者',
+  'set.profilesNote': '家里每个人都可以有自己的产品架、判读与护肤流程，在页面上方切换。分开只是为了整齐，不是为了保密 — 用这个浏览器的人都能看到全部。',
+  'set.profileName': '使用者名称',
+  'set.productsOne': '{n} 件产品',
+  'set.productsMany': '{n} 件产品',
+  'set.readingsOne': '{n} 次判读',
+  'set.readingsMany': '{n} 次判读',
+  'set.showing': '显示中',
+  'set.addSomeone': '新增使用者',
+  'set.theirName': '他的名字',
+  'set.addProfile': '新增使用者',
+  'set.profileAdded': '已新增 {name}，并切换为显示中。',
+  'set.profileRemoved': '已移除 {name}。',
+  'set.confirmRemoveProfile': '要移除 {name} 吗？他的 {products} 件产品、{readings} 次判读与护肤流程都会一并删除，且无法撤销。',
+  'set.language': '语言',
+  'set.languageNote': '会改变界面语言，也会改变模型回复时使用的语言。成分名称保持包装上的写法 — 那在各地都是拉丁文。',
+  'set.yourLibrary': '你的图书馆',
+  'set.libraryNote': '{profiles} 位使用者共有 {products} 件产品与 {assessments} 次判读，存在这个浏览器里。清除网站数据会一并删除，请记得备份。',
+  'set.export': '导出备份',
+  'set.import': '从备份恢复',
+  'set.exported': '已导出 {n} 件产品。',
+  'set.keyOmitted': ' API 密钥没有包含在内。',
+  'set.confirmImport': '恢复会取代图书馆目前的全部内容。要继续吗？',
+  'set.restored': '已恢复 {profiles} 位使用者的 {products} 件产品与 {assessments} 次判读。',
+  'set.askAnother': '询问其他助手',
+  'set.askAnotherNote': '把你的产品架、护肤流程与最近一次自我评估复制成文字，连同皮肤照片，粘贴到 Gemini、Claude 或任何其他助手。这个应用不会自行发送 — 由你自己粘贴，所以你能先看清楚分享的内容。',
+  'set.copyBriefing': '复制摘要',
+  'set.downloadBriefing': '下载成文件',
+  'set.briefingCopied': '已复制 — 约 {n} 个字。可以粘贴到任何地方。',
+  'set.briefingClipboardFailed': '无法访问剪贴板，请改用文件。',
+  'set.briefingSaved': '已存到你的下载文件夹。',
+  'set.connecting': '连接模型',
+  'set.connectingNote': '存入密钥之后，这个应用就能替你读产品标签、看皮肤照片、在对话面板回答问题，并每月寻找新产品。没有密钥时其余功能一样可用，也不会发送任何数据。',
+  'set.privacyNote': '<strong>什么时候、有什么会离开这台电脑。</strong>读取标签会发送那张照片。肤况评估会发送你的回答、产品架与护肤流程 — 皮肤照片只有在你勾选时才发送，默认为不勾选。对话每条消息都会附上你的产品架与流程。Google 免费方案通常会使用你提交的内容来改善他们的产品；这是免费的代价。这个应用会要求 Google 不要保留每次请求，但该设置并不能凌驾他们的条款。密钥只存在这个浏览器，且不会包含在备份里。',
+  'set.provider': '服务供应商',
+  'set.model': '模型',
+  'set.apiKey': 'API 密钥',
+  'set.removeKey': '移除密钥',
+  'set.keyRemoved': '已移除密钥。',
+  'set.keyHint': 'Gemini 密钥可在 <code>aistudio.google.com</code> 免费获取。如果某个模型名称被拒绝，可能是你的方案不含该模型 — 可以试试 <code>gemini-3.5-flash-lite</code>。',
+  'set.erase': '清除全部',
+  'set.eraseNote': '会从这个浏览器删除所有产品、照片、判读与护肤流程。',
+  'set.eraseAll': '清除全部数据',
+  'set.confirmErase': '要清除整个图书馆吗？想保留的话请先导出备份。',
+  'set.confirmErase2': '此操作无法撤销。确定要全部清除吗？',
+
+  'chat.ask': '提问',
+  'chat.launcher': '询问你的护肤问题',
+  'chat.placeholder': '输入你的问题',
+  'chat.empty': '架上的任何事都可以问 — 两件产品会不会冲突、皮肤不舒服时该用什么、某个成分是做什么的。它能看到你的产品架与护肤流程。',
+  'chat.you': '你',
+  'chat.reply': '回复',
+  'chat.noReply': '没有收到回复。',
+
+  'status.active': '使用中',
+  'status.backup': '备用',
+  'status.finished': '已用完',
+  'status.retired': '已收起',
+  'sev.marked': '明显',
+  'sev.moderate': '中等',
+  'sev.mild': '轻微',
+  'day.0': '一', 'day.1': '二', 'day.2': '三',
+  'day.3': '四', 'day.4': '五', 'day.5': '六', 'day.6': '日',
+
+  'cat.Oil cleanser': '卸妆油',
+  'cat.Cleanser': '洁面产品',
+  'cat.Exfoliant': '去角质',
+  'cat.Toner': '爽肤水',
+  'cat.Essence': '精华水',
+  'cat.Serum': '精华',
+  'cat.Treatment': '强化护理',
+  'cat.Eye cream': '眼霜',
+  'cat.Moisturiser': '面霜',
+  'cat.Face oil': '面部精油',
+  'cat.Sunscreen': '防晒',
+  'cat.Mask': '面膜',
+  'cat.Mist': '喷雾',
+  'cat.Spot treatment': '局部护理',
+  'cat.Lip care': '唇部护理',
+  'cat.Body': '身体',
+  'cat.Other': '其他',
+
+  'step.pm-oil-cleanse': '第一次清洁',
+  'step.am-cleanse': '清洁',
+  'step.pm-cleanse': '清洁',
+  'step.pm-exfoliate': '去角质',
+  'step.am-tone': '爽肤水',
+  'step.pm-tone': '爽肤水',
+  'step.am-essence': '精华水',
+  'step.pm-essence': '精华水',
+  'step.am-treat': '精华',
+  'step.pm-treat': '精华',
+  'step.am-eye': '眼部',
+  'step.pm-eye': '眼部',
+  'step.am-moisturise': '保湿',
+  'step.pm-moisturise': '保湿',
+  'step.pm-oil': '锁水',
+  'step.am-protect': '防晒',
+
+  'concern.dehydration': '缺水',
+  'concern.dryness': '干燥',
+  'concern.oiliness': '出油过多',
+  'concern.blemishes': '痘痘粉刺',
+  'concern.pigmentation': '色素与痘印',
+  'concern.texture': '肤质不匀',
+  'concern.dullness': '暗沉',
+  'concern.redness': '泛红与敏感',
+  'concern.lines': '细纹',
+  'concern.pores': '毛孔明显',
+  'concern.barrier': '屏障受损',
+
+  'q.skinType': '到了下午，你的皮肤通常是什么状态？',
+  'q.skinType.dry': '紧绷、脱屑',
+  'q.skinType.normal': '舒服',
+  'q.skinType.combination': '中间泛油',
+  'q.skinType.oily': '整脸泛油',
+  'q.sensitivity': '换新产品时，皮肤多容易有反应？',
+  'q.sensitivity.low': '很少',
+  'q.sensitivity.moderate': '有时候',
+  'q.sensitivity.high': '经常',
+  'q.state': '此刻的状态如何？',
+  'q.state.settled': '稳定',
+  'q.state.unsettled': '不太稳定',
+  'q.state.irritated': '刺痛或发炎',
+  'q.texture': '用手摸起来的触感如何？',
+  'q.texture.smooth': '平滑',
+  'q.texture.slight': '略为不匀',
+  'q.texture.rough': '粗糙或有颗粒',
+  'q.sun': '你每天晒到多少日光？',
+  'q.sun.minimal': '很少',
+  'q.sun.moderate': '中等',
+  'q.sun.high': '相当多',
+  'q.concerns': '你最想改善哪些问题？',
+
+  'ev.named': '你自己指明了这一项。',
+  'ev.dryness': '到了下午皮肤会紧绷、脱屑。',
+  'ev.dehydration': '紧绷通常代表缺水，而不只是缺油。',
+  'ev.oiliness': '一天之中油光会再回来。',
+  'ev.pores': '偏油的皮肤毛孔通常比较明显。',
+  'ev.redness': '换新产品时皮肤经常有反应。',
+  'ev.barrierMarked': '皮肤目前处于发炎状态 — 先修护屏障。',
+  'ev.barrierMild': '皮肤目前不太稳定。',
+  'ev.textureRough': '表面摸起来粗糙。',
+  'ev.textureSlight': '表面摸起来略为不匀。',
+  'ev.sun': '日光曝晒量相当多。',
+  'gap.gentle': '以目前的肤况而言，架上没有够温和的产品可以担任「{step}」这一步。',
+  'gap.step': '架上没有产品可以担任「{step}」这一步。',
+  'gap.concern': '架上没有通常用来处理这个问题的成分 — 可以留意 {tags}。',
+  'note.only': '架上唯一的{category}。',
+  'note.chosenFor': '选它是因为含有 {tags}。',
+  'note.chosenFrom': '从同类别的 {n} 件中选出。',
+  'note.layered': '叠在前一件之后。',
+  'caveat.rules': '这份判读来自你的回答与你所拥有产品的成分表 — 照片只是保存下来供你自己逐月比较，并未经过分析。它是一个经过思考的起点，而不是皮肤科的诊断意见。',
+  'caveat.aiPhoto': '由 Gemini 依据你的照片、你的回答与你所拥有产品的成分表判读。这是护肤建议，不是皮肤科诊断 — 任何看起来需要就医的状况请找专业医师。',
+  'caveat.aiNoPhoto': '由 Gemini 依据你的回答与你所拥有产品的成分表判读，照片并未发送。这是护肤建议，不是皮肤科诊断。',
+
+  'clash.retinoidAcid': '{a} 与 {b} 放在同一套流程里，是常见的刺激来源。建议分在不同晚上交替使用，不要叠擦。',
+  'clash.ahaBha': 'AHA 与 BHA 一起用，对一次护肤来说去角质过度。可以考虑把其中一种留到另一晚。',
+  'clash.twoRetinoids': '同一套流程用两种 A 醇不会加倍效果，只会加倍刺激。',
+  'clash.amActives': 'A 醇与酸类会让皮肤对日光更敏感，放在晚上比较合适。',
+  'clash.noSunscreen': '早晨流程里没有防晒。你为肤色与细纹所做的一切，都以防晒为前提。',
+  'clash.bpRetinoid': '过氧化苯甲酰会分解同时擦上的 A 醇。请分别放在一天的两端使用。',
+  'clash.vitcRetinoid': '维生素 C 与 A 醇同用可以接受，但略嫌繁重。早上维生素 C、晚上 A 醇是比较轻松的分法。',
+  'clash.fragrance': '同一套流程里有三件以上含香料的产品。如果皮肤容易敏感，值得精简一些。',
+
+  'tag.solvent': '溶剂',
+  'tag.humectant': '保湿剂',
+  'tag.emollient': '润肤剂',
+  'tag.occlusive': '封闭剂',
+  'tag.emulsifier': '乳化剂',
+  'tag.surfactant': '清洁成分',
+  'tag.preservative': '防腐剂',
+  'tag.thickener': '质地',
+  'tag.ph': 'pH 调节',
+  'tag.antioxidant': '抗氧化',
+  'tag.soothing': '舒缓',
+  'tag.barrier': '屏障修护',
+  'tag.aha': 'AHA 果酸',
+  'tag.bha': 'BHA 水杨酸',
+  'tag.pha': 'PHA 多元酸',
+  'tag.enzyme': '酵素去角质',
+  'tag.retinoid': 'A 醇类',
+  'tag.vitamin-c': '维生素 C',
+  'tag.niacinamide': '烟酰胺',
+  'tag.peptide': '胜肽',
+  'tag.ceramide': '神经酰胺',
+  'tag.uv-filter': '防晒成分',
+  'tag.brightening': '亮白',
+  'tag.anti-acne': '抗痘',
+  'tag.oil': '植物油',
+  'tag.texture': '质地',
+  'tag.fragrance': '香料',
+  'tag.essential-oil': '精油',
+  'tag.alcohol': '挥发性酒精',
+  'tag.photosensitising': '光敏感',
+  'tag.comedogenic': '可能致粉刺',
+  'tag.dye': '色素'
+};
+
+const DICT = { en, 'zh-Hant': zhHant, 'zh-Hans': zhHans };
+
+/* Keys present in English but missing elsewhere fall back silently, which is
+   the right behaviour in front of a user and the wrong one for whoever is
+   maintaining the tables. Exposed so it can be checked from the console. */
+function missingKeys() {
+  const out = {};
+  for (const [id, table] of Object.entries(DICT)) {
+    if (id === 'en') continue;
+    out[id] = Object.keys(en).filter(k => !(k in table));
+  }
+  return out;
+}
+
+
 /* ===== js/ingredients.js ===== */
 /* A curated INCI dictionary. Not exhaustive — unmatched ingredients still
    render, they simply carry no annotation. */
@@ -1458,6 +3300,12 @@ const INGREDIENTS = {
   'ci 42090': D('CI 42090', 'Blue synthetic colourant.', ['dye'])
 };
 
+/* Stamp each entry with its own key, so a caller holding an entry can look up
+   the translated description without having to search for it again. Aliases
+   share the object they point at, which is what we want — an alias describes
+   the same ingredient. */
+for (const [key, entry] of Object.entries(INGREDIENTS)) entry.k = key;
+
 /* Common names, trade names and spellings that map onto a canonical entry. */
 const ALIASES = {
   'aqua': 'water', 'eau': 'water', 'purified water': 'water', 'distilled water': 'water',
@@ -1599,6 +3447,7 @@ const flagsIn = ingredients =>
 
 
 
+
 const CATEGORIES = [
   'Oil cleanser', 'Cleanser', 'Exfoliant', 'Toner', 'Essence', 'Serum',
   'Treatment', 'Eye cream', 'Moisturiser', 'Face oil', 'Sunscreen',
@@ -1640,7 +3489,9 @@ const stepsFor = period => STEPS.filter(s => s.period === period);
 /* Days of the week, Monday first. A routine entry carries the days it applies
    to, so an alternated retinoid is recorded honestly rather than as if it were
    used nightly — which also stops the conflict rules crying wolf. */
-const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const DAY_KEYS = [0, 1, 2, 3, 4, 5, 6];
+/* Read through i18n on every call — the language can change between renders. */
+const days = () => DAY_KEYS.map(dayLabel);
 const EVERY_DAY = [0, 1, 2, 3, 4, 5, 6];
 
 const daysOf = entry =>
@@ -1650,10 +3501,10 @@ const isEveryDay = entry => daysOf(entry).length === 7;
 
 /* "Mon · Wed · Fri", or "Every day". */
 function describeDays(entry) {
-  if (isEveryDay(entry)) return 'Every day';
+  if (isEveryDay(entry)) return t('routine.everyDay');
   const chosen = daysOf(entry);
-  if (!chosen.length) return 'No days';
-  return chosen.slice().sort((a, b) => a - b).map(d => DAYS[d]).join(' · ');
+  if (!chosen.length) return t('routine.noDays');
+  return chosen.slice().sort((a, b) => a - b).map(dayLabel).join(' · ');
 }
 
 /* ---------- concerns ---------- */
@@ -1739,38 +3590,38 @@ function conflictsFor(products, period) {
   if (retinoids.length && acids.length) {
     notes.push({
       severity: 'high',
-      text: `${retinoids[0].name} and ${acids[0].name} in one routine is a common cause of irritation. Alternate them on different evenings rather than layering.`
+      text: t('clash.retinoidAcid', { a: retinoids[0].name, b: acids[0].name })
     });
   }
   if (ahas.length && bhas.length) {
     notes.push({
       severity: 'medium',
-      text: 'An AHA and a BHA together is a lot of exfoliation for one sitting. Consider keeping one of them for a separate night.'
+      text: t('clash.ahaBha')
     });
   }
   if (retinoids.length > 1) {
-    notes.push({ severity: 'medium', text: 'Two retinoids in the same routine gives no extra benefit, only extra irritation.' });
+    notes.push({ severity: 'medium', text: t('clash.twoRetinoids') });
   }
   if (period === 'am' && (retinoids.length || acids.length)) {
     notes.push({
       severity: 'medium',
-      text: 'Retinoids and acids leave skin more sun-sensitive. They sit more comfortably in the evening.'
+      text: t('clash.amActives')
     });
   }
   if (period === 'am' && !filters.length && products.length) {
-    notes.push({ severity: 'high', text: 'No sunscreen in the morning routine. Everything else you do for tone and lines depends on it.' });
+    notes.push({ severity: 'high', text: t('clash.noSunscreen') });
   }
   const bp = products.filter(p => hasIngredient(p, 'benzoyl peroxide'));
   if (bp.length && retinoids.length) {
-    notes.push({ severity: 'medium', text: 'Benzoyl peroxide can degrade a retinoid applied at the same time. Use them at opposite ends of the day.' });
+    notes.push({ severity: 'medium', text: t('clash.bpRetinoid') });
   }
   const vitc = withTag('vitamin-c');
   if (vitc.length && retinoids.length) {
-    notes.push({ severity: 'low', text: 'Vitamin C and a retinoid together is tolerable but busy. Vitamin C in the morning, retinoid at night, is the easier split.' });
+    notes.push({ severity: 'low', text: t('clash.vitcRetinoid') });
   }
   const fragranced = withTag('fragrance').concat(withTag('essential-oil'));
   if (new Set(fragranced).size >= 3) {
-    notes.push({ severity: 'low', text: 'Three or more fragranced products in one routine. Worth thinning out if your skin ever runs reactive.' });
+    notes.push({ severity: 'low', text: t('clash.fragrance') });
   }
   return notes;
 }
@@ -2129,6 +3980,11 @@ const setPicks = async v => setMeta('picks:' + (await getActiveProfileId()), v);
 const getSettings = () => getMeta('settings', { apiKey: '' });
 const setSettings = s => setMeta('settings', s);
 
+/* Interface language. Kept apart from settings so it survives clearing a key,
+   and shared across profiles — it belongs to the person at the browser. */
+const getLangPref = () => getMeta('lang', null);
+const setLangPref = v => setMeta('lang', v);
+
 /* ---------- assessments (scoped to the active profile) ---------- */
 
 async function getAssessments() {
@@ -2246,7 +4102,7 @@ async function wipe() {
 }
 
 
-const store = { uid, get, getAll, put, del, clear, getProfiles, getActiveProfileId, setActiveProfileId, saveProfile, getActiveProfile, createProfile, renameProfile, deleteProfile, ensureProfile, profileTallies, getProducts, getProduct, saveProduct, deleteProduct, copyProductToProfile, putImage, getImage, resizeImage, getRoutine, setRoutine, getChat, setChat, getPicks, setPicks, getSettings, setSettings, getAssessments, saveAssessment, deleteAssessment, exportAll, importAll, wipe };
+const store = { uid, get, getAll, put, del, clear, getProfiles, getActiveProfileId, setActiveProfileId, saveProfile, getActiveProfile, createProfile, renameProfile, deleteProfile, ensureProfile, profileTallies, getProducts, getProduct, saveProduct, deleteProduct, copyProductToProfile, putImage, getImage, resizeImage, getRoutine, setRoutine, getChat, setChat, getPicks, setPicks, getSettings, setSettings, getLangPref, setLangPref, getAssessments, saveAssessment, deleteAssessment, exportAll, importAll, wipe };
 
 /* ===== offline stubs (share build) ===== */
 /* The shared copy talks to nothing. These stand in for the modules that would,
@@ -2285,56 +4141,43 @@ const refreshChat = () => {};
 
 
 
-const QUESTIONS = [
+
+/* Built fresh on each call rather than held as a constant, so switching
+   language re-labels the questionnaire without a reload. */
+const questions = () => [
   {
-    key: 'skinType', label: 'How does your skin behave by mid-afternoon?', multi: false,
-    options: [
-      { value: 'dry', label: 'Tight, flaking' },
-      { value: 'normal', label: 'Comfortable' },
-      { value: 'combination', label: 'Shine in the centre' },
-      { value: 'oily', label: 'Shine throughout' }
-    ]
+    key: 'skinType', label: t('q.skinType'), multi: false,
+    options: ['dry', 'normal', 'combination', 'oily']
+      .map(v => ({ value: v, label: t('q.skinType.' + v) }))
   },
   {
-    key: 'sensitivity', label: 'How readily does it react to something new?', multi: false,
-    options: [
-      { value: 'low', label: 'Rarely' },
-      { value: 'moderate', label: 'Sometimes' },
-      { value: 'high', label: 'Often' }
-    ]
+    key: 'sensitivity', label: t('q.sensitivity'), multi: false,
+    options: ['low', 'moderate', 'high']
+      .map(v => ({ value: v, label: t('q.sensitivity.' + v) }))
   },
   {
-    key: 'state', label: 'How is it at this moment?', multi: false,
-    options: [
-      { value: 'settled', label: 'Settled' },
-      { value: 'unsettled', label: 'Unsettled' },
-      { value: 'irritated', label: 'Irritated or stinging' }
-    ]
+    key: 'state', label: t('q.state'), multi: false,
+    options: ['settled', 'unsettled', 'irritated']
+      .map(v => ({ value: v, label: t('q.state.' + v) }))
   },
   {
-    key: 'texture', label: 'How does the surface feel to the hand?', multi: false,
-    options: [
-      { value: 'smooth', label: 'Smooth' },
-      { value: 'slight', label: 'Slightly uneven' },
-      { value: 'rough', label: 'Rough or bumpy' }
-    ]
+    key: 'texture', label: t('q.texture'), multi: false,
+    options: ['smooth', 'slight', 'rough']
+      .map(v => ({ value: v, label: t('q.texture.' + v) }))
   },
   {
-    key: 'sun', label: 'How much daylight do you take on?', multi: false,
-    options: [
-      { value: 'minimal', label: 'Little' },
-      { value: 'moderate', label: 'Moderate' },
-      { value: 'high', label: 'A great deal' }
-    ]
+    key: 'sun', label: t('q.sun'), multi: false,
+    options: ['minimal', 'moderate', 'high']
+      .map(v => ({ value: v, label: t('q.sun.' + v) }))
   },
   {
-    key: 'concerns', label: 'What would you most like to change?', multi: true,
-    options: CONCERNS.map(c => ({ value: c.key, label: c.label }))
+    key: 'concerns', label: t('q.concerns'), multi: true,
+    options: CONCERNS.map(c => ({ value: c.key, label: concernLabel(c) }))
   }
 ];
 
 const WEIGHT = { marked: 3, moderate: 2, mild: 1 };
-const SEVERITY_LABEL = { marked: 'Marked', moderate: 'Moderate', mild: 'Mild' };
+
 
 /* ---------- reading the answers ---------- */
 
@@ -2347,37 +4190,37 @@ function readConcerns(answers) {
   };
 
   for (const key of answers.concerns || []) {
-    note(key, 'marked', 'You named this directly.');
+    note(key, 'marked', t('ev.named'));
   }
 
   if (answers.skinType === 'dry') {
-    note('dryness', 'moderate', 'Skin reads tight and flaking by mid-afternoon.');
-    note('dehydration', 'mild', 'Tightness usually means water loss as much as oil loss.');
+    note('dryness', 'moderate', t('ev.dryness'));
+    note('dehydration', 'mild', t('ev.dehydration'));
   }
   if (answers.skinType === 'oily' || answers.skinType === 'combination') {
-    note('oiliness', answers.skinType === 'oily' ? 'moderate' : 'mild', 'Shine returns through the day.');
-    note('pores', 'mild', 'Oilier skin tends to show pores more plainly.');
+    note('oiliness', answers.skinType === 'oily' ? 'moderate' : 'mild', t('ev.oiliness'));
+    note('pores', 'mild', t('ev.pores'));
   }
   if (answers.sensitivity === 'high') {
-    note('redness', 'moderate', 'Skin reacts often to new products.');
+    note('redness', 'moderate', t('ev.redness'));
   }
   if (answers.state === 'irritated') {
-    note('barrier', 'marked', 'Skin is currently irritated — the barrier comes first.');
+    note('barrier', 'marked', t('ev.barrierMarked'));
   } else if (answers.state === 'unsettled') {
-    note('barrier', 'mild', 'Skin is unsettled at present.');
+    note('barrier', 'mild', t('ev.barrierMild'));
   }
   if (answers.texture === 'rough') {
-    note('texture', 'moderate', 'The surface feels rough to the hand.');
+    note('texture', 'moderate', t('ev.textureRough'));
   } else if (answers.texture === 'slight') {
-    note('texture', 'mild', 'The surface feels slightly uneven.');
+    note('texture', 'mild', t('ev.textureSlight'));
   }
   if (answers.sun === 'high') {
-    note('pigmentation', 'mild', 'Considerable daylight exposure.');
-    note('lines', 'mild', 'Considerable daylight exposure.');
+    note('pigmentation', 'mild', t('ev.sun'));
+    note('lines', 'mild', t('ev.sun'));
   }
 
   return [...found.values()]
-    .map(c => ({ ...c, label: concernByKey(c.key)?.label || c.key }))
+    .map(c => ({ ...c, label: concernLabel(c.key) }))
     .sort((a, b) => WEIGHT[b.severity] - WEIGHT[a.severity]);
 }
 
@@ -2452,10 +4295,10 @@ function buildPeriod(period, products, concerns) {
         // Phrased without the period so a category missing morning and evening
         // is reported once rather than twice.
         gaps.push({
-          category: step.categories[0],
+          category: categoryLabel(step.categories[0]),
           reason: barrierFirst && step.categories[0] !== 'Sunscreen'
-            ? `Nothing on this shelf fills the ${step.label.toLowerCase()} step gently enough for skin in this state.`
-            : `Nothing on this shelf covers the ${step.label.toLowerCase()} step.`
+            ? t('gap.gentle', { step: stepLabel(step) })
+            : t('gap.step', { step: stepLabel(step) })
         });
       }
       continue;
@@ -2476,15 +4319,15 @@ function buildPeriod(period, products, concerns) {
 
       let note;
       if (candidates.length === 1) {
-        note = `The only ${step.categories[0].toLowerCase()} on the shelf.`;
+        note = t('note.only', { category: categoryLabel(step.categories[0]) });
       } else if (pick.top.length) {
-        note = `Chosen for its ${pick.top.join(' and ')}.`;
+        note = t('note.chosenFor', { tags: pick.top.map(tagLabel).join(listSep()) });
       } else {
-        note = `Chosen from ${ranked.length} in the same category.`;
+        note = t('note.chosenFrom', { n: ranked.length });
       }
-      if (i > 0) note = `Layered after the first. ${note}`;
+      if (i > 0) note = t('note.layered') + note;
 
-      out.push({ step: step.label, stepKey: step.key, productId: pick.product.id, note });
+      out.push({ step: stepLabel(step), stepKey: step.key, productId: pick.product.id, note });
     });
   }
 
@@ -2505,8 +4348,8 @@ function libraryGaps(products, concerns) {
     if (!def) continue;
     if (!def.helps.some(t => owned.has(t))) {
       gaps.push({
-        category: def.label,
-        reason: `Nothing on this shelf carries the ingredients that usually address this — look for ${def.helps.slice(0, 3).join(', ')}.`
+        category: concernLabel(def),
+        reason: t('gap.concern', { tags: def.helps.slice(0, 3).map(tagLabel).join(listSep()) })
       });
     }
   }
@@ -2534,8 +4377,7 @@ function assessFromAnswers({ answers, library }) {
     concerns,
     routine: { am: am.steps, pm: pm.steps },
     gaps,
-    caveat:
-      'This reading is derived from your answers and the ingredient lists of the products you own — the photograph is stored for your own comparison over time, not analysed. It is a considered starting point, not a dermatological opinion.'
+    caveat: t('caveat.rules')
   };
 }
 
@@ -2570,6 +4412,7 @@ async function assessSkin({ imageBlob, answers, library, routine, sendPhoto } = 
 
 
 
+
 const PREAMBLE = `I'd like help with my skincare. Below is everything I own, the routine I follow, and how my skin has been behaving. I've attached a photograph of my skin.
 
 Please:
@@ -2584,7 +4427,7 @@ Keep this to cosmetic skincare guidance rather than medical diagnosis, and tell 
 const formatDay = iso =>
   new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
 
-const label = tag => TAG_LABEL[tag] || tag;
+const label = tagLabel;
 
 const named = p => `${p.brand ? p.brand + ' · ' : ''}${p.name}`;
 
@@ -2592,7 +4435,7 @@ const named = p => `${p.brand ? p.brand + ' · ' : ''}${p.name}`;
 function answerLines(answers) {
   if (!answers) return null;
   const lines = [];
-  for (const q of QUESTIONS) {
+  for (const q of questions()) {
     const given = answers[q.key];
     if (!given || (Array.isArray(given) && !given.length)) continue;
     const values = Array.isArray(given) ? given : [given];
@@ -2642,8 +4485,8 @@ async function buildBriefing() {
       const actives = activesIn(p.ingredients || []).map(label);
       const flags = flagsIn(p.ingredients || []).map(label);
 
-      out.push(`### ${p.category || 'Uncategorised'} — ${named(p)}`);
-      const facts = [STATUS_LABEL[p.status] || p.status, p.size, p.price].filter(Boolean);
+      out.push(`### ${p.category ? categoryLabel(p.category) : 'Uncategorised'} — ${named(p)}`);
+      const facts = [statusLabel(p.status), p.size, p.price].filter(Boolean);
       if (facts.length) out.push(`- ${facts.join(' · ')}`);
       out.push(`- Actives: ${actives.length ? actives.join(', ') : 'none the app recognises'}`);
       if (flags.length) out.push(`- Worth watching: ${flags.join(', ')}`);
@@ -2661,7 +4504,7 @@ async function buildBriefing() {
     for (const step of stepsFor(period)) {
       for (const entry of (routine[period] || []).filter(e => e.step === step.key)) {
         const p = byId[entry.productId];
-        if (p) lines.push(`${lines.length + 1}. **${step.label}** — ${named(p)}`);
+        if (p) lines.push(`${lines.length + 1}. **${stepLabel(step)}** — ${named(p)}`);
       }
     }
     out.push(`### ${title}\n`);
@@ -2729,6 +4572,7 @@ async function downloadBriefing() {
 
 
 
+
 /* Everything that talks to a model needs your own key, which only makes sense
    on your own machine. The share build flips this to false, leaving the app
    fully offline — the briefing export deliberately survives it. */
@@ -2771,16 +4615,20 @@ async function profileBar() {
   };
 }
 
+/* Dates follow the interface language, so a Chinese page does not print
+   "17 August 2026" in the middle of a Chinese sentence. */
+const locale = () => (lang() === 'en' ? 'en-GB' : lang());
+
 const fmtDate = s => s
-  ? new Date(s + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+  ? new Date(s + 'T00:00:00').toLocaleDateString(locale(), { day: 'numeric', month: 'long', year: 'numeric' })
   : '';
 
 const fmtStamp = iso =>
-  new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+  new Date(iso).toLocaleDateString(locale(), { day: 'numeric', month: 'long', year: 'numeric' });
 
 /* Two readings on one day should still be tellable apart. */
 const fmtStampTime = iso =>
-  fmtStamp(iso) + ', ' + new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  fmtStamp(iso) + ' ' + new Date(iso).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' });
 
 const byShelfOrder = (a, b) =>
   (a.brand || '').localeCompare(b.brand || '') || (a.name || '').localeCompare(b.name || '');
@@ -2819,6 +4667,10 @@ function headerArt(name) {
   return `<svg class="header-art" viewBox="0 0 88 52" aria-hidden="true" focusable="false">${marks}</svg>`;
 }
 
+/* How a layering note is introduced, by how much it matters. */
+const severityWord = sev =>
+  (sev === 'high' ? t('common.takeCare') : sev === 'medium' ? t('common.consider') : t('common.note'));
+
 /* Three drifting dots for anything that has gone away to think. */
 const dots = () => '<span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>';
 
@@ -2831,8 +4683,8 @@ function waiting(button, label) {
   return () => { button.innerHTML = was; button.disabled = wasDisabled; };
 }
 
-const tagChip = (t, flag) =>
-  `<span class="chip ${flag ? 'chip-flag' : 'chip-active'}">${esc(TAG_LABEL[t] || t)}</span>`;
+const tagChip = (tag, flag) =>
+  `<span class="chip ${flag ? 'chip-flag' : 'chip-active'}">${esc(tagLabel(tag))}</span>`;
 
 const option = (v, label, selected) =>
   `<option value="${esc(v)}"${selected === v ? ' selected' : ''}>${esc(label)}</option>`;
@@ -2853,9 +4705,9 @@ function wireDropzone(zone, onFile) {
   });
 }
 
-const dropzoneMarkup = (id, caption = 'Drop a photograph, or select one') => `
+const dropzoneMarkup = (id, caption) => `
   <div class="dropzone" id="${id}">
-    <p>${esc(caption)}</p>
+    <p>${esc(caption || t('form.dropPhoto'))}</p>
     <input type="file" accept="image/*">
   </div>`;
 
@@ -2871,18 +4723,17 @@ async function shelf(root) {
   if (!products.length) {
     const who = (await store.getActiveProfile())?.name;
     root.innerHTML = `
-      <div class="view-head">${headerArt('shelf')}<h1 class="page-title">The Shelf</h1></div>
+      <div class="view-head">${headerArt('shelf')}<h1 class="page-title">${esc(t('shelf.title'))}</h1></div>
       <div class="empty">
-        <p>${who ? esc(who) + '’s shelf is' : 'The shelf is'} presently empty. Photograph a
-           product, record what is in it, and it will be kept here.</p>
-        <a class="btn" href="#/add">Add the first product</a>
+        <p>${esc(who ? t('shelf.emptyNamed', { name: who }) : t('shelf.empty'))}</p>
+        <a class="btn" href="#/add">${esc(t('shelf.addFirst'))}</a>
       </div>`;
     return;
   }
 
   const activesPresent = new Set();
-  products.forEach(p => tagsFor(p.ingredients || []).forEach(t => {
-    if (ACTIVE_TAGS.includes(t)) activesPresent.add(t);
+  products.forEach(p => tagsFor(p.ingredients || []).forEach(tag => {
+    if (ACTIVE_TAGS.includes(tag)) activesPresent.add(tag);
   }));
 
   const visible = products.filter(p =>
@@ -2896,37 +4747,37 @@ async function shelf(root) {
   root.innerHTML = `
     <div class="view-head">
       ${headerArt('shelf')}
-      <h1 class="page-title">The Shelf</h1>
-      <div class="btn-row"><a class="btn" href="#/add">Add a product</a></div>
+      <h1 class="page-title">${esc(t('shelf.title'))}</h1>
+      <div class="btn-row"><a class="btn" href="#/add">${esc(t('shelf.add'))}</a></div>
     </div>
 
     <div class="filter-bar">
       <div class="filter">
-        <label for="f-cat">Category</label>
+        <label for="f-cat">${esc(t('shelf.filterCategory'))}</label>
         <select id="f-cat">
-          ${option('', 'All', shelfFilters.category)}
-          ${categoriesPresent.map(c => option(c, c, shelfFilters.category)).join('')}
+          ${option('', t('common.all'), shelfFilters.category)}
+          ${categoriesPresent.map(c => option(c, categoryLabel(c), shelfFilters.category)).join('')}
         </select>
       </div>
       <div class="filter">
-        <label for="f-status">Status</label>
+        <label for="f-status">${esc(t('shelf.filterStatus'))}</label>
         <select id="f-status">
-          ${option('', 'All', shelfFilters.status)}
-          ${STATUSES.map(s => option(s, STATUS_LABEL[s], shelfFilters.status)).join('')}
+          ${option('', t('common.all'), shelfFilters.status)}
+          ${STATUSES.map(s => option(s, statusLabel(s), shelfFilters.status)).join('')}
         </select>
       </div>
       <div class="filter">
-        <label for="f-active">Contains</label>
+        <label for="f-active">${esc(t('shelf.filterContains'))}</label>
         <select id="f-active">
-          ${option('', 'Anything', shelfFilters.active)}
-          ${[...activesPresent].map(t => option(t, TAG_LABEL[t] || t, shelfFilters.active)).join('')}
+          ${option('', t('common.anything'), shelfFilters.active)}
+          ${[...activesPresent].map(x => option(x, tagLabel(x), shelfFilters.active)).join('')}
         </select>
       </div>
-      <span class="filter-count">${visible.length} of ${products.length}</span>
+      <span class="filter-count">${esc(t('shelf.count', { shown: visible.length, total: products.length }))}</span>
     </div>
 
     <div class="shelf" id="shelf-grid"></div>
-    ${visible.length ? '' : '<p class="muted">Nothing matches that combination.</p>'}`;
+    ${visible.length ? '' : `<p class="muted">${esc(t('shelf.noMatch'))}</p>`}`;
 
   const grid = root.querySelector('#shelf-grid');
   for (const p of visible) {
@@ -2936,11 +4787,11 @@ async function shelf(root) {
     a.href = `#/product/${p.id}`;
     a.innerHTML = `
       <div class="shelf-frame">
-        ${blob ? `<img src="${imgUrl(blob)}" alt="${esc(p.name)}">` : '<span class="no-image">No photograph</span>'}
+        ${blob ? `<img src="${imgUrl(blob)}" alt="${esc(p.name)}">` : `<span class="no-image">${esc(t('shelf.noPhoto'))}</span>`}
       </div>
       <div class="shelf-brand">${esc(p.brand || '—')}</div>
       <div class="shelf-name">${esc(p.name)}</div>
-      <div class="shelf-meta">${esc(p.category || '')}${p.status && p.status !== 'active' ? ' · ' + esc(STATUS_LABEL[p.status]) : ''}</div>`;
+      <div class="shelf-meta">${esc(p.category ? categoryLabel(p.category) : '')}${p.status && p.status !== 'active' ? ' · ' + esc(statusLabel(p.status)) : ''}</div>`;
     grid.appendChild(a);
   }
 
@@ -2958,15 +4809,14 @@ async function product(root, { id }) {
   const activeId = await store.getActiveProfileId();
 
   if (!p) {
-    root.innerHTML = `<div class="empty"><p>That product is no longer in the library.</p>
-      <a class="btn" href="#/">Return to the shelf</a></div>`;
+    root.innerHTML = `<div class="empty"><p>${esc(t('product.gone'))}</p>
+      <a class="btn" href="#/">${esc(t('chrome.backToShelf'))}</a></div>`;
     return;
   }
   if (p.profileId !== activeId) {
     root.innerHTML = `<div class="empty">
-      <p>That product sits on another profile’s shelf. Switch profiles at the top of the page
-         to see it.</p>
-      <a class="btn" href="#/">Return to this shelf</a></div>`;
+      <p>${esc(t('product.otherProfile'))}</p>
+      <a class="btn" href="#/">${esc(t('product.backToThisShelf'))}</a></div>`;
     return;
   }
 
@@ -2975,78 +4825,78 @@ async function product(root, { id }) {
   const blob = await store.getImage(p.imageId);
   const ingredients = p.ingredients || [];
   const tags = tagsFor(ingredients);
-  const actives = ACTIVE_TAGS.filter(t => tags.has(t));
-  const flags = FLAG_TAGS.filter(t => tags.has(t));
+  const actives = ACTIVE_TAGS.filter(tag => tags.has(tag));
+  const flags = FLAG_TAGS.filter(tag => tags.has(tag));
   const matched = ingredients.filter(i => lookup(i)).length;
 
   const spec = [
-    ['Category', p.category],
-    ['Status', STATUS_LABEL[p.status] || p.status],
-    ['Size', p.size],
-    ['Price', p.price],
-    ['Purchased', fmtDate(p.purchasedAt)],
-    ['Opened', fmtDate(p.openedAt)]
+    [t('product.category'), p.category ? categoryLabel(p.category) : ''],
+    [t('product.status'), statusLabel(p.status)],
+    [t('product.size'), p.size],
+    [t('product.price'), p.price],
+    [t('product.purchased'), fmtDate(p.purchasedAt)],
+    [t('product.opened'), fmtDate(p.openedAt)]
   ].filter(([, v]) => v);
 
   root.innerHTML = `
-    <p class="label muted" style="margin:0 0 32px"><a href="#/">← The shelf</a></p>
+    <p class="label muted" style="margin:0 0 32px"><a href="#/">${esc(t('product.back'))}</a></p>
     <div class="detail">
       <div class="detail-frame">
-        ${blob ? `<img src="${imgUrl(blob)}" alt="${esc(p.name)}">` : '<span class="no-image">No photograph</span>'}
+        ${blob ? `<img src="${imgUrl(blob)}" alt="${esc(p.name)}">` : `<span class="no-image">${esc(t('shelf.noPhoto'))}</span>`}
       </div>
       <div>
         <div class="detail-brand">${esc(p.brand || '—')}</div>
         <h1 class="detail-title">${esc(p.name)}</h1>
 
-        ${actives.length ? `<div class="chips" style="margin-bottom:16px">${actives.map(t => tagChip(t, false)).join('')}</div>` : ''}
-        ${flags.length ? `<div class="chips" style="margin-bottom:32px">${flags.map(t => tagChip(t, true)).join('')}</div>` : ''}
+        ${actives.length ? `<div class="chips" style="margin-bottom:16px">${actives.map(tag => tagChip(tag, false)).join('')}</div>` : ''}
+        ${flags.length ? `<div class="chips" style="margin-bottom:32px">${flags.map(tag => tagChip(tag, true)).join('')}</div>` : ''}
 
         <dl class="spec">
           ${spec.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}
         </dl>
 
         ${p.notes ? `<div class="block">
-          <h2 class="section-title">Notes</h2>
+          <h2 class="section-title">${esc(t('product.notes'))}</h2>
           <p class="prose" style="white-space:pre-wrap;margin:0">${esc(p.notes)}</p>
         </div>` : ''}
 
         <div class="block">
-          <h2 class="section-title">Ingredients ${ingredients.length ? `— ${matched} of ${ingredients.length} annotated` : ''}</h2>
+          <h2 class="section-title">${esc(ingredients.length
+            ? t('product.ingredientsAnnotated', { matched, total: ingredients.length })
+            : t('product.ingredients'))}</h2>
           ${ingredients.length ? `<div class="ing-list">${ingredients.map((name, i) => {
             const entry = lookup(name);
-            const flagged = entry && entry.t.some(t => FLAG_TAGS.includes(t));
+            const flagged = entry && entry.t.some(tag => FLAG_TAGS.includes(tag));
             return `<div class="ing ${entry ? '' : 'ing-unknown'} ${flagged ? 'ing-flagged' : ''}">
               <div class="ing-index">${i + 1}</div>
               <div>
                 <div class="ing-name">${esc(entry ? entry.n : name)}</div>
                 ${entry && entry.n.toLowerCase() !== name.toLowerCase()
                   ? `<div class="tag" style="border:none;margin-top:2px">${esc(name)}</div>` : ''}
-                ${entry ? `<div class="ing-tags">${entry.t.map(t =>
-                    `<span class="tag ${FLAG_TAGS.includes(t) ? 'tag-flag' : ''}">${esc(TAG_LABEL[t] || t)}</span>`).join('')}</div>` : ''}
+                ${entry ? `<div class="ing-tags">${entry.t.map(tag =>
+                    `<span class="tag ${FLAG_TAGS.includes(tag) ? 'tag-flag' : ''}">${esc(tagLabel(tag))}</span>`).join('')}</div>` : ''}
               </div>
-              <div class="ing-fn">${entry ? esc(entry.f) : 'Not in the reference — recorded as written.'}</div>
+              <div class="ing-fn">${esc(entry ? ingredientText(entry) : t('product.notInReference'))}</div>
             </div>`;
           }).join('')}</div>`
-          : '<p class="muted">No ingredient list recorded yet.</p>'}
+          : `<p class="muted">${esc(t('product.noIngredients'))}</p>`}
         </div>
 
         ${others.length ? `<div class="block">
-          <h2 class="section-title">Shared with the household</h2>
-          <p class="muted" style="font-size:13px;margin:0 0 20px">If someone else uses this bottle
-            too, put a copy on their shelf rather than photographing it twice. The two records are
-            separate from then on.</p>
+          <h2 class="section-title">${esc(t('product.shared'))}</h2>
+          <p class="muted" style="font-size:13px;margin:0 0 20px">${esc(t('product.sharedNote'))}</p>
           <div class="btn-row">
             <select id="copy-target" style="background:none;border:none;border-bottom:1px solid var(--rule);padding:4px 0;border-radius:0">
               ${others.map(o => option(o.id, o.name, others[0].id)).join('')}
             </select>
-            <button class="btn btn-quiet" id="copy-across">Copy across</button>
+            <button class="btn btn-quiet" id="copy-across">${esc(t('product.copyAcross'))}</button>
             <span class="field-hint" style="margin:0" id="copy-note"></span>
           </div>
         </div>` : ''}
 
         <div class="block btn-row">
-          <a class="btn" href="#/edit/${esc(p.id)}">Edit</a>
-          <button class="btn btn-quiet btn-danger" id="delete">Remove from library</button>
+          <a class="btn" href="#/edit/${esc(p.id)}">${esc(t('common.edit'))}</a>
+          <button class="btn btn-quiet btn-danger" id="delete">${esc(t('product.delete'))}</button>
         </div>
       </div>
     </div>`;
@@ -3059,7 +4909,7 @@ async function product(root, { id }) {
       copyBtn.disabled = true;
       try {
         await store.copyProductToProfile(p.id, target.value);
-        root.querySelector('#copy-note').textContent = `Copied to ${name}’s shelf.`;
+        root.querySelector('#copy-note').textContent = t('product.copiedTo', { name });
       } catch (err) {
         root.querySelector('#copy-note').textContent = err.message;
       } finally {
@@ -3069,7 +4919,7 @@ async function product(root, { id }) {
   }
 
   root.querySelector('#delete').onclick = async () => {
-    if (!confirm(`Remove ${p.brand ? p.brand + ' ' : ''}${p.name} from the library? This cannot be undone.`)) return;
+    if (!confirm(t('product.confirmDelete', { name: `${p.brand ? p.brand + ' ' : ''}${p.name}` }))) return;
     await store.deleteProduct(p.id);
     location.hash = '#/';
   };
@@ -3083,8 +4933,8 @@ async function form(root, { id } = {}) {
   const editing = Boolean(id);
   const p = editing ? await store.getProduct(id) : null;
   if (editing && !p) {
-    root.innerHTML = `<div class="empty"><p>That product is no longer in the library.</p>
-      <a class="btn" href="#/">Return to the shelf</a></div>`;
+    root.innerHTML = `<div class="empty"><p>${esc(t('product.gone'))}</p>
+      <a class="btn" href="#/">${esc(t('chrome.backToShelf'))}</a></div>`;
     return;
   }
 
@@ -3100,49 +4950,47 @@ async function form(root, { id } = {}) {
   root.innerHTML = `
     <div class="view-head">
       ${headerArt('add')}
-      <h1 class="page-title">${editing ? 'Edit product' : 'Add a product'}</h1>
+      <h1 class="page-title">${esc(editing ? t('form.editTitle') : t('form.addTitle'))}</h1>
     </div>
 
     <form class="form-grid" id="product-form" autocomplete="off">
       <div>
         ${dropzoneMarkup('photo')}
         <div class="btn-row" style="margin-top:16px">
-          <button type="button" class="btn btn-quiet" id="autofill" ${AI_FEATURES && settings.apiKey ? '' : 'hidden'}>Read the label</button>
+          <button type="button" class="btn btn-quiet" id="autofill" ${AI_FEATURES && settings.apiKey ? '' : 'hidden'}>${esc(t('form.readLabel'))}</button>
         </div>
-        <p class="field-hint" id="photo-hint">${AI_FEATURES && settings.apiKey
-          ? 'Reads brand, name and ingredients off a photograph of the packaging. If the ingredient '
-            + 'print is not legible, it searches the web for the product’s published list instead.'
-          : 'Photographs are resized and kept in this browser.'}</p>
+        <p class="field-hint" id="photo-hint">${esc(AI_FEATURES && settings.apiKey
+          ? t('form.readLabelHint') : t('form.photoHint'))}</p>
       </div>
 
       <div>
         <div class="field-pair">
           <div class="field">
-            <label for="brand">Brand</label>
+            <label for="brand">${esc(t('form.brand'))}</label>
             <input type="text" id="brand" value="${esc(p?.brand)}">
           </div>
           <div class="field">
-            <label for="name">Product name</label>
+            <label for="name">${esc(t('form.name'))}</label>
             <input type="text" id="name" required value="${esc(p?.name)}">
           </div>
         </div>
 
         <div class="field-pair">
           <div class="field">
-            <label for="category">Category</label>
-            <select id="category">${CATEGORIES.map(c => option(c, c, p?.category || 'Serum')).join('')}</select>
+            <label for="category">${esc(t('product.category'))}</label>
+            <select id="category">${CATEGORIES.map(c => option(c, categoryLabel(c), p?.category || 'Serum')).join('')}</select>
           </div>
           <div class="field">
-            <label for="status">Status</label>
-            <select id="status">${STATUSES.map(s => option(s, STATUS_LABEL[s], p?.status || 'active')).join('')}</select>
+            <label for="status">${esc(t('product.status'))}</label>
+            <select id="status">${STATUSES.map(x => option(x, statusLabel(x), p?.status || 'active')).join('')}</select>
           </div>
         </div>
 
         <div class="field">
-          <label for="ingredients">Ingredients</label>
-          <textarea id="ingredients" placeholder="Paste the list straight from the packaging. Commas are enough.">${esc((p?.ingredients || []).join(', '))}</textarea>
+          <label for="ingredients">${esc(t('product.ingredients'))}</label>
+          <textarea id="ingredients" placeholder="${esc(t('form.ingredientsPlaceholder'))}">${esc((p?.ingredients || []).join(', '))}</textarea>
           <div class="btn-row" style="margin-top:12px">
-            <button type="button" class="btn btn-quiet" id="lookup" ${AI_FEATURES && settings.apiKey ? '' : 'hidden'}>Look these up online</button>
+            <button type="button" class="btn btn-quiet" id="lookup" ${AI_FEATURES && settings.apiKey ? '' : 'hidden'}>${esc(t('form.lookUp'))}</button>
           </div>
           <div class="field-hint" id="parse-summary"></div>
           <div class="chips" id="parse-chips" style="margin-top:12px"></div>
@@ -3150,34 +4998,34 @@ async function form(root, { id } = {}) {
 
         <div class="field-pair">
           <div class="field">
-            <label for="size">Size</label>
+            <label for="size">${esc(t('product.size'))}</label>
             <input type="text" id="size" placeholder="50 ml" value="${esc(p?.size)}">
           </div>
           <div class="field">
-            <label for="price">Price</label>
+            <label for="price">${esc(t('product.price'))}</label>
             <input type="text" id="price" placeholder="£38" value="${esc(p?.price)}">
           </div>
         </div>
 
         <div class="field-pair">
           <div class="field">
-            <label for="purchasedAt">Purchased</label>
+            <label for="purchasedAt">${esc(t('product.purchased'))}</label>
             <input type="date" id="purchasedAt" value="${esc(p?.purchasedAt)}">
           </div>
           <div class="field">
-            <label for="openedAt">Opened</label>
+            <label for="openedAt">${esc(t('product.opened'))}</label>
             <input type="date" id="openedAt" value="${esc(p?.openedAt)}">
           </div>
         </div>
 
         <div class="field">
-          <label for="notes">Notes</label>
-          <textarea id="notes" placeholder="How it wears, what it sits well under, whether you would buy it again.">${esc(p?.notes)}</textarea>
+          <label for="notes">${esc(t('product.notes'))}</label>
+          <textarea id="notes" placeholder="${esc(t('form.notesPlaceholder'))}">${esc(p?.notes)}</textarea>
         </div>
 
         <div class="btn-row">
-          <button type="submit" class="btn">${editing ? 'Save changes' : 'Add to the library'}</button>
-          <a class="btn btn-quiet" href="${editing ? '#/product/' + esc(id) : '#/'}">Cancel</a>
+          <button type="submit" class="btn">${esc(editing ? t('form.submitEdit') : t('form.submitAdd'))}</button>
+          <a class="btn btn-quiet" href="${editing ? '#/product/' + esc(id) : '#/'}">${esc(t('common.cancel'))}</a>
           <span class="field-hint" id="form-error" style="margin:0;color:var(--amber)"></span>
         </div>
       </div>
@@ -3189,7 +5037,7 @@ async function form(root, { id } = {}) {
     zone.querySelectorAll('img').forEach(n => n.remove());
     const img = document.createElement('img');
     img.src = imgUrl(blob);
-    img.alt = 'Selected photograph';
+    img.alt = t('form.selectedPhoto');
     zone.appendChild(img);
   };
   if (existingBlob) showPhoto(existingBlob);
@@ -3210,11 +5058,11 @@ async function form(root, { id } = {}) {
     const known = list.filter(i => lookup(i));
     const tags = tagsFor(list);
     summary.textContent = list.length
-      ? `${list.length} ingredients read, ${known.length} recognised.`
-      : 'Nothing read yet.';
+      ? t('form.parsed', { n: list.length, known: known.length })
+      : t('form.parsedNone');
     chips.innerHTML = [
-      ...ACTIVE_TAGS.filter(t => tags.has(t)).map(t => tagChip(t, false)),
-      ...FLAG_TAGS.filter(t => tags.has(t)).map(t => tagChip(t, true))
+      ...ACTIVE_TAGS.filter(tag => tags.has(tag)).map(tag => tagChip(tag, false)),
+      ...FLAG_TAGS.filter(tag => tags.has(tag)).map(tag => tagChip(tag, true))
     ].join('');
   };
   ingField.addEventListener('input', refreshParse);
@@ -3243,25 +5091,21 @@ async function form(root, { id } = {}) {
     const name = root.querySelector('#name').value.trim();
     if (!name && !brand) return null;
 
-    hint.innerHTML = `${lead}Looking up ${esc([brand, name].filter(Boolean).join(' '))}${dots()}`;
+    hint.innerHTML = `${lead}${esc(t('common.lookingUp'))} ${esc([brand, name].filter(Boolean).join(' '))}${dots()}`;
     const found = await lookupIngredients({ brand, name });
 
     if (!found.ingredients.length) {
       hint.textContent = found.searchRan
-        ? 'Searched the web and could not find an ingredient list for this product. '
-          + 'Check the brand and product name are right, or photograph the back of the pack.'
-        : 'No ingredient list could be found for this product, on the web or from memory. '
-          + 'Check the brand and product name are right, or photograph the back of the pack.';
+        ? t('form.lookupFailedSearched')
+        : t('form.lookupFailedNoSearch');
       return found;
     }
 
     const count = merge(found.ingredients);
     const note = found.note ? esc(found.note) + ' ' : '';
     hint.innerHTML = found.grounded
-      ? `Found ${count} ingredients online — <strong>not read off your pack</strong>, so check them against it. ${note}${sourceLinks(found)}`
-      : `Found ${count} ingredients, but <strong>web search was unavailable</strong>, so these came from the
-         model’s memory rather than a source. Formulations change — check them against your pack
-         carefully before trusting them. ${note}`;
+      ? t('form.foundOnline', { n: count }) + note + sourceLinks(found)
+      : t('form.foundFromMemory', { n: count }) + note;
     return found;
   };
 
@@ -3269,10 +5113,10 @@ async function form(root, { id } = {}) {
   const lookupBtn = root.querySelector('#lookup');
   if (lookupBtn) {
     lookupBtn.onclick = async () => {
-      const restore = waiting(lookupBtn, 'Looking up');
+      const restore = waiting(lookupBtn, t('common.lookingUp'));
       try {
         const done = await lookupInto(hint);
-        if (!done) hint.textContent = 'Type a brand or product name first — that is what gets looked up.';
+        if (!done) hint.textContent = t('form.needBrandOrName');
       } catch (err) {
         hint.textContent = err.message;
       } finally {
@@ -3290,10 +5134,10 @@ async function form(root, { id } = {}) {
       const blob = originalFile
         ? await store.resizeImage(originalFile, 2400, 0.92)
         : (await pendingPhoto()) || existingBlob;
-      if (!blob) { hint.textContent = 'Add a photograph of the packaging first.'; return; }
+      if (!blob) { hint.textContent = t('form.needPhoto'); return; }
 
-      const restore = waiting(autofillBtn, 'Reading');
-      hint.innerHTML = `Reading the photograph${dots()}`;
+      const restore = waiting(autofillBtn, t('common.reading'));
+      hint.innerHTML = `${esc(t('form.readingPhoto'))}${dots()}`;
 
       try {
         const read = await readLabel(blob);
@@ -3312,17 +5156,12 @@ async function form(root, { id } = {}) {
         }
 
         if (read.ingredients?.length) {
-          hint.textContent = `Read ${merge(read.ingredients)} ingredients off the pack. `
-            + 'Check them before saving.';
+          hint.textContent = t('form.readOff', { n: merge(read.ingredients) });
         } else {
           /* Nothing legible on the pack — go and look the product up instead,
              which is the whole point of having read the brand and name first. */
-          const done = await lookupInto(hint, 'No list visible on the pack. ');
-          if (!done) {
-            hint.textContent = 'No ingredient list was legible in that photograph, and there is no '
-              + 'brand or product name to look one up by. Type either in, or photograph the front '
-              + 'of the pack first.';
-          }
+          const done = await lookupInto(hint, t('form.noListOnPack') + ' ');
+          if (!done) hint.textContent = t('form.nothingToLookUp');
         }
       } catch (err) {
         hint.textContent = err.message;
@@ -3336,7 +5175,7 @@ async function form(root, { id } = {}) {
     ev.preventDefault();
     const val = sel => root.querySelector(sel).value.trim();
     const error = root.querySelector('#form-error');
-    if (!val('#name')) { error.textContent = 'A product name is needed.'; return; }
+    if (!val('#name')) { error.textContent = t('form.needName'); return; }
 
     const pendingBlob = await pendingPhoto();
     let imageId = p?.imageId || null;
@@ -3378,16 +5217,15 @@ function renderResult(result, productsById) {
   const extras = [];
 
   if (result.degraded) {
-    extras.push(`<div class="notice"><strong>Read offline</strong> — the model could not be
-      reached (${esc(result.degraded)}), so this is the rules-based reading from your answers.</div>`);
+    extras.push(`<div class="notice">${t('assess.degraded', { why: esc(result.degraded) })}</div>`);
   }
   if (result.photoUsed && result.photoUsable === false && result.photoNote) {
-    extras.push(`<div class="notice"><strong>The photograph is hard to judge</strong> — ${esc(result.photoNote)}</div>`);
+    extras.push(`<div class="notice">${t('assess.photoHard', { note: esc(result.photoNote) })}</div>`);
   }
 
   const observations = (result.observations || []).length ? `
     <div class="block" style="margin-top:0">
-      <h2 class="section-title">What is visible</h2>
+      <h2 class="section-title">${esc(t('assess.visible'))}</h2>
       <div class="reading">
         ${result.observations.map(o => `
           <div class="reading-row" style="grid-template-columns:minmax(0,1fr) minmax(0,2fr)">
@@ -3399,7 +5237,7 @@ function renderResult(result, productsById) {
 
   const working = (result.working || []).length ? `
     <div class="block">
-      <h2 class="section-title">Earning its place</h2>
+      <h2 class="section-title">${esc(t('assess.working'))}</h2>
       <ul class="prose" style="margin:0;padding-left:18px">
         ${result.working.map(w => `<li style="margin-bottom:8px">${esc(w)}</li>`).join('')}
       </ul>
@@ -3407,7 +5245,7 @@ function renderResult(result, productsById) {
 
   const changes = (result.changes || []).length ? `
     <div class="block">
-      <h2 class="section-title">What to change</h2>
+      <h2 class="section-title">${esc(t('assess.changes'))}</h2>
       <div class="reading">
         ${result.changes.map(c => `
           <div class="reading-row" style="grid-template-columns:minmax(0,1fr) minmax(0,1.4fr)">
@@ -3428,7 +5266,7 @@ function renderResultBody(result, productsById, extras, observations, working, c
         <div class="step-label">${esc(s.step)}</div>
         ${s.productId && productsById[s.productId]
           ? `<div class="step-product"><a href="#/product/${esc(s.productId)}">${esc(productsById[s.productId].brand || '')} ${esc(productsById[s.productId].name)}</a></div>`
-          : '<div class="step-product step-empty">Nothing suitable on the shelf</div>'}
+          : `<div class="step-product step-empty">${esc(t('assess.nothingSuitable'))}</div>`}
         <div class="step-note">${esc(s.note || '')}</div>
       </div>
     </div>`).join('');
@@ -3439,35 +5277,35 @@ function renderResultBody(result, productsById, extras, observations, working, c
     ${observations}
 
     <div class="block">
-      <h2 class="section-title">The reading</h2>
+      <h2 class="section-title">${esc(t('assess.theReading'))}</h2>
       ${result.concerns.length ? `<div class="reading">${result.concerns.map(c => `
         <div class="reading-row">
           <div>${esc(c.label)}</div>
-          <div class="severity ${c.severity === 'marked' ? 'severity-marked' : ''}">${esc(SEVERITY_LABEL[c.severity])}</div>
+          <div class="severity ${c.severity === 'marked' ? 'severity-marked' : ''}">${esc(severityLabel(c.severity))}</div>
           <div class="reading-note">${esc(c.evidence)}</div>
         </div>`).join('')}</div>`
-        : '<p class="muted">Nothing stands out from your answers. Keep to what is working.</p>'}
+        : `<p class="muted">${esc(t('assess.nothingStands'))}</p>`}
     </div>
 
     ${working}
     ${changes}
 
     <div class="block">
-      <h2 class="section-title">The routine this suggests</h2>
+      <h2 class="section-title">${esc(t('assess.suggests'))}</h2>
       <div class="routine-cols">
         <div>
-          <h3 class="step-label" style="margin-bottom:8px">Morning</h3>
-          ${period('am') || '<p class="muted">No morning routine could be built from the shelf.</p>'}
+          <h3 class="step-label" style="margin-bottom:8px">${esc(t('common.morning'))}</h3>
+          ${period('am') || `<p class="muted">${esc(t('assess.noMorning'))}</p>`}
         </div>
         <div>
-          <h3 class="step-label" style="margin-bottom:8px">Evening</h3>
-          ${period('pm') || '<p class="muted">No evening routine could be built from the shelf.</p>'}
+          <h3 class="step-label" style="margin-bottom:8px">${esc(t('common.evening'))}</h3>
+          ${period('pm') || `<p class="muted">${esc(t('assess.noEvening'))}</p>`}
         </div>
       </div>
     </div>
 
     ${result.gaps.length ? `<div class="block">
-      <h2 class="section-title">What is missing</h2>
+      <h2 class="section-title">${esc(t('assess.missing'))}</h2>
       ${result.gaps.map(g => `<div class="notice"><strong>${esc(g.category)}</strong> — ${esc(g.reason)}</div>`).join('')}
     </div>` : ''}`;
 }
@@ -3484,22 +5322,22 @@ async function assess(root, { id } = {}) {
   if (id) {
     const record = history.find(a => a.id === id);
     if (!record) {
-      root.innerHTML = `<div class="empty"><p>That assessment is no longer kept.</p>
-        <a class="btn" href="#/assess">Back to assessment</a></div>`;
+      root.innerHTML = `<div class="empty"><p>${esc(t('assess.gone'))}</p>
+        <a class="btn" href="#/assess">${esc(t('assess.back'))}</a></div>`;
       return;
     }
     const blob = await store.getImage(record.photoId);
     root.innerHTML = `
-      <p class="label muted" style="margin:0 0 32px"><a href="#/assess">← Assessment</a></p>
+      <p class="label muted" style="margin:0 0 32px"><a href="#/assess">${esc(t('assess.back'))}</a></p>
       <div class="view-head">${headerArt('assess')}<h1 class="page-title">${esc(fmtStampTime(record.date))}</h1>
-        <button class="btn btn-quiet btn-danger" id="del-assessment">Remove this record</button></div>
+        <button class="btn btn-quiet btn-danger" id="del-assessment">${esc(t('assess.removeRecord'))}</button></div>
       <div class="assess-grid">
         <div>${blob ? `<div class="shelf-frame"><img src="${imgUrl(blob)}" alt="Skin, ${esc(fmtStamp(record.date))}"></div>`
-          : '<div class="shelf-frame"><span class="no-image">No photograph</span></div>'}</div>
+          : `<div class="shelf-frame"><span class="no-image">${esc(t('shelf.noPhoto'))}</span></div>`}</div>
         <div>${renderResult(record.result, productsById)}</div>
       </div>`;
     root.querySelector('#del-assessment').onclick = async () => {
-      if (!confirm('Remove this assessment and its photograph?')) return;
+      if (!confirm(t('assess.confirmRemove'))) return;
       await store.deleteAssessment(record.id);
       location.hash = '#/assess';
     };
@@ -3510,7 +5348,7 @@ async function assess(root, { id } = {}) {
      mean losing your place on the page. */
   const historyMarkup = history.length ? `
     <div class="block">
-      <h2 class="block-title">Previous readings — ${history.length}</h2>
+      <h2 class="block-title">${esc(t('assess.previous', { n: history.length }))}</h2>
       <div class="history">
         ${history.map(a => `
           <div class="history-item">
@@ -3519,7 +5357,7 @@ async function assess(root, { id } = {}) {
               <span class="history-date">${esc(fmtStampTime(a.date))}</span>
               <span class="muted grow">${a.result.concerns.length
                 ? esc(a.result.concerns.slice(0, 3).map(c => c.label).join(', '))
-                : 'Nothing marked'}</span>
+                : esc(t('assess.nothingMarked'))}</span>
               <span class="history-mark" aria-hidden="true">+</span>
             </button>
             <div class="history-body" id="past-${esc(a.id)}" hidden></div>
@@ -3530,27 +5368,26 @@ async function assess(root, { id } = {}) {
   root.innerHTML = `
     <div class="view-head">
       ${headerArt('assess')}
-      <h1 class="page-title">Assessment</h1>
+      <h1 class="page-title">${esc(t('assess.title'))}</h1>
       <div class="btn-row">
-        <button class="btn btn-quiet" id="brief-here">Copy briefing for another assistant</button>
+        <button class="btn btn-quiet" id="brief-here">${esc(t('assess.copyBriefing'))}</button>
         <span class="field-hint" style="margin:0" id="brief-here-note"></span>
       </div>
     </div>
     <div class="assess-grid">
       <div>
-        ${dropzoneMarkup('skin-photo', 'A photograph of your skin')}
-        <p class="field-hint">Even daylight, no makeup, the same angle each time. Kept in this
-          browser so you can compare one month against the next.</p>
+        ${dropzoneMarkup('skin-photo', t('assess.photoPrompt'))}
+        <p class="field-hint">${esc(t('assess.photoHint'))}</p>
         ${AI_FEATURES && keyConfigured ? `
           <div class="choices" style="margin-top:20px">
             <input type="checkbox" id="send-photo" ${sendPhotoDefault ? 'checked' : ''}>
-            <label for="send-photo">Let the model look at it</label>
+            <label for="send-photo">${esc(t('assess.letModelLook'))}</label>
           </div>`
         : ''}
       </div>
       <div>
         <form id="assess-form">
-          ${QUESTIONS.map(q => `
+          ${questions().map(q => `
             <div class="field">
               <label>${esc(q.label)}</label>
               <div class="choices">
@@ -3561,8 +5398,8 @@ async function assess(root, { id } = {}) {
               </div>
             </div>`).join('')}
           <div class="btn-row">
-            <button type="submit" class="btn">Read my skin</button>
-            <span class="field-hint" style="margin:0">Answers and photograph stay on this machine.</span>
+            <button type="submit" class="btn">${esc(t('assess.submit'))}</button>
+            <span class="field-hint" style="margin:0">${esc(t('assess.staysHere'))}</span>
           </div>
         </form>
       </div>
@@ -3578,7 +5415,7 @@ async function assess(root, { id } = {}) {
         zone.querySelectorAll('img').forEach(n => n.remove());
         const img = document.createElement('img');
         img.src = imgUrl(blob);
-        img.alt = 'Skin photograph';
+        img.alt = t('assess.skinPhotoAlt');
         zone.appendChild(img);
         return blob;
       })
@@ -3606,11 +5443,11 @@ async function assess(root, { id } = {}) {
           ${photo ? `<div class="history-photo"><img src="${imgUrl(photo)}" alt=""></div>` : ''}
           ${renderResult(record.result, productsById)}
           <div class="btn-row" style="margin-bottom:32px">
-            <button class="btn btn-quiet btn-danger" data-forget="${esc(id)}">Remove this record</button>
+            <button class="btn btn-quiet btn-danger" data-forget="${esc(id)}">${esc(t('assess.removeRecord'))}</button>
           </div>`;
         body.dataset.filled = '1';
         body.querySelector('[data-forget]').onclick = async () => {
-          if (!confirm('Remove this assessment and its photograph?')) return;
+          if (!confirm(t('assess.confirmRemove'))) return;
           await store.deleteAssessment(id);
           assess(root);
         };
@@ -3626,9 +5463,7 @@ async function assess(root, { id } = {}) {
     const briefNote = root.querySelector('#brief-here-note');
     try {
       const { copied } = await copyBriefing();
-      briefNote.textContent = copied
-        ? 'Copied. Paste it alongside your photograph.'
-        : 'Could not reach the clipboard — try Settings.';
+      briefNote.textContent = copied ? t('assess.briefingCopied') : t('assess.briefingFailed');
     } catch (err) {
       briefNote.textContent = err.message;
     }
@@ -3638,14 +5473,14 @@ async function assess(root, { id } = {}) {
     ev.preventDefault();
     const fd = new FormData(ev.target);
     const answers = {};
-    for (const q of QUESTIONS) {
+    for (const q of questions()) {
       answers[q.key] = q.multi ? fd.getAll(q.key) : (fd.get(q.key) || '');
     }
 
     const photoBlob = photoJob ? await photoJob : null;
     const sendPhoto = Boolean(root.querySelector('#send-photo')?.checked);
     const submit = ev.target.querySelector('button[type="submit"]');
-    const restore = submit ? waiting(submit, 'Reading') : () => {};
+    const restore = submit ? waiting(submit, t('common.reading')) : () => {};
 
     let result;
     try {
@@ -3672,8 +5507,8 @@ async function assess(root, { id } = {}) {
     const out = root.querySelector('#assess-result');
     out.innerHTML = `<div class="block">${renderResult(result, productsById)}
       <div class="btn-row">
-        <button class="btn" id="adopt">Adopt this as my routine</button>
-        <span class="field-hint" style="margin:0" id="adopt-note">Kept in your archive as of today.</span>
+        <button class="btn" id="adopt">${esc(t('assess.adopt'))}</button>
+        <span class="field-hint" style="margin:0" id="adopt-note">${esc(t('assess.archived'))}</span>
       </div></div>`;
     out.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
@@ -3682,7 +5517,7 @@ async function assess(root, { id } = {}) {
         .filter(s => s.productId)
         .map(s => ({ step: s.stepKey || null, productId: s.productId }));
       await store.setRoutine({ am: entries('am'), pm: entries('pm') });
-      out.querySelector('#adopt-note').textContent = 'Saved. It is now under Routine.';
+      out.querySelector('#adopt-note').textContent = t('assess.adopted');
     };
   };
 }
@@ -3697,9 +5532,9 @@ async function routine(root) {
   const byId = Object.fromEntries(products.map(p => [p.id, p]));
 
   if (!products.length) {
-    root.innerHTML = `<div class="view-head">${headerArt('routine')}<h1 class="page-title">Routine</h1></div>
-      <div class="empty"><p>A routine is assembled from what is on the shelf. Add a product first.</p>
-      <a class="btn" href="#/add">Add a product</a></div>`;
+    root.innerHTML = `<div class="view-head">${headerArt('routine')}<h1 class="page-title">${esc(t('routine.title'))}</h1></div>
+      <div class="empty"><p>${esc(t('routine.emptyShelf'))}</p>
+      <a class="btn" href="#/add">${esc(t('shelf.add'))}</a></div>`;
     return;
   }
 
@@ -3714,7 +5549,7 @@ async function routine(root) {
   let openComplete = false;
   let dirty = false;
   let message = '';
-  const saveNote = () => (dirty ? 'Unsaved changes.' : message);
+  const saveNote = () => (dirty ? t('routine.unsaved') : message);
 
   /* ---------- the week, one day at a time ----------
 
@@ -3756,7 +5591,7 @@ async function routine(root) {
       const taken = new Set(already.map(e => e.productId));
       const candidates = products.filter(p => step.categories.includes(p.category) && !taken.has(p.id));
       if (!candidates.length) return '';
-      return `<optgroup label="${esc(step.label)}">${candidates.map(p =>
+      return `<optgroup label="${esc(stepLabel(step))}">${candidates.map(p =>
         `<option value="${esc(step.key)}|${esc(p.id)}">${esc(productLabel(p))}</option>`).join('')}</optgroup>`;
     }).join('');
 
@@ -3765,7 +5600,7 @@ async function routine(root) {
       <span class="picker-step" style="min-width:110px"></span>
       <span class="grow">
         <select class="inline-select" data-dayadd="${esc(period)}|${day}">
-          <option value="">＋ add a product</option>${groups}
+          <option value="">${esc(t('routine.addProduct'))}</option>${groups}
         </select>
       </span>
     </div>`;
@@ -3776,22 +5611,22 @@ async function routine(root) {
   const scheduleOf = (entry, day) => {
     if (isEveryDay(entry)) return '';
     const days = daysOf(entry);
-    return days.length === 1 && days[0] === day ? 'This day only' : describeDays(entry);
+    return days.length === 1 && days[0] === day ? t('routine.thisDayOnly') : describeDays(entry);
   };
 
   const dayColumn = (period, title, day) => {
     const rows = entriesOn(period, day).map(({ entry, step }) => `
       <div class="picker-row">
-        <span class="picker-step" style="min-width:110px">${esc(step.label)}</span>
+        <span class="picker-step" style="min-width:110px">${esc(stepLabel(step))}</span>
         <span class="grow">${esc(productLabel(byId[entry.productId]))}</span>
         <span class="picker-step">${esc(scheduleOf(entry, day))}</span>
-        <button class="link-btn" data-dayoff="${esc(period)}|${esc(step.key)}|${esc(entry.productId)}|${day}">Remove</button>
+        <button class="link-btn" data-dayoff="${esc(period)}|${esc(step.key)}|${esc(entry.productId)}|${day}">${esc(t('common.remove'))}</button>
       </div>`).join('');
 
     return `<div>
       <h3 class="section-title">${esc(title)}</h3>
       <div class="picker">
-        ${rows || '<div class="picker-row"><span class="grow muted">Nothing on this day</span></div>'}
+        ${rows || `<div class="picker-row"><span class="grow muted">${esc(t('routine.nothingOnDay'))}</span></div>`}
         ${dayAdder(period, day)}
       </div>
     </div>`;
@@ -3810,9 +5645,9 @@ async function routine(root) {
               data-openday="${day}" aria-pressed="${chosen}" aria-controls="day-detail">
       <span class="day-card-name">${esc(label)}</span>
       <span class="day-card-foot">
-        ${day === todayIndex ? '<span class="day-card-today">Today</span>' : ''}
-        <span class="day-card-count">${count ? `${count} step${count === 1 ? '' : 's'}` : 'Nothing yet'}</span>
-        ${clashes.length ? '<span class="day-card-clash">Take care</span>' : ''}
+        ${day === todayIndex ? `<span class="day-card-today">${esc(t('common.today'))}</span>` : ''}
+        <span class="day-card-count">${esc(count ? plural(count, 'routine.stepsOne', 'routine.stepsMany') : t('routine.nothingYet'))}</span>
+        ${clashes.length ? `<span class="day-card-clash">${esc(t('common.takeCare'))}</span>` : ''}
       </span>
     </button>`;
   };
@@ -3822,14 +5657,14 @@ async function routine(root) {
     const notes = [...conflictsFor(onDay('am', day), 'am'), ...conflictsFor(onDay('pm', day), 'pm')];
     return `<div class="day-body" id="day-detail">
       <div class="routine-cols">
-        ${dayColumn('am', 'Morning', day)}
-        ${dayColumn('pm', 'Evening', day)}
+        ${dayColumn('am', t('common.morning'), day)}
+        ${dayColumn('pm', t('common.evening'), day)}
       </div>
       ${notes.map(n => `<div class="notice" style="margin-top:24px">
-          <strong>${n.severity === 'high' ? 'Take care' : n.severity === 'medium' ? 'Consider' : 'Note'}</strong>
+          <strong>${esc(severityWord(n.severity))}</strong>
           ${esc(n.text)}</div>`).join('')}
       <div class="btn-row day-save">
-        <button class="btn btn-lg" data-save>Save routine</button>
+        <button class="btn btn-lg" data-save>${esc(t('routine.save'))}</button>
         <span class="field-hint" style="margin:0">${esc(saveNote())}</span>
       </div>
     </div>`;
@@ -3845,10 +5680,10 @@ async function routine(root) {
                 data-days="${esc(id)}">${esc(describeDays(entry))}</button>`;
     }
     return `<span class="day-picker">
-      ${DAYS.map((label, i) => `
+      ${days().map((label, i) => `
         <button class="day${chosen.has(i) ? ' is-on' : ''}"
                 data-day="${esc(id)}|${i}" title="${esc(label)}">${esc(label[0])}</button>`).join('')}
-      <button class="link-btn" data-days="${esc(id)}">Done</button>
+      <button class="link-btn" data-days="${esc(id)}">${esc(t('routine.done'))}</button>
     </span>`;
   };
 
@@ -3862,27 +5697,27 @@ async function routine(root) {
       const p = byId[entry.productId];
       if (!p) return '';
       return `<div class="picker-row">
-        <span class="picker-step" style="min-width:110px">${i === 0 ? esc(step.label) : ''}</span>
+        <span class="picker-step" style="min-width:110px">${i === 0 ? esc(stepLabel(step)) : ''}</span>
         <span class="grow">${esc(productLabel(p))}</span>
         ${dayToggles(period, entry.productId, step.key, entry)}
-        ${i > 0 ? `<button class="link-btn" data-up="${esc(period)}|${esc(step.key)}|${i}">Move up</button>` : ''}
-        <button class="link-btn" data-drop="${esc(period)}|${esc(entry.productId)}|${esc(step.key)}">Remove</button>
+        ${i > 0 ? `<button class="link-btn" data-up="${esc(period)}|${esc(step.key)}|${i}">${esc(t('routine.moveUp'))}</button>` : ''}
+        <button class="link-btn" data-drop="${esc(period)}|${esc(entry.productId)}|${esc(step.key)}">${esc(t('common.remove'))}</button>
       </div>`;
     }).join('');
 
     const adder = canAdd
       ? `<div class="picker-row">
-          <span class="picker-step" style="min-width:110px">${chosen.length ? '' : esc(step.label)}</span>
+          <span class="picker-step" style="min-width:110px">${chosen.length ? '' : esc(stepLabel(step))}</span>
           <span class="grow">
             <select class="inline-select step-add" data-add="${esc(period)}|${esc(step.key)}">
-              ${option('', chosen.length ? '＋ add another' : '—', '')}
+              ${option('', chosen.length ? t('routine.addAnother') : '—', '')}
               ${candidates.map(p => option(p.id, productLabel(p), '')).join('')}
             </select>
           </span>
         </div>`
       : (chosen.length ? '' : `<div class="picker-row">
-          <span class="picker-step" style="min-width:110px">${esc(step.label)}</span>
-          <span class="grow muted">Nothing in this category</span>
+          <span class="picker-step" style="min-width:110px">${esc(stepLabel(step))}</span>
+          <span class="grow muted">${esc(t('routine.nothingInCategory'))}</span>
         </div>`);
 
     return rows + adder;
@@ -3901,31 +5736,29 @@ async function routine(root) {
     root.innerHTML = `
       <div class="view-head">
         ${headerArt('routine')}
-        <h1 class="page-title">Routine</h1>
+        <h1 class="page-title">${esc(t('routine.title'))}</h1>
       </div>
 
       <div class="block" style="margin-top:0">
-        <h2 class="block-title">Your week</h2>
-        <p class="muted" style="font-size:13px;margin:0 0 24px">Choose a day to see what you are
-          using and change it. What you add belongs to that day alone — the rest of the week
-          keeps whatever it had.</p>
-        <div class="week-strip">${DAYS.map((label, day) => dayCard(label, day)).join('')}</div>
+        <h2 class="block-title">${esc(t('routine.yourWeek'))}</h2>
+        <p class="muted" style="font-size:13px;margin:0 0 24px">${esc(t('routine.weekHint'))}</p>
+        <div class="week-strip">${days().map((label, day) => dayCard(label, day)).join('')}</div>
         ${dayDetail(openDay)}
       </div>
 
       <div class="block">
         <button class="day-head" id="open-complete" aria-expanded="${openComplete}" aria-controls="complete">
-          <span class="week-day">Complete routine</span>
-          <span class="grow muted">Every step, and which days each product is used</span>
+          <span class="week-day">${esc(t('routine.complete'))}</span>
+          <span class="grow muted">${esc(t('routine.completeHint'))}</span>
           <span class="history-mark" aria-hidden="true">${openComplete ? '–' : '+'}</span>
         </button>
         ${openComplete ? `<div class="day-body" id="complete">
           <div class="routine-cols">
-            ${column('am', 'Morning')}
-            ${column('pm', 'Evening')}
+            ${column('am', t('common.morning'))}
+            ${column('pm', t('common.evening'))}
           </div>
           <div class="btn-row day-save">
-            <button class="btn btn-lg" data-save>Save routine</button>
+            <button class="btn btn-lg" data-save>${esc(t('routine.save'))}</button>
             <span class="field-hint" style="margin:0">${esc(saveNote())}</span>
           </div>
         </div>` : ''}
@@ -3939,16 +5772,16 @@ async function routine(root) {
         for (let day = 0; day < 7; day++) {
           for (const note of conflictsFor(onDay(period, day), period)) {
             if (!byText.has(note.text)) byText.set(note.text, { ...note, days: [] });
-            byText.get(note.text).days.push(DAYS[day]);
+            byText.get(note.text).days.push(dayLabel(day));
           }
         }
         const notes = [...byText.values()];
         const anything = draft[period].length;
         root.querySelector(`#conflicts-${period}`).innerHTML = notes.length
-          ? `<h3 class="section-title">Worth knowing</h3>${notes.map(n =>
-              `<div class="notice"><strong>${n.severity === 'high' ? 'Take care' : n.severity === 'medium' ? 'Consider' : 'Note'}</strong>
-                ${n.days.length === 7 ? '' : `<em>${esc(n.days.join(', '))}</em> — `}${esc(n.text)}</div>`).join('')}`
-          : (anything ? '<p class="muted" style="font-size:13px">Nothing conflicts on any day.</p>' : '');
+          ? `<h3 class="section-title">${esc(t('routine.worthKnowing'))}</h3>${notes.map(n =>
+              `<div class="notice"><strong>${esc(severityWord(n.severity))}</strong>
+                ${n.days.length === 7 ? '' : `<em>${esc(n.days.join(' · '))}</em> — `}${esc(n.text)}</div>`).join('')}`
+          : (anything ? `<p class="muted" style="font-size:13px">${esc(t('routine.noConflicts'))}</p>` : '');
       }
     }
     wire();
@@ -4058,7 +5891,7 @@ async function routine(root) {
       btn.onclick = async () => {
         await store.setRoutine({ am: draft.am, pm: draft.pm });
         dirty = false;
-        message = 'Saved.';
+        message = t('common.saved');
         draw();
       };
     });
@@ -4141,16 +5974,14 @@ async function discoveries(root) {
 
   if (!AI_FEATURES || !apiKey) {
     root.innerHTML = `
-      <div class="view-head">${headerArt('discoveries')}<h1 class="page-title">Discoveries</h1></div>
+      <div class="view-head">${headerArt('discoveries')}<h1 class="page-title">${esc(t('disc.title'))}</h1></div>
       <div class="empty">
-        <p>This looks for Japanese and Korean products that suit your latest reading and fill a
-           gap on your shelf.</p>
+        <p>${esc(t('disc.intro'))}</p>
         ${AI_FEATURES
-          ? `<p>It needs a model connected under Settings.</p>
-             <a class="btn" href="#/settings">Connect one</a>`
-          : `<p>This copy of the library does not talk to any model. Copy a briefing from
-               Settings and ask an assistant of your own instead.</p>
-             <a class="btn" href="#/settings">Copy a briefing</a>`}
+          ? `<p>${esc(t('disc.needsModel'))}</p>
+             <a class="btn" href="#/settings">${esc(t('disc.connectOne'))}</a>`
+          : `<p>${esc(t('disc.noModelHere'))}</p>
+             <a class="btn" href="#/settings">${esc(t('disc.copyBriefing'))}</a>`}
       </div>`;
     return;
   }
@@ -4160,26 +5991,24 @@ async function discoveries(root) {
     root.innerHTML = `
       <div class="view-head">
         ${headerArt('discoveries')}
-        <h1 class="page-title">Discoveries</h1>
+        <h1 class="page-title">${esc(t('disc.title'))}</h1>
         <div class="btn-row">
-          <button class="btn" id="look">${picks ? 'Look again' : 'Look for something new'}</button>
+          <button class="btn" id="look">${esc(picks ? t('disc.lookAgain') : t('disc.look'))}</button>
           <span class="field-hint" style="margin:0" id="pick-note">${esc(note || '')}</span>
         </div>
       </div>
 
       ${picks ? `
-        ${picks.grounded === false ? `<div class="notice"><strong>Not web-checked</strong> —
-          search was unavailable, so these come from the model's memory. Products may be
-          discontinued or misremembered. Verify each one before buying.</div>` : ''}
-        <p class="muted" style="margin-bottom:32px">Found ${esc(fmtStamp(picks.generatedAt))}${stale ? ' — over a month ago, worth looking again.' : '.'}
-          ${picks.grounded === false ? '' : 'Searched on the web, but check the details yourself before buying.'}</p>
+        ${picks.grounded === false ? `<div class="notice">${t('disc.notWebChecked')}</div>` : ''}
+        <p class="muted" style="margin-bottom:32px">${esc(t('disc.foundOn', { date: fmtStamp(picks.generatedAt) }))}${esc(stale ? t('disc.stale') : '')}
+          ${picks.grounded === false ? '' : esc(t('disc.checkYourself'))}</p>
         <div class="carousel">
           <div class="carousel-bar">
-            <button class="link-btn" id="pick-prev">← Previous</button>
+            <button class="link-btn" id="pick-prev">${esc(t('disc.prev'))}</button>
             <span class="carousel-dots" id="pick-dots">
-              ${(picks.items || []).map((_, i) => `<button class="carousel-dot${i === 0 ? ' is-on' : ''}" data-go="${i}" aria-label="Go to ${i + 1}"></button>`).join('')}
+              ${(picks.items || []).map((_, i) => `<button class="carousel-dot${i === 0 ? ' is-on' : ''}" data-go="${i}" aria-label="${esc(t('disc.goTo', { n: i + 1 }))}"></button>`).join('')}
             </span>
-            <button class="link-btn" id="pick-next">Next →</button>
+            <button class="link-btn" id="pick-next">${esc(t('disc.next'))}</button>
           </div>
           <div class="carousel-track" id="picks-track">
             ${(picks.items || []).map((item, i) => {
@@ -4189,7 +6018,7 @@ async function discoveries(root) {
               <article class="pick" aria-roledescription="slide"
                        aria-label="${i + 1} of ${(picks.items || []).length}">
                 <a class="pick-link" href="${esc(href)}" target="_blank" rel="noreferrer noopener"
-                   title="Opens ${item.url ? 'where this was found' : 'a search for this product'}">
+                   title="${esc(item.url ? t('disc.opensFound') : t('disc.opensSearch'))}">
                   ${pickArt(item, i)}
                 </a>
                 <div class="pick-body">
@@ -4200,14 +6029,14 @@ async function discoveries(root) {
                   </div>
                   <div class="pick-why">${esc(item.why || '')}</div>
                   <button class="link-btn pick-more" data-more="${i}"
-                          aria-expanded="false" aria-controls="pick-detail-${i}">Details +</button>
+                          aria-expanded="false" aria-controls="pick-detail-${i}">${esc(t('common.details'))} +</button>
                   <div class="pick-details" id="pick-detail-${i}" hidden>
-                    ${item.kind ? `<div class="pick-meta"><strong>What it is</strong> — ${esc(item.kind)}</div>` : ''}
-                    ${item.actives ? `<div class="pick-meta"><strong>Actives</strong> — ${esc(item.actives)}</div>` : ''}
-                    ${item.caution ? `<div class="pick-meta"><strong>Caution</strong> — ${esc(item.caution)}</div>` : ''}
+                    ${item.kind ? `<div class="pick-meta"><strong>${esc(t('disc.whatItIs'))}</strong> — ${esc(item.kind)}</div>` : ''}
+                    ${item.actives ? `<div class="pick-meta"><strong>${esc(t('disc.actives'))}</strong> — ${esc(item.actives)}</div>` : ''}
+                    ${item.caution ? `<div class="pick-meta"><strong>${esc(t('disc.caution'))}</strong> — ${esc(item.caution)}</div>` : ''}
                     <div class="pick-meta"><a class="pick-link" href="${esc(href)}" target="_blank"
-                      rel="noreferrer noopener" style="text-decoration:underline">${item.url
-                        ? 'Where this was found ↗' : 'Search for this product ↗'}</a></div>
+                      rel="noreferrer noopener" style="text-decoration:underline">${esc(item.url
+                        ? t('disc.whereFound') : t('disc.searchFor'))}</a></div>
                   </div>
                 </div>
               </article>`;
@@ -4215,12 +6044,12 @@ async function discoveries(root) {
           </div>
         </div>
         ${(picks.sources || []).length ? `<div class="block">
-          <h2 class="section-title">Where this came from</h2>
+          <h2 class="section-title">${esc(t('disc.sources'))}</h2>
           <div class="chips">
             ${picks.sources.map(s => `<a class="chip" href="${esc(s.url)}" target="_blank" rel="noreferrer noopener">${esc(s.title)}</a>`).join('')}
           </div>
         </div>` : ''}`
-      : `<div class="empty"><p>Nothing looked up yet.</p></div>`}`;
+      : `<div class="empty"><p>${esc(t('disc.nothingYet'))}</p></div>`}`;
 
     /* Carousel: scroll-snap does the moving, buttons and dots just nudge it. */
     const track = root.querySelector('#picks-track');
@@ -4267,20 +6096,20 @@ async function discoveries(root) {
           const opening = body.hidden;
           body.hidden = !opening;
           btn.setAttribute('aria-expanded', String(opening));
-          btn.textContent = opening ? 'Details –' : 'Details +';
+          btn.textContent = t('common.details') + (opening ? ' –' : ' +');
         };
       });
     }
 
     root.querySelector('#look').onclick = async () => {
       const button = root.querySelector('#look');
-      const restore = waiting(button, 'Searching');
-      root.querySelector('#pick-note').innerHTML = `This takes a moment${dots()}`;
+      const restore = waiting(button, t('common.searching'));
+      root.querySelector('#pick-note').innerHTML = `${esc(t('disc.takesAMoment'))}${dots()}`;
       try {
         const assessments = (await store.getAssessments()).sort((a, b) => b.date.localeCompare(a.date));
         const fresh = await discover({ library: products, assessment: assessments[0] });
         await store.setPicks(fresh);
-        paint(fresh, `Found ${fresh.items.length}.`);
+        paint(fresh, t('disc.found', { n: fresh.items.length }));
       } catch (err) {
         restore();
         root.querySelector('#pick-note').textContent = err.message;
@@ -4304,113 +6133,118 @@ async function settings(root) {
   const allAssessments = await store.getAll('assessments');
 
   root.innerHTML = `
-    <div class="view-head">${headerArt('settings')}<h1 class="page-title">Settings</h1></div>
+    <div class="view-head">${headerArt('settings')}<h1 class="page-title">${esc(t('set.title'))}</h1></div>
 
     <div class="prose">
-      <h2 class="section-title">Profiles</h2>
-      <p class="muted">Everyone at home can have their own shelf, readings and routine. Switch
-        between them at the top of the page. They are kept apart for tidiness, not for privacy —
-        anyone at this browser can look at any of them.</p>
+      <h2 class="section-title">${esc(t('set.language'))}</h2>
+      <p class="muted">${esc(t('set.languageNote'))}</p>
+      <div class="choices" style="margin-top:20px">
+        ${LANGS.map(l => `
+          <input type="radio" name="lang" id="lang-${esc(l.id)}" value="${esc(l.id)}"${l.id === lang() ? ' checked' : ''}>
+          <label for="lang-${esc(l.id)}">${esc(l.label)}</label>`).join('')}
+      </div>
+    </div>
+
+    <div class="prose block">
+      <h2 class="section-title">${esc(t('set.profiles'))}</h2>
+      <p class="muted">${esc(t('set.profilesNote'))}</p>
 
       <div class="picker" style="margin-top:24px">
         ${profiles.map(p => {
-          const t = tallies[p.id] || { products: 0, assessments: 0 };
+          const tally = tallies[p.id] || { products: 0, assessments: 0 };
           return `<div class="picker-row">
             <span class="grow">
               <input type="text" class="profile-name" data-id="${esc(p.id)}" value="${esc(p.name)}"
-                     aria-label="Profile name">
+                     aria-label="${esc(t('set.profileName'))}">
             </span>
-            <span class="picker-step">${t.products} ${t.products === 1 ? 'product' : 'products'} · ${t.assessments} ${t.assessments === 1 ? 'reading' : 'readings'}</span>
-            ${p.id === activeId ? '<span class="picker-step" style="color:var(--amber)">Showing</span>' : ''}
-            ${profiles.length > 1 ? `<button class="link-btn" data-remove="${esc(p.id)}">Remove</button>` : ''}
+            <span class="picker-step">${esc(plural(tally.products, 'set.productsOne', 'set.productsMany'))} · ${esc(plural(tally.assessments, 'set.readingsOne', 'set.readingsMany'))}</span>
+            ${p.id === activeId ? `<span class="picker-step" style="color:var(--amber)">${esc(t('set.showing'))}</span>` : ''}
+            ${profiles.length > 1 ? `<button class="link-btn" data-remove="${esc(p.id)}">${esc(t('common.remove'))}</button>` : ''}
           </div>`;
         }).join('')}
       </div>
 
       <div class="field" style="max-width:360px;margin-top:32px">
-        <label for="new-profile">Add someone</label>
-        <input type="text" id="new-profile" placeholder="Their name" autocomplete="off">
+        <label for="new-profile">${esc(t('set.addSomeone'))}</label>
+        <input type="text" id="new-profile" placeholder="${esc(t('set.theirName'))}" autocomplete="off">
       </div>
       <div class="btn-row">
-        <button class="btn" id="add-profile">Add profile</button>
+        <button class="btn" id="add-profile">${esc(t('set.addProfile'))}</button>
         <span class="field-hint" style="margin:0" id="profile-note"></span>
       </div>
     </div>
 
     <div class="prose block">
-      <h2 class="section-title">Your library</h2>
-      <p class="muted">${allProducts.length} products and ${allAssessments.length} assessments across
-        ${profiles.length} ${profiles.length === 1 ? 'profile' : 'profiles'}, held in this browser's
-        storage. Clearing site data would remove them, so keep a backup.</p>
+      <h2 class="section-title">${esc(t('set.yourLibrary'))}</h2>
+      <p class="muted">${esc(t('set.libraryNote', {
+        products: allProducts.length, assessments: allAssessments.length, profiles: profiles.length }))}</p>
       <div class="btn-row" style="margin:24px 0 8px">
-        <button class="btn" id="export">Export a backup</button>
-        <button class="btn btn-quiet" id="import-btn">Restore from a backup</button>
+        <button class="btn" id="export">${esc(t('set.export'))}</button>
+        <button class="btn btn-quiet" id="import-btn">${esc(t('set.import'))}</button>
         <input type="file" id="import" accept="application/json" style="display:none">
       </div>
       <p class="field-hint" id="backup-note"></p>
     </div>
 
     <div class="prose block">
-      <h2 class="section-title">Ask another assistant</h2>
-      <p class="muted">Copies your shelf, your routine and your last self-assessment as text you
-        can paste into Gemini, Claude or anything else, along with a photograph of your skin.
-        Nothing is sent by this app — you paste it yourself, so you can read exactly what you are
-        sharing first.</p>
+      <h2 class="section-title">${esc(t('set.askAnother'))}</h2>
+      <p class="muted">${esc(t('set.askAnotherNote'))}</p>
       <div class="btn-row" style="margin-top:24px">
-        <button class="btn" id="copy-briefing">Copy briefing</button>
-        <button class="btn btn-quiet" id="download-briefing">Download as a file</button>
+        <button class="btn" id="copy-briefing">${esc(t('set.copyBriefing'))}</button>
+        <button class="btn btn-quiet" id="download-briefing">${esc(t('set.downloadBriefing'))}</button>
         <span class="field-hint" style="margin:0" id="briefing-note"></span>
       </div>
     </div>
 
     ${AI_FEATURES ? `<div class="prose block">
-      <h2 class="section-title">Connecting a model</h2>
-      <p class="muted">With a key saved here, the app can read product labels for you, read your
-        skin photograph, answer questions in the chat panel, and look for new products each month.
-        Without one, everything else still works and nothing is ever sent anywhere.</p>
-      <p class="muted"><strong>What leaves this Mac, and when.</strong> Reading a label sends that
-        photograph. An assessment sends your answers, your shelf and your routine — and your skin
-        photograph only if you tick the box, which is off by default. Chat sends your shelf and
-        routine with each message. Google’s free tier commonly uses what you submit to improve
-        their products; that is the trade for it costing nothing. The app asks Google not to
-        retain each request, but that setting does not override their terms. Your key is kept in
-        this browser and is left out of backups.</p>
+      <h2 class="section-title">${esc(t('set.connecting'))}</h2>
+      <p class="muted">${esc(t('set.connectingNote'))}</p>
+      <p class="muted">${t('set.privacyNote')}</p>
 
       <div class="field-pair" style="max-width:640px;margin-top:24px">
         <div class="field">
-          <label for="provider">Provider</label>
+          <label for="provider">${esc(t('set.provider'))}</label>
           <select id="provider">
             ${PROVIDERS.map(p => option(p.id, p.label, current.provider)).join('')}
           </select>
         </div>
         <div class="field">
-          <label for="model">Model</label>
+          <label for="model">${esc(t('set.model'))}</label>
           <input type="text" id="model" value="${esc(current.model)}" autocomplete="off">
         </div>
       </div>
       <div class="field" style="max-width:640px">
-        <label for="api-key">API key</label>
+        <label for="api-key">${esc(t('set.apiKey'))}</label>
         <input type="password" id="api-key" placeholder="${current.provider === 'anthropic' ? 'sk-ant-…' : 'AIza…'}" value="${esc(current.apiKey)}">
       </div>
       <div class="btn-row">
-        <button class="btn" id="save-key">Save</button>
-        <button class="btn btn-quiet" id="clear-key">Remove key</button>
+        <button class="btn" id="save-key">${esc(t('common.save'))}</button>
+        <button class="btn btn-quiet" id="clear-key">${esc(t('set.removeKey'))}</button>
         <span class="field-hint" style="margin:0" id="key-note"></span>
       </div>
-      <p class="field-hint">A Gemini key is free from <code>aistudio.google.com</code>. If a model
-        name is refused, your tier may not include it — try <code>gemini-3.5-flash-lite</code>.</p>
+      <p class="field-hint">${t('set.keyHint')}</p>
     </div>` : ''}
 
     <div class="prose block">
-      <h2 class="section-title">Erase</h2>
-      <p class="muted">Removes every product, photograph, assessment and routine from this browser.</p>
+      <h2 class="section-title">${esc(t('set.erase'))}</h2>
+      <p class="muted">${esc(t('set.eraseNote'))}</p>
       <div class="btn-row" style="margin-top:16px">
-        <button class="btn btn-quiet btn-danger" id="wipe">Erase everything</button>
+        <button class="btn btn-quiet btn-danger" id="wipe">${esc(t('set.eraseAll'))}</button>
       </div>
     </div>`;
 
   const note = root.querySelector('#backup-note');
   const profileNote = root.querySelector('#profile-note');
+
+  /* Switching language redraws everything, including the masthead. */
+  root.querySelectorAll('input[name="lang"]').forEach(radio => {
+    radio.onchange = async () => {
+      if (!radio.checked) return;
+      applyLang(radio.value);
+      await store.setLangPref(radio.value);
+      rerender();
+    };
+  });
 
   root.querySelector('#copy-briefing').onclick = async () => {
     const briefingNote = root.querySelector('#briefing-note');
@@ -4418,8 +6252,8 @@ async function settings(root) {
       const { copied, text } = await copyBriefing();
       const words = text.split(/\s+/).length;
       briefingNote.textContent = copied
-        ? `Copied — about ${words} words. Paste it wherever you like.`
-        : 'Could not reach the clipboard. Use the file instead.';
+        ? t('set.briefingCopied', { n: words })
+        : t('set.briefingClipboardFailed');
     } catch (err) {
       briefingNote.textContent = err.message;
     }
@@ -4428,7 +6262,7 @@ async function settings(root) {
   root.querySelector('#download-briefing').onclick = async () => {
     try {
       await downloadBriefing();
-      root.querySelector('#briefing-note').textContent = 'Saved to your downloads.';
+      root.querySelector('#briefing-note').textContent = t('set.briefingSaved');
     } catch (err) {
       root.querySelector('#briefing-note').textContent = err.message;
     }
@@ -4441,7 +6275,7 @@ async function settings(root) {
       const created = await store.createProfile(field.value);
       await store.setActiveProfileId(created.id);
       await redraw();
-      root.querySelector('#profile-note').textContent = `${created.name} added, and now showing.`;
+      root.querySelector('#profile-note').textContent = t('set.profileAdded', { name: created.name });
     } catch (err) {
       profileNote.textContent = err.message;
     }
@@ -4462,15 +6296,14 @@ async function settings(root) {
     btn.onclick = async () => {
       const id = btn.dataset.remove;
       const person = profiles.find(p => p.id === id);
-      const t = tallies[id] || { products: 0, assessments: 0 };
-      if (!confirm(
-        `Remove ${person.name}? Their ${t.products} products, ${t.assessments} readings and their ` +
-        `routine go with them, and this cannot be undone.`
-      )) return;
+      const tally = tallies[id] || { products: 0, assessments: 0 };
+      if (!confirm(t('set.confirmRemoveProfile', {
+        name: person.name, products: tally.products, readings: tally.assessments
+      }))) return;
       try {
         await store.deleteProfile(id);
         await redraw();
-        root.querySelector('#profile-note').textContent = `${person.name} removed.`;
+        root.querySelector('#profile-note').textContent = t('set.profileRemoved', { name: person.name });
       } catch (err) {
         profileNote.textContent = err.message;
       }
@@ -4485,8 +6318,8 @@ async function settings(root) {
     a.download = `skincare-library-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(a.href);
-    note.textContent = `Exported ${data.products.length} products.` +
-      (data._keyOmitted ? ' The API key was left out.' : '');
+    note.textContent = t('set.exported', { n: data.products.length })
+      + (data._keyOmitted ? t('set.keyOmitted') : '');
   };
 
   const fileInput = root.querySelector('#import');
@@ -4494,15 +6327,15 @@ async function settings(root) {
   fileInput.onchange = async () => {
     const file = fileInput.files[0];
     if (!file) return;
-    if (!confirm('Restoring replaces everything currently in the library. Continue?')) {
+    if (!confirm(t('set.confirmImport'))) {
       fileInput.value = '';
       return;
     }
     try {
       const data = JSON.parse(await file.text());
       const counts = await store.importAll(data);
-      const message = `Restored ${counts.products} products and ${counts.assessments} assessments `
-        + `across ${counts.profiles} ${counts.profiles === 1 ? 'profile' : 'profiles'}.`;
+      const message = t('set.restored', {
+        products: counts.products, assessments: counts.assessments, profiles: counts.profiles });
       await profileBar();
       await settings(root);            // redraw so the profile list reflects the restore
       root.querySelector('#backup-note').textContent = message;
@@ -4520,13 +6353,13 @@ async function settings(root) {
         model: root.querySelector('#model').value.trim(),
         apiKey: root.querySelector('#api-key').value.trim()
       });
-      root.querySelector('#key-note').textContent = 'Saved.';
+      root.querySelector('#key-note').textContent = t('common.saved');
       await settings(root);
     };
     root.querySelector('#clear-key').onclick = async () => {
       await store.setSettings({ ...current, apiKey: '' });
       await settings(root);
-      root.querySelector('#key-note').textContent = 'Key removed.';
+      root.querySelector('#key-note').textContent = t('set.keyRemoved');
     };
     /* Switching provider swaps the sensible default model with it. */
     root.querySelector('#provider').onchange = e => {
@@ -4536,8 +6369,8 @@ async function settings(root) {
   }
 
   root.querySelector('#wipe').onclick = async () => {
-    if (!confirm('Erase the entire library? Export a backup first if you want to keep it.')) return;
-    if (!confirm('This is permanent. Erase everything?')) return;
+    if (!confirm(t('set.confirmErase'))) return;
+    if (!confirm(t('set.confirmErase2'))) return;
     await store.wipe();
     location.hash = '#/';
   };
@@ -4548,6 +6381,7 @@ const views = { esc, releaseUrls, onRerender, profileBar, headerArt, dots, waiti
 
 /* ===== js/app.js ===== */
 /* Hash router and boot. */
+
 
 
 
@@ -4573,17 +6407,81 @@ function parseHash() {
   return { head: head || '', id: id ? decodeURIComponent(id) : undefined };
 }
 
+/* The masthead is in index.html rather than in a view, so it is relabelled
+   here — everything outside <main> passes through this. */
+function chrome() {
+  document.title = t('app.title');
+  document.querySelector('.wordmark').textContent = t('app.wordmark');
+  document.getElementById('profile-select').setAttribute('aria-label', t('chrome.whoseShelf'));
+  document.getElementById('colophon-note').textContent = t('chrome.colophon');
+  nav.querySelectorAll('a[data-route]').forEach(a => {
+    a.textContent = t('nav.' + a.dataset.route);
+  });
+  drawLangButton();
+}
+
+/* Language lives at the right-hand end of the navigation: a button showing the
+   language you are in, and a short menu of the others. */
+function drawLangButton() {
+  const button = document.getElementById('lang-btn');
+  const menu = document.getElementById('lang-menu');
+  const chosen = LANGS.find(l => l.id === lang()) || LANGS[0];
+
+  button.textContent = chosen.short;
+  button.setAttribute('aria-label', `${t('nav.language')} — ${chosen.label}`);
+  button.title = t('nav.language');
+
+  menu.innerHTML = LANGS.map(l => `
+    <button class="lang-option${l.id === chosen.id ? ' is-on' : ''}" role="menuitem"
+            data-lang="${l.id}" lang="${l.id}">${l.label}</button>`).join('');
+
+  menu.querySelectorAll('[data-lang]').forEach(option => {
+    option.onclick = async () => {
+      closeLangMenu();
+      if (option.dataset.lang === lang()) return;
+      applyLang(option.dataset.lang);
+      await store.setLangPref(option.dataset.lang);
+      render();
+    };
+  });
+}
+
+function openLangMenu() {
+  document.getElementById('lang-menu').hidden = false;
+  document.getElementById('lang-btn').setAttribute('aria-expanded', 'true');
+}
+
+function closeLangMenu() {
+  const menu = document.getElementById('lang-menu');
+  if (!menu || menu.hidden) return;
+  menu.hidden = true;
+  document.getElementById('lang-btn').setAttribute('aria-expanded', 'false');
+}
+
+function wireLangMenu() {
+  const button = document.getElementById('lang-btn');
+  button.onclick = ev => {
+    ev.stopPropagation();
+    document.getElementById('lang-menu').hidden ? openLangMenu() : closeLangMenu();
+  };
+  // Anywhere else, or Escape, puts it away again.
+  document.addEventListener('click', closeLangMenu);
+  document.addEventListener('keydown', ev => { if (ev.key === 'Escape') closeLangMenu(); });
+  document.getElementById('lang-menu').addEventListener('click', ev => ev.stopPropagation());
+}
+
 async function render() {
   const { head, id } = parseHash();
   const route = ROUTES[head];
 
   views.releaseUrls();
   await store.ensureProfile();     // there is always somewhere to put things
+  chrome();
   await views.profileBar();
 
   if (!route) {
-    root.innerHTML = `<div class="empty"><p>There is nothing at that address.</p>
-      <a class="btn" href="#/">Return to the shelf</a></div>`;
+    root.innerHTML = `<div class="empty"><p>${views.esc(t('chrome.noRoute'))}</p>
+      <a class="btn" href="#/">${views.esc(t('chrome.backToShelf'))}</a></div>`;
     return;
   }
 
@@ -4595,8 +6493,8 @@ async function render() {
   } catch (err) {
     console.error(err);
     root.innerHTML = `<div class="empty">
-      <p>Something went wrong rendering this page: ${views.esc(err.message)}</p>
-      <a class="btn" href="#/">Return to the shelf</a></div>`;
+      <p>${views.esc(t('chrome.renderError', { msg: err.message }))}</p>
+      <a class="btn" href="#/">${views.esc(t('chrome.backToShelf'))}</a></div>`;
   }
 
   window.scrollTo({ top: 0 });
@@ -4607,14 +6505,21 @@ async function render() {
 async function refreshCount() {
   const products = await store.getProducts();
   count.textContent = products.length
-    ? `${products.length} ${products.length === 1 ? 'product' : 'products'}`
+    ? plural(products.length, 'chrome.countOne', 'chrome.countMany')
     : '';
 }
 
-views.onRerender(render);
-mountChat();
-window.addEventListener('hashchange', render);
-render();
+/* Language is settled before the first render, so nothing is drawn twice. */
+async function boot() {
+  applyLang(chooseLang(await store.getLangPref()));
+  wireLangMenu();
+  views.onRerender(render);
+  mountChat();
+  window.addEventListener('hashchange', render);
+  render();
+}
+
+boot();
 
 })();
 </script>

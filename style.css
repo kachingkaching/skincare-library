@@ -152,6 +152,58 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
   border-bottom: 1px solid var(--ink);
 }
 
+/* ---------- language ----------
+
+   At the right-hand end of the navigation: a button showing the language you
+   are in, and a short menu of the others under it. */
+
+.lang { position: relative; }
+
+.lang-btn {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  background: none;
+  border: 1px solid var(--rule);
+  border-radius: 0;
+  padding: 3px 10px;
+  cursor: pointer;
+  transition: color var(--ease), border-color var(--ease);
+}
+
+.lang-btn:hover, .lang-btn[aria-expanded="true"] { color: var(--ink); border-color: var(--ink); }
+.lang-btn:focus-visible { outline: 1px solid var(--amber); outline-offset: 2px; }
+
+.lang-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 30;
+  min-width: 132px;
+  background: var(--bone);
+  border: 1px solid var(--rule);
+  display: flex;
+  flex-direction: column;
+}
+
+.lang-option {
+  background: none;
+  border: none;
+  border-radius: 0;
+  padding: 10px 14px;
+  text-align: left;
+  white-space: nowrap;
+  font-size: 13px;
+  color: var(--ink-muted);
+  cursor: pointer;
+  transition: background var(--ease), color var(--ease);
+}
+
+.lang-option:hover { background: var(--bone-deep); color: var(--ink); }
+.lang-option.is-on { color: var(--ink); }
+.lang-option.is-on::before { content: '· '; }
+
 /* ---------- shell ---------- */
 
 .view {

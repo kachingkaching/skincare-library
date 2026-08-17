@@ -350,6 +350,11 @@ export const setPicks = async v => setMeta('picks:' + (await getActiveProfileId(
 export const getSettings = () => getMeta('settings', { apiKey: '' });
 export const setSettings = s => setMeta('settings', s);
 
+/* Interface language. Kept apart from settings so it survives clearing a key,
+   and shared across profiles — it belongs to the person at the browser. */
+export const getLangPref = () => getMeta('lang', null);
+export const setLangPref = v => setMeta('lang', v);
+
 /* ---------- assessments (scoped to the active profile) ---------- */
 
 export async function getAssessments() {

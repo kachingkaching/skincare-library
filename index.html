@@ -22,6 +22,10 @@
       <a href="#/routine" data-route="routine">Routine</a>
       <a href="#/discoveries" data-route="discoveries">Discoveries</a>
       <a href="#/settings" data-route="settings">Settings</a>
+      <div class="lang" id="lang">
+        <button class="lang-btn" id="lang-btn" aria-haspopup="true" aria-expanded="false"></button>
+        <div class="lang-menu" id="lang-menu" role="menu" hidden></div>
+      </div>
     </nav>
   </div>
 </header>
@@ -29,7 +33,7 @@
 <main id="view" class="view"></main>
 
 <footer class="colophon">
-  <span>Kept privately in this browser.</span>
+  <span id="colophon-note"></span>
   <span id="colophon-count"></span>
 </footer>
 

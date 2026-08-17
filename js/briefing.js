@@ -6,9 +6,10 @@
    shared build for the same reason. */
 
 import * as store from './store.js';
-import { activesIn, flagsIn, TAG_LABEL } from './ingredients.js';
-import { STATUS_LABEL, stepsFor, conflictsFor } from './rules.js';
-import { QUESTIONS } from './analysis.js';
+import { activesIn, flagsIn } from './ingredients.js';
+import { stepsFor, conflictsFor } from './rules.js';
+import { tagLabel, statusLabel, stepLabel, categoryLabel } from './i18n.js';
+import { questions } from './analysis.js';
 
 const PREAMBLE = `I'd like help with my skincare. Below is everything I own, the routine I follow, and how my skin has been behaving. I've attached a photograph of my skin.
 
@@ -24,7 +25,7 @@ Keep this to cosmetic skincare guidance rather than medical diagnosis, and tell 
 const formatDay = iso =>
   new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
 
-const label = tag => TAG_LABEL[tag] || tag;
+const label = tagLabel;
 
 const named = p => `${p.brand ? p.brand + ' · ' : ''}${p.name}`;
 
@@ -32,7 +33,7 @@ const named = p => `${p.brand ? p.brand + ' · ' : ''}${p.name}`;
 function answerLines(answers) {
   if (!answers) return null;
   const lines = [];
-  for (const q of QUESTIONS) {
+  for (const q of questions()) {
     const given = answers[q.key];
     if (!given || (Array.isArray(given) && !given.length)) continue;
     const values = Array.isArray(given) ? given : [given];
@@ -82,8 +83,8 @@ export async function buildBriefing() {
       const actives = activesIn(p.ingredients || []).map(label);
       const flags = flagsIn(p.ingredients || []).map(label);
 
-      out.push(`### ${p.category || 'Uncategorised'} — ${named(p)}`);
-      const facts = [STATUS_LABEL[p.status] || p.status, p.size, p.price].filter(Boolean);
+      out.push(`### ${p.category ? categoryLabel(p.category) : 'Uncategorised'} — ${named(p)}`);
+      const facts = [statusLabel(p.status), p.size, p.price].filter(Boolean);
       if (facts.length) out.push(`- ${facts.join(' · ')}`);
       out.push(`- Actives: ${actives.length ? actives.join(', ') : 'none the app recognises'}`);
       if (flags.length) out.push(`- Worth watching: ${flags.join(', ')}`);
@@ -101,7 +102,7 @@ export async function buildBriefing() {
     for (const step of stepsFor(period)) {
       for (const entry of (routine[period] || []).filter(e => e.step === step.key)) {
         const p = byId[entry.productId];
-        if (p) lines.push(`${lines.length + 1}. **${step.label}** — ${named(p)}`);
+        if (p) lines.push(`${lines.length + 1}. **${stepLabel(step)}** — ${named(p)}`);
       }
     }
     out.push(`### ${title}\n`);

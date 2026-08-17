@@ -21,7 +21,13 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 # replaced by STUBS below, so the shared file contains no endpoint at all — not
 # merely unreachable code. js/ai.js, js/providers/gemini.js, js/autofill.js and
 # js/chat.js are the excluded ones.
+# i18n.js imports nothing but the ingredient tables, which import nothing at
+# all, so the language layer can sit at the top where every later module can
+# reach it. Keep it that way: if i18n ever imports store or rules, this order
+# becomes a cycle and the flattened bundle throws on load.
 MODULES = [
+    "js/ingredients.i18n.js",
+    "js/i18n.js",
     "js/ingredients.js",
     "js/rules.js",
     "js/store.js",

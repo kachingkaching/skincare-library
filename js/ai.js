@@ -6,8 +6,9 @@
 import * as store from './store.js';
 import * as gemini from './providers/gemini.js';
 import { autofillFromLabel as anthropicReadLabel } from './autofill.js';
-import { activesIn, flagsIn, TAG_LABEL } from './ingredients.js';
+import { activesIn, flagsIn } from './ingredients.js';
 import { stepsFor, CONCERNS, CATEGORIES } from './rules.js';
+import { t, lang, LANG_NAME, tagLabel, concernLabel, stepLabel } from './i18n.js';
 
 export const PROVIDERS = [
   { id: 'gemini', label: 'Google Gemini', hint: 'Free tier, rate-limited.' },
@@ -36,8 +37,8 @@ const named = p => `${p.brand ? p.brand + ' ' : ''}${p.name}`;
 export function shelfDigest(products) {
   if (!products.length) return 'The shelf is empty.';
   return products.map(p => {
-    const actives = activesIn(p.ingredients || []).map(t => TAG_LABEL[t] || t);
-    const flags = flagsIn(p.ingredients || []).map(t => TAG_LABEL[t] || t);
+    const actives = activesIn(p.ingredients || []).map(tagLabel);
+    const flags = flagsIn(p.ingredients || []).map(tagLabel);
     return [
       `- id:${p.id} | ${p.category || 'Uncategorised'} | ${named(p)}`,
       actives.length ? `  actives: ${actives.join(', ')}` : '  actives: none recognised',
@@ -53,7 +54,7 @@ export function routineDigest(routine, byId) {
     for (const step of stepsFor(period)) {
       for (const entry of (routine[period] || []).filter(e => e.step === step.key)) {
         const p = byId[entry.productId];
-        if (p) steps.push(`  ${steps.length + 1}. ${step.label}: ${named(p)} (id:${p.id})`);
+        if (p) steps.push(`  ${steps.length + 1}. ${stepLabel(step)}: ${named(p)} (id:${p.id})`);
       }
     }
     lines.push(`${title}:`);
@@ -67,6 +68,12 @@ const answersDigest = answers => Object.entries(answers || {})
   .join('\n') || 'not given';
 
 /* ---------- shared framing ---------- */
+
+/* The interface language is the language of the reply. Product names, brands
+   and INCI stay as they are printed — translating "Beauty of Joseon" or
+   "Niacinamide" would make them impossible to match against a bottle. */
+const inLanguage = () => (lang() === 'en' ? '' :
+  `\n\nWrite your entire reply in ${LANG_NAME[lang()]}. Leave brand names, product names and INCI ingredient names exactly as they are normally written — do not translate or transliterate them. Everything you write around them should read as natural ${LANG_NAME[lang()]}, not as translated English.`);
 
 const CARE = `You are helping someone with cosmetic skincare. Hold to these rules:
 - This is skincare guidance, not medical advice. Never diagnose a condition.
@@ -152,7 +159,7 @@ export async function lookupIngredients({ brand, name, signal }) {
   const searched = await gemini.generate({
     apiKey,
     model,
-    system: `${CARE}
+    system: `${CARE}${inLanguage()}
 You are retrieving a published INCI ingredient list for a specific product. Return the list in printed order, exactly as the manufacturer publishes it. If you cannot find a list you are confident belongs to this exact product, return an empty array rather than a plausible guess — a wrong ingredient list is worse than none.`,
     turns: [gemini.userTurn(
       `Find the full INCI ingredient list for this skincare product:\n\n${product}\n\n`
@@ -175,7 +182,7 @@ You are retrieving a published INCI ingredient list for a specific product. Retu
   const recalled = await gemini.generate({
     apiKey,
     model,
-    system: `${CARE}
+    system: `${CARE}${inLanguage()}
 You are recalling a published INCI ingredient list from your own training, without searching. The person asking already knows this is unverified and will check it against the packaging in their hand, so a good-faith recollection is useful to them. Give the list you believe is right, in printed order. Use "note" to say how confident you are and anything that would make it wrong — a reformulation, or regional versions. Only return an empty array if you genuinely do not know this product at all.`,
     turns: [gemini.userTurn(
       `From memory, what is the full INCI ingredient list for this skincare product?\n\n${product}\n\n`
@@ -262,7 +269,7 @@ export async function assessWithAI({ imageBlob, answers, library, routine, sendP
 
   const byId = Object.fromEntries(library.map(p => [p.id, p]));
   const stepList = ['am', 'pm']
-    .map(period => `${period}: ${stepsFor(period).map(s => s.key).join(', ')}`)
+    .map(period => `${period}: ${stepsFor(period).map(s => `${s.key} (${stepLabel(s)})`).join(', ')}`)
     .join('\n');
 
   const prompt = `${sendPhoto && imageBlob
@@ -288,7 +295,7 @@ Give me:
 ${stepList}
 - gaps: what my shelf genuinely lacks, described by ingredient rather than brand.
 
-Concern labels should come from this vocabulary where they fit: ${CONCERNS.map(c => c.label).join(', ')}.`;
+Concern labels should come from this vocabulary where they fit: ${CONCERNS.map(concernLabel).join(', ')}.`;
 
   const turns = [gemini.userTurn(
     prompt,
@@ -297,7 +304,9 @@ Concern labels should come from this vocabulary where they fit: ${CONCERNS.map(c
       : null
   )];
 
-  const { text } = await gemini.generate({ apiKey, model, system: CARE, turns, schema: ASSESS_SCHEMA });
+  const { text } = await gemini.generate({
+    apiKey, model, system: CARE + inLanguage(), turns, schema: ASSESS_SCHEMA
+  });
   const parsed = gemini.parseJson(text);
 
   /* Fold into the shape renderResult() already knows, dropping any product the
@@ -319,16 +328,14 @@ Concern labels should come from this vocabulary where they fit: ${CONCERNS.map(c
     })),
     routine: { am: steps('am'), pm: steps('pm') },
     gaps: parsed.gaps || [],
-    caveat: sendPhoto && imageBlob
-      ? 'Read by Gemini from your photograph, your answers and the ingredient lists of what you own. Cosmetic guidance, not a dermatological opinion — see a professional for anything that looks medical.'
-      : 'Read by Gemini from your answers and the ingredient lists of what you own. The photograph was not sent. Cosmetic guidance, not a dermatological opinion.'
+    caveat: t(sendPhoto && imageBlob ? 'caveat.aiPhoto' : 'caveat.aiNoPhoto')
   };
 }
 
 function labelForStep(key) {
   for (const period of ['am', 'pm']) {
     const found = stepsFor(period).find(s => s.key === key);
-    if (found) return found.label;
+    if (found) return stepLabel(found);
   }
   return key;
 }
@@ -348,7 +355,7 @@ export async function chatStream({ history, message, context, onText, signal }) 
   return gemini.stream({
     apiKey,
     model: chatModel,
-    system: `${CARE}\n\nYou are answering questions about this person's own skincare. Keep replies short and conversational unless asked for detail.\n\n${context}`,
+    system: `${CARE}${inLanguage()}\n\nYou are answering questions about this person's own skincare. Keep replies short and conversational unless asked for detail.\n\n${context}`,
     turns,
     onText,
     signal
@@ -386,7 +393,7 @@ Return JSON only, in a fenced code block:
   const { text, citations, dropped } = await gemini.generate({
     apiKey,
     model,
-    system: `${CARE}\nYou are recommending products to try. Ground every recommendation in a real, currently sold product found by searching. If you cannot verify a product exists, leave it out.`,
+    system: `${CARE}${inLanguage()}\nYou are recommending products to try. Ground every recommendation in a real, currently sold product found by searching. If you cannot verify a product exists, leave it out.`,
     turns: [gemini.userTurn(prompt)],
     tools: [{ type: 'google_search' }],
     signal

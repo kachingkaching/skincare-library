@@ -3,14 +3,19 @@
 
 import * as store from './store.js';
 import {
-  TAG_LABEL, ACTIVE_TAGS, FLAG_TAGS,
+  ACTIVE_TAGS, FLAG_TAGS,
   lookup, parseIngredients, tagsFor
 } from './ingredients.js';
 import {
-  CATEGORIES, STATUSES, STATUS_LABEL, stepsFor, conflictsFor,
-  DAYS, EVERY_DAY, daysOf, isEveryDay, describeDays
+  CATEGORIES, STATUSES, stepsFor, conflictsFor,
+  days, EVERY_DAY, daysOf, isEveryDay, describeDays
 } from './rules.js';
-import { QUESTIONS, SEVERITY_LABEL, assessSkin } from './analysis.js';
+import { questions, assessSkin } from './analysis.js';
+import {
+  LANGS, t, plural, applyLang, lang,
+  tagLabel, statusLabel, severityLabel, categoryLabel, stepLabel, dayLabel,
+  ingredientText
+} from './i18n.js';
 import { readLabel, lookupIngredients } from './ai.js';
 import { copyBriefing, downloadBriefing } from './briefing.js';
 import { aiSettings, PROVIDERS, discover } from './ai.js';
@@ -57,16 +62,20 @@ export async function profileBar() {
   };
 }
 
+/* Dates follow the interface language, so a Chinese page does not print
+   "17 August 2026" in the middle of a Chinese sentence. */
+const locale = () => (lang() === 'en' ? 'en-GB' : lang());
+
 const fmtDate = s => s
-  ? new Date(s + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+  ? new Date(s + 'T00:00:00').toLocaleDateString(locale(), { day: 'numeric', month: 'long', year: 'numeric' })
   : '';
 
 const fmtStamp = iso =>
-  new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+  new Date(iso).toLocaleDateString(locale(), { day: 'numeric', month: 'long', year: 'numeric' });
 
 /* Two readings on one day should still be tellable apart. */
 const fmtStampTime = iso =>
-  fmtStamp(iso) + ', ' + new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  fmtStamp(iso) + ' ' + new Date(iso).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' });
 
 const byShelfOrder = (a, b) =>
   (a.brand || '').localeCompare(b.brand || '') || (a.name || '').localeCompare(b.name || '');
@@ -105,6 +114,10 @@ export function headerArt(name) {
   return `<svg class="header-art" viewBox="0 0 88 52" aria-hidden="true" focusable="false">${marks}</svg>`;
 }
 
+/* How a layering note is introduced, by how much it matters. */
+const severityWord = sev =>
+  (sev === 'high' ? t('common.takeCare') : sev === 'medium' ? t('common.consider') : t('common.note'));
+
 /* Three drifting dots for anything that has gone away to think. */
 export const dots = () => '<span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>';
 
@@ -117,8 +130,8 @@ export function waiting(button, label) {
   return () => { button.innerHTML = was; button.disabled = wasDisabled; };
 }
 
-const tagChip = (t, flag) =>
-  `<span class="chip ${flag ? 'chip-flag' : 'chip-active'}">${esc(TAG_LABEL[t] || t)}</span>`;
+const tagChip = (tag, flag) =>
+  `<span class="chip ${flag ? 'chip-flag' : 'chip-active'}">${esc(tagLabel(tag))}</span>`;
 
 const option = (v, label, selected) =>
   `<option value="${esc(v)}"${selected === v ? ' selected' : ''}>${esc(label)}</option>`;
@@ -139,9 +152,9 @@ function wireDropzone(zone, onFile) {
   });
 }
 
-const dropzoneMarkup = (id, caption = 'Drop a photograph, or select one') => `
+const dropzoneMarkup = (id, caption) => `
   <div class="dropzone" id="${id}">
-    <p>${esc(caption)}</p>
+    <p>${esc(caption || t('form.dropPhoto'))}</p>
     <input type="file" accept="image/*">
   </div>`;
 
@@ -157,18 +170,17 @@ export async function shelf(root) {
   if (!products.length) {
     const who = (await store.getActiveProfile())?.name;
     root.innerHTML = `
-      <div class="view-head">${headerArt('shelf')}<h1 class="page-title">The Shelf</h1></div>
+      <div class="view-head">${headerArt('shelf')}<h1 class="page-title">${esc(t('shelf.title'))}</h1></div>
       <div class="empty">
-        <p>${who ? esc(who) + '’s shelf is' : 'The shelf is'} presently empty. Photograph a
-           product, record what is in it, and it will be kept here.</p>
-        <a class="btn" href="#/add">Add the first product</a>
+        <p>${esc(who ? t('shelf.emptyNamed', { name: who }) : t('shelf.empty'))}</p>
+        <a class="btn" href="#/add">${esc(t('shelf.addFirst'))}</a>
       </div>`;
     return;
   }
 
   const activesPresent = new Set();
-  products.forEach(p => tagsFor(p.ingredients || []).forEach(t => {
-    if (ACTIVE_TAGS.includes(t)) activesPresent.add(t);
+  products.forEach(p => tagsFor(p.ingredients || []).forEach(tag => {
+    if (ACTIVE_TAGS.includes(tag)) activesPresent.add(tag);
   }));
 
   const visible = products.filter(p =>
@@ -182,37 +194,37 @@ export async function shelf(root) {
   root.innerHTML = `
     <div class="view-head">
       ${headerArt('shelf')}
-      <h1 class="page-title">The Shelf</h1>
-      <div class="btn-row"><a class="btn" href="#/add">Add a product</a></div>
+      <h1 class="page-title">${esc(t('shelf.title'))}</h1>
+      <div class="btn-row"><a class="btn" href="#/add">${esc(t('shelf.add'))}</a></div>
     </div>
 
     <div class="filter-bar">
       <div class="filter">
-        <label for="f-cat">Category</label>
+        <label for="f-cat">${esc(t('shelf.filterCategory'))}</label>
         <select id="f-cat">
-          ${option('', 'All', shelfFilters.category)}
-          ${categoriesPresent.map(c => option(c, c, shelfFilters.category)).join('')}
+          ${option('', t('common.all'), shelfFilters.category)}
+          ${categoriesPresent.map(c => option(c, categoryLabel(c), shelfFilters.category)).join('')}
         </select>
       </div>
       <div class="filter">
-        <label for="f-status">Status</label>
+        <label for="f-status">${esc(t('shelf.filterStatus'))}</label>
         <select id="f-status">
-          ${option('', 'All', shelfFilters.status)}
-          ${STATUSES.map(s => option(s, STATUS_LABEL[s], shelfFilters.status)).join('')}
+          ${option('', t('common.all'), shelfFilters.status)}
+          ${STATUSES.map(s => option(s, statusLabel(s), shelfFilters.status)).join('')}
         </select>
       </div>
       <div class="filter">
-        <label for="f-active">Contains</label>
+        <label for="f-active">${esc(t('shelf.filterContains'))}</label>
         <select id="f-active">
-          ${option('', 'Anything', shelfFilters.active)}
-          ${[...activesPresent].map(t => option(t, TAG_LABEL[t] || t, shelfFilters.active)).join('')}
+          ${option('', t('common.anything'), shelfFilters.active)}
+          ${[...activesPresent].map(x => option(x, tagLabel(x), shelfFilters.active)).join('')}
         </select>
       </div>
-      <span class="filter-count">${visible.length} of ${products.length}</span>
+      <span class="filter-count">${esc(t('shelf.count', { shown: visible.length, total: products.length }))}</span>
     </div>
 
     <div class="shelf" id="shelf-grid"></div>
-    ${visible.length ? '' : '<p class="muted">Nothing matches that combination.</p>'}`;
+    ${visible.length ? '' : `<p class="muted">${esc(t('shelf.noMatch'))}</p>`}`;
 
   const grid = root.querySelector('#shelf-grid');
   for (const p of visible) {
@@ -222,11 +234,11 @@ export async function shelf(root) {
     a.href = `#/product/${p.id}`;
     a.innerHTML = `
       <div class="shelf-frame">
-        ${blob ? `<img src="${imgUrl(blob)}" alt="${esc(p.name)}">` : '<span class="no-image">No photograph</span>'}
+        ${blob ? `<img src="${imgUrl(blob)}" alt="${esc(p.name)}">` : `<span class="no-image">${esc(t('shelf.noPhoto'))}</span>`}
       </div>
       <div class="shelf-brand">${esc(p.brand || '—')}</div>
       <div class="shelf-name">${esc(p.name)}</div>
-      <div class="shelf-meta">${esc(p.category || '')}${p.status && p.status !== 'active' ? ' · ' + esc(STATUS_LABEL[p.status]) : ''}</div>`;
+      <div class="shelf-meta">${esc(p.category ? categoryLabel(p.category) : '')}${p.status && p.status !== 'active' ? ' · ' + esc(statusLabel(p.status)) : ''}</div>`;
     grid.appendChild(a);
   }
 
@@ -244,15 +256,14 @@ export async function product(root, { id }) {
   const activeId = await store.getActiveProfileId();
 
   if (!p) {
-    root.innerHTML = `<div class="empty"><p>That product is no longer in the library.</p>
-      <a class="btn" href="#/">Return to the shelf</a></div>`;
+    root.innerHTML = `<div class="empty"><p>${esc(t('product.gone'))}</p>
+      <a class="btn" href="#/">${esc(t('chrome.backToShelf'))}</a></div>`;
     return;
   }
   if (p.profileId !== activeId) {
     root.innerHTML = `<div class="empty">
-      <p>That product sits on another profile’s shelf. Switch profiles at the top of the page
-         to see it.</p>
-      <a class="btn" href="#/">Return to this shelf</a></div>`;
+      <p>${esc(t('product.otherProfile'))}</p>
+      <a class="btn" href="#/">${esc(t('product.backToThisShelf'))}</a></div>`;
     return;
   }
 
@@ -261,78 +272,78 @@ export async function product(root, { id }) {
   const blob = await store.getImage(p.imageId);
   const ingredients = p.ingredients || [];
   const tags = tagsFor(ingredients);
-  const actives = ACTIVE_TAGS.filter(t => tags.has(t));
-  const flags = FLAG_TAGS.filter(t => tags.has(t));
+  const actives = ACTIVE_TAGS.filter(tag => tags.has(tag));
+  const flags = FLAG_TAGS.filter(tag => tags.has(tag));
   const matched = ingredients.filter(i => lookup(i)).length;
 
   const spec = [
-    ['Category', p.category],
-    ['Status', STATUS_LABEL[p.status] || p.status],
-    ['Size', p.size],
-    ['Price', p.price],
-    ['Purchased', fmtDate(p.purchasedAt)],
-    ['Opened', fmtDate(p.openedAt)]
+    [t('product.category'), p.category ? categoryLabel(p.category) : ''],
+    [t('product.status'), statusLabel(p.status)],
+    [t('product.size'), p.size],
+    [t('product.price'), p.price],
+    [t('product.purchased'), fmtDate(p.purchasedAt)],
+    [t('product.opened'), fmtDate(p.openedAt)]
   ].filter(([, v]) => v);
 
   root.innerHTML = `
-    <p class="label muted" style="margin:0 0 32px"><a href="#/">← The shelf</a></p>
+    <p class="label muted" style="margin:0 0 32px"><a href="#/">${esc(t('product.back'))}</a></p>
     <div class="detail">
       <div class="detail-frame">
-        ${blob ? `<img src="${imgUrl(blob)}" alt="${esc(p.name)}">` : '<span class="no-image">No photograph</span>'}
+        ${blob ? `<img src="${imgUrl(blob)}" alt="${esc(p.name)}">` : `<span class="no-image">${esc(t('shelf.noPhoto'))}</span>`}
       </div>
       <div>
         <div class="detail-brand">${esc(p.brand || '—')}</div>
         <h1 class="detail-title">${esc(p.name)}</h1>
 
-        ${actives.length ? `<div class="chips" style="margin-bottom:16px">${actives.map(t => tagChip(t, false)).join('')}</div>` : ''}
-        ${flags.length ? `<div class="chips" style="margin-bottom:32px">${flags.map(t => tagChip(t, true)).join('')}</div>` : ''}
+        ${actives.length ? `<div class="chips" style="margin-bottom:16px">${actives.map(tag => tagChip(tag, false)).join('')}</div>` : ''}
+        ${flags.length ? `<div class="chips" style="margin-bottom:32px">${flags.map(tag => tagChip(tag, true)).join('')}</div>` : ''}
 
         <dl class="spec">
           ${spec.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}
         </dl>
 
         ${p.notes ? `<div class="block">
-          <h2 class="section-title">Notes</h2>
+          <h2 class="section-title">${esc(t('product.notes'))}</h2>
           <p class="prose" style="white-space:pre-wrap;margin:0">${esc(p.notes)}</p>
         </div>` : ''}
 
         <div class="block">
-          <h2 class="section-title">Ingredients ${ingredients.length ? `— ${matched} of ${ingredients.length} annotated` : ''}</h2>
+          <h2 class="section-title">${esc(ingredients.length
+            ? t('product.ingredientsAnnotated', { matched, total: ingredients.length })
+            : t('product.ingredients'))}</h2>
           ${ingredients.length ? `<div class="ing-list">${ingredients.map((name, i) => {
             const entry = lookup(name);
-            const flagged = entry && entry.t.some(t => FLAG_TAGS.includes(t));
+            const flagged = entry && entry.t.some(tag => FLAG_TAGS.includes(tag));
             return `<div class="ing ${entry ? '' : 'ing-unknown'} ${flagged ? 'ing-flagged' : ''}">
               <div class="ing-index">${i + 1}</div>
               <div>
                 <div class="ing-name">${esc(entry ? entry.n : name)}</div>
                 ${entry && entry.n.toLowerCase() !== name.toLowerCase()
                   ? `<div class="tag" style="border:none;margin-top:2px">${esc(name)}</div>` : ''}
-                ${entry ? `<div class="ing-tags">${entry.t.map(t =>
-                    `<span class="tag ${FLAG_TAGS.includes(t) ? 'tag-flag' : ''}">${esc(TAG_LABEL[t] || t)}</span>`).join('')}</div>` : ''}
+                ${entry ? `<div class="ing-tags">${entry.t.map(tag =>
+                    `<span class="tag ${FLAG_TAGS.includes(tag) ? 'tag-flag' : ''}">${esc(tagLabel(tag))}</span>`).join('')}</div>` : ''}
               </div>
-              <div class="ing-fn">${entry ? esc(entry.f) : 'Not in the reference — recorded as written.'}</div>
+              <div class="ing-fn">${esc(entry ? ingredientText(entry) : t('product.notInReference'))}</div>
             </div>`;
           }).join('')}</div>`
-          : '<p class="muted">No ingredient list recorded yet.</p>'}
+          : `<p class="muted">${esc(t('product.noIngredients'))}</p>`}
         </div>
 
         ${others.length ? `<div class="block">
-          <h2 class="section-title">Shared with the household</h2>
-          <p class="muted" style="font-size:13px;margin:0 0 20px">If someone else uses this bottle
-            too, put a copy on their shelf rather than photographing it twice. The two records are
-            separate from then on.</p>
+          <h2 class="section-title">${esc(t('product.shared'))}</h2>
+          <p class="muted" style="font-size:13px;margin:0 0 20px">${esc(t('product.sharedNote'))}</p>
           <div class="btn-row">
             <select id="copy-target" style="background:none;border:none;border-bottom:1px solid var(--rule);padding:4px 0;border-radius:0">
               ${others.map(o => option(o.id, o.name, others[0].id)).join('')}
             </select>
-            <button class="btn btn-quiet" id="copy-across">Copy across</button>
+            <button class="btn btn-quiet" id="copy-across">${esc(t('product.copyAcross'))}</button>
             <span class="field-hint" style="margin:0" id="copy-note"></span>
           </div>
         </div>` : ''}
 
         <div class="block btn-row">
-          <a class="btn" href="#/edit/${esc(p.id)}">Edit</a>
-          <button class="btn btn-quiet btn-danger" id="delete">Remove from library</button>
+          <a class="btn" href="#/edit/${esc(p.id)}">${esc(t('common.edit'))}</a>
+          <button class="btn btn-quiet btn-danger" id="delete">${esc(t('product.delete'))}</button>
         </div>
       </div>
     </div>`;
@@ -345,7 +356,7 @@ export async function product(root, { id }) {
       copyBtn.disabled = true;
       try {
         await store.copyProductToProfile(p.id, target.value);
-        root.querySelector('#copy-note').textContent = `Copied to ${name}’s shelf.`;
+        root.querySelector('#copy-note').textContent = t('product.copiedTo', { name });
       } catch (err) {
         root.querySelector('#copy-note').textContent = err.message;
       } finally {
@@ -355,7 +366,7 @@ export async function product(root, { id }) {
   }
 
   root.querySelector('#delete').onclick = async () => {
-    if (!confirm(`Remove ${p.brand ? p.brand + ' ' : ''}${p.name} from the library? This cannot be undone.`)) return;
+    if (!confirm(t('product.confirmDelete', { name: `${p.brand ? p.brand + ' ' : ''}${p.name}` }))) return;
     await store.deleteProduct(p.id);
     location.hash = '#/';
   };
@@ -369,8 +380,8 @@ export async function form(root, { id } = {}) {
   const editing = Boolean(id);
   const p = editing ? await store.getProduct(id) : null;
   if (editing && !p) {
-    root.innerHTML = `<div class="empty"><p>That product is no longer in the library.</p>
-      <a class="btn" href="#/">Return to the shelf</a></div>`;
+    root.innerHTML = `<div class="empty"><p>${esc(t('product.gone'))}</p>
+      <a class="btn" href="#/">${esc(t('chrome.backToShelf'))}</a></div>`;
     return;
   }
 
@@ -386,49 +397,47 @@ export async function form(root, { id } = {}) {
   root.innerHTML = `
     <div class="view-head">
       ${headerArt('add')}
-      <h1 class="page-title">${editing ? 'Edit product' : 'Add a product'}</h1>
+      <h1 class="page-title">${esc(editing ? t('form.editTitle') : t('form.addTitle'))}</h1>
     </div>
 
     <form class="form-grid" id="product-form" autocomplete="off">
       <div>
         ${dropzoneMarkup('photo')}
         <div class="btn-row" style="margin-top:16px">
-          <button type="button" class="btn btn-quiet" id="autofill" ${AI_FEATURES && settings.apiKey ? '' : 'hidden'}>Read the label</button>
+          <button type="button" class="btn btn-quiet" id="autofill" ${AI_FEATURES && settings.apiKey ? '' : 'hidden'}>${esc(t('form.readLabel'))}</button>
         </div>
-        <p class="field-hint" id="photo-hint">${AI_FEATURES && settings.apiKey
-          ? 'Reads brand, name and ingredients off a photograph of the packaging. If the ingredient '
-            + 'print is not legible, it searches the web for the product’s published list instead.'
-          : 'Photographs are resized and kept in this browser.'}</p>
+        <p class="field-hint" id="photo-hint">${esc(AI_FEATURES && settings.apiKey
+          ? t('form.readLabelHint') : t('form.photoHint'))}</p>
       </div>
 
       <div>
         <div class="field-pair">
           <div class="field">
-            <label for="brand">Brand</label>
+            <label for="brand">${esc(t('form.brand'))}</label>
             <input type="text" id="brand" value="${esc(p?.brand)}">
           </div>
           <div class="field">
-            <label for="name">Product name</label>
+            <label for="name">${esc(t('form.name'))}</label>
             <input type="text" id="name" required value="${esc(p?.name)}">
           </div>
         </div>
 
         <div class="field-pair">
           <div class="field">
-            <label for="category">Category</label>
-            <select id="category">${CATEGORIES.map(c => option(c, c, p?.category || 'Serum')).join('')}</select>
+            <label for="category">${esc(t('product.category'))}</label>
+            <select id="category">${CATEGORIES.map(c => option(c, categoryLabel(c), p?.category || 'Serum')).join('')}</select>
           </div>
           <div class="field">
-            <label for="status">Status</label>
-            <select id="status">${STATUSES.map(s => option(s, STATUS_LABEL[s], p?.status || 'active')).join('')}</select>
+            <label for="status">${esc(t('product.status'))}</label>
+            <select id="status">${STATUSES.map(x => option(x, statusLabel(x), p?.status || 'active')).join('')}</select>
           </div>
         </div>
 
         <div class="field">
-          <label for="ingredients">Ingredients</label>
-          <textarea id="ingredients" placeholder="Paste the list straight from the packaging. Commas are enough.">${esc((p?.ingredients || []).join(', '))}</textarea>
+          <label for="ingredients">${esc(t('product.ingredients'))}</label>
+          <textarea id="ingredients" placeholder="${esc(t('form.ingredientsPlaceholder'))}">${esc((p?.ingredients || []).join(', '))}</textarea>
           <div class="btn-row" style="margin-top:12px">
-            <button type="button" class="btn btn-quiet" id="lookup" ${AI_FEATURES && settings.apiKey ? '' : 'hidden'}>Look these up online</button>
+            <button type="button" class="btn btn-quiet" id="lookup" ${AI_FEATURES && settings.apiKey ? '' : 'hidden'}>${esc(t('form.lookUp'))}</button>
           </div>
           <div class="field-hint" id="parse-summary"></div>
           <div class="chips" id="parse-chips" style="margin-top:12px"></div>
@@ -436,34 +445,34 @@ export async function form(root, { id } = {}) {
 
         <div class="field-pair">
           <div class="field">
-            <label for="size">Size</label>
+            <label for="size">${esc(t('product.size'))}</label>
             <input type="text" id="size" placeholder="50 ml" value="${esc(p?.size)}">
           </div>
           <div class="field">
-            <label for="price">Price</label>
+            <label for="price">${esc(t('product.price'))}</label>
             <input type="text" id="price" placeholder="£38" value="${esc(p?.price)}">
           </div>
         </div>
 
         <div class="field-pair">
           <div class="field">
-            <label for="purchasedAt">Purchased</label>
+            <label for="purchasedAt">${esc(t('product.purchased'))}</label>
             <input type="date" id="purchasedAt" value="${esc(p?.purchasedAt)}">
           </div>
           <div class="field">
-            <label for="openedAt">Opened</label>
+            <label for="openedAt">${esc(t('product.opened'))}</label>
             <input type="date" id="openedAt" value="${esc(p?.openedAt)}">
           </div>
         </div>
 
         <div class="field">
-          <label for="notes">Notes</label>
-          <textarea id="notes" placeholder="How it wears, what it sits well under, whether you would buy it again.">${esc(p?.notes)}</textarea>
+          <label for="notes">${esc(t('product.notes'))}</label>
+          <textarea id="notes" placeholder="${esc(t('form.notesPlaceholder'))}">${esc(p?.notes)}</textarea>
         </div>
 
         <div class="btn-row">
-          <button type="submit" class="btn">${editing ? 'Save changes' : 'Add to the library'}</button>
-          <a class="btn btn-quiet" href="${editing ? '#/product/' + esc(id) : '#/'}">Cancel</a>
+          <button type="submit" class="btn">${esc(editing ? t('form.submitEdit') : t('form.submitAdd'))}</button>
+          <a class="btn btn-quiet" href="${editing ? '#/product/' + esc(id) : '#/'}">${esc(t('common.cancel'))}</a>
           <span class="field-hint" id="form-error" style="margin:0;color:var(--amber)"></span>
         </div>
       </div>
@@ -475,7 +484,7 @@ export async function form(root, { id } = {}) {
     zone.querySelectorAll('img').forEach(n => n.remove());
     const img = document.createElement('img');
     img.src = imgUrl(blob);
-    img.alt = 'Selected photograph';
+    img.alt = t('form.selectedPhoto');
     zone.appendChild(img);
   };
   if (existingBlob) showPhoto(existingBlob);
@@ -496,11 +505,11 @@ export async function form(root, { id } = {}) {
     const known = list.filter(i => lookup(i));
     const tags = tagsFor(list);
     summary.textContent = list.length
-      ? `${list.length} ingredients read, ${known.length} recognised.`
-      : 'Nothing read yet.';
+      ? t('form.parsed', { n: list.length, known: known.length })
+      : t('form.parsedNone');
     chips.innerHTML = [
-      ...ACTIVE_TAGS.filter(t => tags.has(t)).map(t => tagChip(t, false)),
-      ...FLAG_TAGS.filter(t => tags.has(t)).map(t => tagChip(t, true))
+      ...ACTIVE_TAGS.filter(tag => tags.has(tag)).map(tag => tagChip(tag, false)),
+      ...FLAG_TAGS.filter(tag => tags.has(tag)).map(tag => tagChip(tag, true))
     ].join('');
   };
   ingField.addEventListener('input', refreshParse);
@@ -529,25 +538,21 @@ export async function form(root, { id } = {}) {
     const name = root.querySelector('#name').value.trim();
     if (!name && !brand) return null;
 
-    hint.innerHTML = `${lead}Looking up ${esc([brand, name].filter(Boolean).join(' '))}${dots()}`;
+    hint.innerHTML = `${lead}${esc(t('common.lookingUp'))} ${esc([brand, name].filter(Boolean).join(' '))}${dots()}`;
     const found = await lookupIngredients({ brand, name });
 
     if (!found.ingredients.length) {
       hint.textContent = found.searchRan
-        ? 'Searched the web and could not find an ingredient list for this product. '
-          + 'Check the brand and product name are right, or photograph the back of the pack.'
-        : 'No ingredient list could be found for this product, on the web or from memory. '
-          + 'Check the brand and product name are right, or photograph the back of the pack.';
+        ? t('form.lookupFailedSearched')
+        : t('form.lookupFailedNoSearch');
       return found;
     }
 
     const count = merge(found.ingredients);
     const note = found.note ? esc(found.note) + ' ' : '';
     hint.innerHTML = found.grounded
-      ? `Found ${count} ingredients online — <strong>not read off your pack</strong>, so check them against it. ${note}${sourceLinks(found)}`
-      : `Found ${count} ingredients, but <strong>web search was unavailable</strong>, so these came from the
-         model’s memory rather than a source. Formulations change — check them against your pack
-         carefully before trusting them. ${note}`;
+      ? t('form.foundOnline', { n: count }) + note + sourceLinks(found)
+      : t('form.foundFromMemory', { n: count }) + note;
     return found;
   };
 
@@ -555,10 +560,10 @@ export async function form(root, { id } = {}) {
   const lookupBtn = root.querySelector('#lookup');
   if (lookupBtn) {
     lookupBtn.onclick = async () => {
-      const restore = waiting(lookupBtn, 'Looking up');
+      const restore = waiting(lookupBtn, t('common.lookingUp'));
       try {
         const done = await lookupInto(hint);
-        if (!done) hint.textContent = 'Type a brand or product name first — that is what gets looked up.';
+        if (!done) hint.textContent = t('form.needBrandOrName');
       } catch (err) {
         hint.textContent = err.message;
       } finally {
@@ -576,10 +581,10 @@ export async function form(root, { id } = {}) {
       const blob = originalFile
         ? await store.resizeImage(originalFile, 2400, 0.92)
         : (await pendingPhoto()) || existingBlob;
-      if (!blob) { hint.textContent = 'Add a photograph of the packaging first.'; return; }
+      if (!blob) { hint.textContent = t('form.needPhoto'); return; }
 
-      const restore = waiting(autofillBtn, 'Reading');
-      hint.innerHTML = `Reading the photograph${dots()}`;
+      const restore = waiting(autofillBtn, t('common.reading'));
+      hint.innerHTML = `${esc(t('form.readingPhoto'))}${dots()}`;
 
       try {
         const read = await readLabel(blob);
@@ -598,17 +603,12 @@ export async function form(root, { id } = {}) {
         }
 
         if (read.ingredients?.length) {
-          hint.textContent = `Read ${merge(read.ingredients)} ingredients off the pack. `
-            + 'Check them before saving.';
+          hint.textContent = t('form.readOff', { n: merge(read.ingredients) });
         } else {
           /* Nothing legible on the pack — go and look the product up instead,
              which is the whole point of having read the brand and name first. */
-          const done = await lookupInto(hint, 'No list visible on the pack. ');
-          if (!done) {
-            hint.textContent = 'No ingredient list was legible in that photograph, and there is no '
-              + 'brand or product name to look one up by. Type either in, or photograph the front '
-              + 'of the pack first.';
-          }
+          const done = await lookupInto(hint, t('form.noListOnPack') + ' ');
+          if (!done) hint.textContent = t('form.nothingToLookUp');
         }
       } catch (err) {
         hint.textContent = err.message;
@@ -622,7 +622,7 @@ export async function form(root, { id } = {}) {
     ev.preventDefault();
     const val = sel => root.querySelector(sel).value.trim();
     const error = root.querySelector('#form-error');
-    if (!val('#name')) { error.textContent = 'A product name is needed.'; return; }
+    if (!val('#name')) { error.textContent = t('form.needName'); return; }
 
     const pendingBlob = await pendingPhoto();
     let imageId = p?.imageId || null;
@@ -664,16 +664,15 @@ function renderResult(result, productsById) {
   const extras = [];
 
   if (result.degraded) {
-    extras.push(`<div class="notice"><strong>Read offline</strong> — the model could not be
-      reached (${esc(result.degraded)}), so this is the rules-based reading from your answers.</div>`);
+    extras.push(`<div class="notice">${t('assess.degraded', { why: esc(result.degraded) })}</div>`);
   }
   if (result.photoUsed && result.photoUsable === false && result.photoNote) {
-    extras.push(`<div class="notice"><strong>The photograph is hard to judge</strong> — ${esc(result.photoNote)}</div>`);
+    extras.push(`<div class="notice">${t('assess.photoHard', { note: esc(result.photoNote) })}</div>`);
   }
 
   const observations = (result.observations || []).length ? `
     <div class="block" style="margin-top:0">
-      <h2 class="section-title">What is visible</h2>
+      <h2 class="section-title">${esc(t('assess.visible'))}</h2>
       <div class="reading">
         ${result.observations.map(o => `
           <div class="reading-row" style="grid-template-columns:minmax(0,1fr) minmax(0,2fr)">
@@ -685,7 +684,7 @@ function renderResult(result, productsById) {
 
   const working = (result.working || []).length ? `
     <div class="block">
-      <h2 class="section-title">Earning its place</h2>
+      <h2 class="section-title">${esc(t('assess.working'))}</h2>
       <ul class="prose" style="margin:0;padding-left:18px">
         ${result.working.map(w => `<li style="margin-bottom:8px">${esc(w)}</li>`).join('')}
       </ul>
@@ -693,7 +692,7 @@ function renderResult(result, productsById) {
 
   const changes = (result.changes || []).length ? `
     <div class="block">
-      <h2 class="section-title">What to change</h2>
+      <h2 class="section-title">${esc(t('assess.changes'))}</h2>
       <div class="reading">
         ${result.changes.map(c => `
           <div class="reading-row" style="grid-template-columns:minmax(0,1fr) minmax(0,1.4fr)">
@@ -714,7 +713,7 @@ function renderResultBody(result, productsById, extras, observations, working, c
         <div class="step-label">${esc(s.step)}</div>
         ${s.productId && productsById[s.productId]
           ? `<div class="step-product"><a href="#/product/${esc(s.productId)}">${esc(productsById[s.productId].brand || '')} ${esc(productsById[s.productId].name)}</a></div>`
-          : '<div class="step-product step-empty">Nothing suitable on the shelf</div>'}
+          : `<div class="step-product step-empty">${esc(t('assess.nothingSuitable'))}</div>`}
         <div class="step-note">${esc(s.note || '')}</div>
       </div>
     </div>`).join('');
@@ -725,35 +724,35 @@ function renderResultBody(result, productsById, extras, observations, working, c
     ${observations}
 
     <div class="block">
-      <h2 class="section-title">The reading</h2>
+      <h2 class="section-title">${esc(t('assess.theReading'))}</h2>
       ${result.concerns.length ? `<div class="reading">${result.concerns.map(c => `
         <div class="reading-row">
           <div>${esc(c.label)}</div>
-          <div class="severity ${c.severity === 'marked' ? 'severity-marked' : ''}">${esc(SEVERITY_LABEL[c.severity])}</div>
+          <div class="severity ${c.severity === 'marked' ? 'severity-marked' : ''}">${esc(severityLabel(c.severity))}</div>
           <div class="reading-note">${esc(c.evidence)}</div>
         </div>`).join('')}</div>`
-        : '<p class="muted">Nothing stands out from your answers. Keep to what is working.</p>'}
+        : `<p class="muted">${esc(t('assess.nothingStands'))}</p>`}
     </div>
 
     ${working}
     ${changes}
 
     <div class="block">
-      <h2 class="section-title">The routine this suggests</h2>
+      <h2 class="section-title">${esc(t('assess.suggests'))}</h2>
       <div class="routine-cols">
         <div>
-          <h3 class="step-label" style="margin-bottom:8px">Morning</h3>
-          ${period('am') || '<p class="muted">No morning routine could be built from the shelf.</p>'}
+          <h3 class="step-label" style="margin-bottom:8px">${esc(t('common.morning'))}</h3>
+          ${period('am') || `<p class="muted">${esc(t('assess.noMorning'))}</p>`}
         </div>
         <div>
-          <h3 class="step-label" style="margin-bottom:8px">Evening</h3>
-          ${period('pm') || '<p class="muted">No evening routine could be built from the shelf.</p>'}
+          <h3 class="step-label" style="margin-bottom:8px">${esc(t('common.evening'))}</h3>
+          ${period('pm') || `<p class="muted">${esc(t('assess.noEvening'))}</p>`}
         </div>
       </div>
     </div>
 
     ${result.gaps.length ? `<div class="block">
-      <h2 class="section-title">What is missing</h2>
+      <h2 class="section-title">${esc(t('assess.missing'))}</h2>
       ${result.gaps.map(g => `<div class="notice"><strong>${esc(g.category)}</strong> — ${esc(g.reason)}</div>`).join('')}
     </div>` : ''}`;
 }
@@ -770,22 +769,22 @@ export async function assess(root, { id } = {}) {
   if (id) {
     const record = history.find(a => a.id === id);
     if (!record) {
-      root.innerHTML = `<div class="empty"><p>That assessment is no longer kept.</p>
-        <a class="btn" href="#/assess">Back to assessment</a></div>`;
+      root.innerHTML = `<div class="empty"><p>${esc(t('assess.gone'))}</p>
+        <a class="btn" href="#/assess">${esc(t('assess.back'))}</a></div>`;
       return;
     }
     const blob = await store.getImage(record.photoId);
     root.innerHTML = `
-      <p class="label muted" style="margin:0 0 32px"><a href="#/assess">← Assessment</a></p>
+      <p class="label muted" style="margin:0 0 32px"><a href="#/assess">${esc(t('assess.back'))}</a></p>
       <div class="view-head">${headerArt('assess')}<h1 class="page-title">${esc(fmtStampTime(record.date))}</h1>
-        <button class="btn btn-quiet btn-danger" id="del-assessment">Remove this record</button></div>
+        <button class="btn btn-quiet btn-danger" id="del-assessment">${esc(t('assess.removeRecord'))}</button></div>
       <div class="assess-grid">
         <div>${blob ? `<div class="shelf-frame"><img src="${imgUrl(blob)}" alt="Skin, ${esc(fmtStamp(record.date))}"></div>`
-          : '<div class="shelf-frame"><span class="no-image">No photograph</span></div>'}</div>
+          : `<div class="shelf-frame"><span class="no-image">${esc(t('shelf.noPhoto'))}</span></div>`}</div>
         <div>${renderResult(record.result, productsById)}</div>
       </div>`;
     root.querySelector('#del-assessment').onclick = async () => {
-      if (!confirm('Remove this assessment and its photograph?')) return;
+      if (!confirm(t('assess.confirmRemove'))) return;
       await store.deleteAssessment(record.id);
       location.hash = '#/assess';
     };
@@ -796,7 +795,7 @@ export async function assess(root, { id } = {}) {
      mean losing your place on the page. */
   const historyMarkup = history.length ? `
     <div class="block">
-      <h2 class="block-title">Previous readings — ${history.length}</h2>
+      <h2 class="block-title">${esc(t('assess.previous', { n: history.length }))}</h2>
       <div class="history">
         ${history.map(a => `
           <div class="history-item">
@@ -805,7 +804,7 @@ export async function assess(root, { id } = {}) {
               <span class="history-date">${esc(fmtStampTime(a.date))}</span>
               <span class="muted grow">${a.result.concerns.length
                 ? esc(a.result.concerns.slice(0, 3).map(c => c.label).join(', '))
-                : 'Nothing marked'}</span>
+                : esc(t('assess.nothingMarked'))}</span>
               <span class="history-mark" aria-hidden="true">+</span>
             </button>
             <div class="history-body" id="past-${esc(a.id)}" hidden></div>
@@ -816,27 +815,26 @@ export async function assess(root, { id } = {}) {
   root.innerHTML = `
     <div class="view-head">
       ${headerArt('assess')}
-      <h1 class="page-title">Assessment</h1>
+      <h1 class="page-title">${esc(t('assess.title'))}</h1>
       <div class="btn-row">
-        <button class="btn btn-quiet" id="brief-here">Copy briefing for another assistant</button>
+        <button class="btn btn-quiet" id="brief-here">${esc(t('assess.copyBriefing'))}</button>
         <span class="field-hint" style="margin:0" id="brief-here-note"></span>
       </div>
     </div>
     <div class="assess-grid">
       <div>
-        ${dropzoneMarkup('skin-photo', 'A photograph of your skin')}
-        <p class="field-hint">Even daylight, no makeup, the same angle each time. Kept in this
-          browser so you can compare one month against the next.</p>
+        ${dropzoneMarkup('skin-photo', t('assess.photoPrompt'))}
+        <p class="field-hint">${esc(t('assess.photoHint'))}</p>
         ${AI_FEATURES && keyConfigured ? `
           <div class="choices" style="margin-top:20px">
             <input type="checkbox" id="send-photo" ${sendPhotoDefault ? 'checked' : ''}>
-            <label for="send-photo">Let the model look at it</label>
+            <label for="send-photo">${esc(t('assess.letModelLook'))}</label>
           </div>`
         : ''}
       </div>
       <div>
         <form id="assess-form">
-          ${QUESTIONS.map(q => `
+          ${questions().map(q => `
             <div class="field">
               <label>${esc(q.label)}</label>
               <div class="choices">
@@ -847,8 +845,8 @@ export async function assess(root, { id } = {}) {
               </div>
             </div>`).join('')}
           <div class="btn-row">
-            <button type="submit" class="btn">Read my skin</button>
-            <span class="field-hint" style="margin:0">Answers and photograph stay on this machine.</span>
+            <button type="submit" class="btn">${esc(t('assess.submit'))}</button>
+            <span class="field-hint" style="margin:0">${esc(t('assess.staysHere'))}</span>
           </div>
         </form>
       </div>
@@ -864,7 +862,7 @@ export async function assess(root, { id } = {}) {
         zone.querySelectorAll('img').forEach(n => n.remove());
         const img = document.createElement('img');
         img.src = imgUrl(blob);
-        img.alt = 'Skin photograph';
+        img.alt = t('assess.skinPhotoAlt');
         zone.appendChild(img);
         return blob;
       })
@@ -892,11 +890,11 @@ export async function assess(root, { id } = {}) {
           ${photo ? `<div class="history-photo"><img src="${imgUrl(photo)}" alt=""></div>` : ''}
           ${renderResult(record.result, productsById)}
           <div class="btn-row" style="margin-bottom:32px">
-            <button class="btn btn-quiet btn-danger" data-forget="${esc(id)}">Remove this record</button>
+            <button class="btn btn-quiet btn-danger" data-forget="${esc(id)}">${esc(t('assess.removeRecord'))}</button>
           </div>`;
         body.dataset.filled = '1';
         body.querySelector('[data-forget]').onclick = async () => {
-          if (!confirm('Remove this assessment and its photograph?')) return;
+          if (!confirm(t('assess.confirmRemove'))) return;
           await store.deleteAssessment(id);
           assess(root);
         };
@@ -912,9 +910,7 @@ export async function assess(root, { id } = {}) {
     const briefNote = root.querySelector('#brief-here-note');
     try {
       const { copied } = await copyBriefing();
-      briefNote.textContent = copied
-        ? 'Copied. Paste it alongside your photograph.'
-        : 'Could not reach the clipboard — try Settings.';
+      briefNote.textContent = copied ? t('assess.briefingCopied') : t('assess.briefingFailed');
     } catch (err) {
       briefNote.textContent = err.message;
     }
@@ -924,14 +920,14 @@ export async function assess(root, { id } = {}) {
     ev.preventDefault();
     const fd = new FormData(ev.target);
     const answers = {};
-    for (const q of QUESTIONS) {
+    for (const q of questions()) {
       answers[q.key] = q.multi ? fd.getAll(q.key) : (fd.get(q.key) || '');
     }
 
     const photoBlob = photoJob ? await photoJob : null;
     const sendPhoto = Boolean(root.querySelector('#send-photo')?.checked);
     const submit = ev.target.querySelector('button[type="submit"]');
-    const restore = submit ? waiting(submit, 'Reading') : () => {};
+    const restore = submit ? waiting(submit, t('common.reading')) : () => {};
 
     let result;
     try {
@@ -958,8 +954,8 @@ export async function assess(root, { id } = {}) {
     const out = root.querySelector('#assess-result');
     out.innerHTML = `<div class="block">${renderResult(result, productsById)}
       <div class="btn-row">
-        <button class="btn" id="adopt">Adopt this as my routine</button>
-        <span class="field-hint" style="margin:0" id="adopt-note">Kept in your archive as of today.</span>
+        <button class="btn" id="adopt">${esc(t('assess.adopt'))}</button>
+        <span class="field-hint" style="margin:0" id="adopt-note">${esc(t('assess.archived'))}</span>
       </div></div>`;
     out.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
@@ -968,7 +964,7 @@ export async function assess(root, { id } = {}) {
         .filter(s => s.productId)
         .map(s => ({ step: s.stepKey || null, productId: s.productId }));
       await store.setRoutine({ am: entries('am'), pm: entries('pm') });
-      out.querySelector('#adopt-note').textContent = 'Saved. It is now under Routine.';
+      out.querySelector('#adopt-note').textContent = t('assess.adopted');
     };
   };
 }
@@ -983,9 +979,9 @@ export async function routine(root) {
   const byId = Object.fromEntries(products.map(p => [p.id, p]));
 
   if (!products.length) {
-    root.innerHTML = `<div class="view-head">${headerArt('routine')}<h1 class="page-title">Routine</h1></div>
-      <div class="empty"><p>A routine is assembled from what is on the shelf. Add a product first.</p>
-      <a class="btn" href="#/add">Add a product</a></div>`;
+    root.innerHTML = `<div class="view-head">${headerArt('routine')}<h1 class="page-title">${esc(t('routine.title'))}</h1></div>
+      <div class="empty"><p>${esc(t('routine.emptyShelf'))}</p>
+      <a class="btn" href="#/add">${esc(t('shelf.add'))}</a></div>`;
     return;
   }
 
@@ -1000,7 +996,7 @@ export async function routine(root) {
   let openComplete = false;
   let dirty = false;
   let message = '';
-  const saveNote = () => (dirty ? 'Unsaved changes.' : message);
+  const saveNote = () => (dirty ? t('routine.unsaved') : message);
 
   /* ---------- the week, one day at a time ----------
 
@@ -1042,7 +1038,7 @@ export async function routine(root) {
       const taken = new Set(already.map(e => e.productId));
       const candidates = products.filter(p => step.categories.includes(p.category) && !taken.has(p.id));
       if (!candidates.length) return '';
-      return `<optgroup label="${esc(step.label)}">${candidates.map(p =>
+      return `<optgroup label="${esc(stepLabel(step))}">${candidates.map(p =>
         `<option value="${esc(step.key)}|${esc(p.id)}">${esc(productLabel(p))}</option>`).join('')}</optgroup>`;
     }).join('');
 
@@ -1051,7 +1047,7 @@ export async function routine(root) {
       <span class="picker-step" style="min-width:110px"></span>
       <span class="grow">
         <select class="inline-select" data-dayadd="${esc(period)}|${day}">
-          <option value="">＋ add a product</option>${groups}
+          <option value="">${esc(t('routine.addProduct'))}</option>${groups}
         </select>
       </span>
     </div>`;
@@ -1062,22 +1058,22 @@ export async function routine(root) {
   const scheduleOf = (entry, day) => {
     if (isEveryDay(entry)) return '';
     const days = daysOf(entry);
-    return days.length === 1 && days[0] === day ? 'This day only' : describeDays(entry);
+    return days.length === 1 && days[0] === day ? t('routine.thisDayOnly') : describeDays(entry);
   };
 
   const dayColumn = (period, title, day) => {
     const rows = entriesOn(period, day).map(({ entry, step }) => `
       <div class="picker-row">
-        <span class="picker-step" style="min-width:110px">${esc(step.label)}</span>
+        <span class="picker-step" style="min-width:110px">${esc(stepLabel(step))}</span>
         <span class="grow">${esc(productLabel(byId[entry.productId]))}</span>
         <span class="picker-step">${esc(scheduleOf(entry, day))}</span>
-        <button class="link-btn" data-dayoff="${esc(period)}|${esc(step.key)}|${esc(entry.productId)}|${day}">Remove</button>
+        <button class="link-btn" data-dayoff="${esc(period)}|${esc(step.key)}|${esc(entry.productId)}|${day}">${esc(t('common.remove'))}</button>
       </div>`).join('');
 
     return `<div>
       <h3 class="section-title">${esc(title)}</h3>
       <div class="picker">
-        ${rows || '<div class="picker-row"><span class="grow muted">Nothing on this day</span></div>'}
+        ${rows || `<div class="picker-row"><span class="grow muted">${esc(t('routine.nothingOnDay'))}</span></div>`}
         ${dayAdder(period, day)}
       </div>
     </div>`;
@@ -1096,9 +1092,9 @@ export async function routine(root) {
               data-openday="${day}" aria-pressed="${chosen}" aria-controls="day-detail">
       <span class="day-card-name">${esc(label)}</span>
       <span class="day-card-foot">
-        ${day === todayIndex ? '<span class="day-card-today">Today</span>' : ''}
-        <span class="day-card-count">${count ? `${count} step${count === 1 ? '' : 's'}` : 'Nothing yet'}</span>
-        ${clashes.length ? '<span class="day-card-clash">Take care</span>' : ''}
+        ${day === todayIndex ? `<span class="day-card-today">${esc(t('common.today'))}</span>` : ''}
+        <span class="day-card-count">${esc(count ? plural(count, 'routine.stepsOne', 'routine.stepsMany') : t('routine.nothingYet'))}</span>
+        ${clashes.length ? `<span class="day-card-clash">${esc(t('common.takeCare'))}</span>` : ''}
       </span>
     </button>`;
   };
@@ -1108,14 +1104,14 @@ export async function routine(root) {
     const notes = [...conflictsFor(onDay('am', day), 'am'), ...conflictsFor(onDay('pm', day), 'pm')];
     return `<div class="day-body" id="day-detail">
       <div class="routine-cols">
-        ${dayColumn('am', 'Morning', day)}
-        ${dayColumn('pm', 'Evening', day)}
+        ${dayColumn('am', t('common.morning'), day)}
+        ${dayColumn('pm', t('common.evening'), day)}
       </div>
       ${notes.map(n => `<div class="notice" style="margin-top:24px">
-          <strong>${n.severity === 'high' ? 'Take care' : n.severity === 'medium' ? 'Consider' : 'Note'}</strong>
+          <strong>${esc(severityWord(n.severity))}</strong>
           ${esc(n.text)}</div>`).join('')}
       <div class="btn-row day-save">
-        <button class="btn btn-lg" data-save>Save routine</button>
+        <button class="btn btn-lg" data-save>${esc(t('routine.save'))}</button>
         <span class="field-hint" style="margin:0">${esc(saveNote())}</span>
       </div>
     </div>`;
@@ -1131,10 +1127,10 @@ export async function routine(root) {
                 data-days="${esc(id)}">${esc(describeDays(entry))}</button>`;
     }
     return `<span class="day-picker">
-      ${DAYS.map((label, i) => `
+      ${days().map((label, i) => `
         <button class="day${chosen.has(i) ? ' is-on' : ''}"
                 data-day="${esc(id)}|${i}" title="${esc(label)}">${esc(label[0])}</button>`).join('')}
-      <button class="link-btn" data-days="${esc(id)}">Done</button>
+      <button class="link-btn" data-days="${esc(id)}">${esc(t('routine.done'))}</button>
     </span>`;
   };
 
@@ -1148,27 +1144,27 @@ export async function routine(root) {
       const p = byId[entry.productId];
       if (!p) return '';
       return `<div class="picker-row">
-        <span class="picker-step" style="min-width:110px">${i === 0 ? esc(step.label) : ''}</span>
+        <span class="picker-step" style="min-width:110px">${i === 0 ? esc(stepLabel(step)) : ''}</span>
         <span class="grow">${esc(productLabel(p))}</span>
         ${dayToggles(period, entry.productId, step.key, entry)}
-        ${i > 0 ? `<button class="link-btn" data-up="${esc(period)}|${esc(step.key)}|${i}">Move up</button>` : ''}
-        <button class="link-btn" data-drop="${esc(period)}|${esc(entry.productId)}|${esc(step.key)}">Remove</button>
+        ${i > 0 ? `<button class="link-btn" data-up="${esc(period)}|${esc(step.key)}|${i}">${esc(t('routine.moveUp'))}</button>` : ''}
+        <button class="link-btn" data-drop="${esc(period)}|${esc(entry.productId)}|${esc(step.key)}">${esc(t('common.remove'))}</button>
       </div>`;
     }).join('');
 
     const adder = canAdd
       ? `<div class="picker-row">
-          <span class="picker-step" style="min-width:110px">${chosen.length ? '' : esc(step.label)}</span>
+          <span class="picker-step" style="min-width:110px">${chosen.length ? '' : esc(stepLabel(step))}</span>
           <span class="grow">
             <select class="inline-select step-add" data-add="${esc(period)}|${esc(step.key)}">
-              ${option('', chosen.length ? '＋ add another' : '—', '')}
+              ${option('', chosen.length ? t('routine.addAnother') : '—', '')}
               ${candidates.map(p => option(p.id, productLabel(p), '')).join('')}
             </select>
           </span>
         </div>`
       : (chosen.length ? '' : `<div class="picker-row">
-          <span class="picker-step" style="min-width:110px">${esc(step.label)}</span>
-          <span class="grow muted">Nothing in this category</span>
+          <span class="picker-step" style="min-width:110px">${esc(stepLabel(step))}</span>
+          <span class="grow muted">${esc(t('routine.nothingInCategory'))}</span>
         </div>`);
 
     return rows + adder;
@@ -1187,31 +1183,29 @@ export async function routine(root) {
     root.innerHTML = `
       <div class="view-head">
         ${headerArt('routine')}
-        <h1 class="page-title">Routine</h1>
+        <h1 class="page-title">${esc(t('routine.title'))}</h1>
       </div>
 
       <div class="block" style="margin-top:0">
-        <h2 class="block-title">Your week</h2>
-        <p class="muted" style="font-size:13px;margin:0 0 24px">Choose a day to see what you are
-          using and change it. What you add belongs to that day alone — the rest of the week
-          keeps whatever it had.</p>
-        <div class="week-strip">${DAYS.map((label, day) => dayCard(label, day)).join('')}</div>
+        <h2 class="block-title">${esc(t('routine.yourWeek'))}</h2>
+        <p class="muted" style="font-size:13px;margin:0 0 24px">${esc(t('routine.weekHint'))}</p>
+        <div class="week-strip">${days().map((label, day) => dayCard(label, day)).join('')}</div>
         ${dayDetail(openDay)}
       </div>
 
       <div class="block">
         <button class="day-head" id="open-complete" aria-expanded="${openComplete}" aria-controls="complete">
-          <span class="week-day">Complete routine</span>
-          <span class="grow muted">Every step, and which days each product is used</span>
+          <span class="week-day">${esc(t('routine.complete'))}</span>
+          <span class="grow muted">${esc(t('routine.completeHint'))}</span>
           <span class="history-mark" aria-hidden="true">${openComplete ? '–' : '+'}</span>
         </button>
         ${openComplete ? `<div class="day-body" id="complete">
           <div class="routine-cols">
-            ${column('am', 'Morning')}
-            ${column('pm', 'Evening')}
+            ${column('am', t('common.morning'))}
+            ${column('pm', t('common.evening'))}
           </div>
           <div class="btn-row day-save">
-            <button class="btn btn-lg" data-save>Save routine</button>
+            <button class="btn btn-lg" data-save>${esc(t('routine.save'))}</button>
             <span class="field-hint" style="margin:0">${esc(saveNote())}</span>
           </div>
         </div>` : ''}
@@ -1225,16 +1219,16 @@ export async function routine(root) {
         for (let day = 0; day < 7; day++) {
           for (const note of conflictsFor(onDay(period, day), period)) {
             if (!byText.has(note.text)) byText.set(note.text, { ...note, days: [] });
-            byText.get(note.text).days.push(DAYS[day]);
+            byText.get(note.text).days.push(dayLabel(day));
           }
         }
         const notes = [...byText.values()];
         const anything = draft[period].length;
         root.querySelector(`#conflicts-${period}`).innerHTML = notes.length
-          ? `<h3 class="section-title">Worth knowing</h3>${notes.map(n =>
-              `<div class="notice"><strong>${n.severity === 'high' ? 'Take care' : n.severity === 'medium' ? 'Consider' : 'Note'}</strong>
-                ${n.days.length === 7 ? '' : `<em>${esc(n.days.join(', '))}</em> — `}${esc(n.text)}</div>`).join('')}`
-          : (anything ? '<p class="muted" style="font-size:13px">Nothing conflicts on any day.</p>' : '');
+          ? `<h3 class="section-title">${esc(t('routine.worthKnowing'))}</h3>${notes.map(n =>
+              `<div class="notice"><strong>${esc(severityWord(n.severity))}</strong>
+                ${n.days.length === 7 ? '' : `<em>${esc(n.days.join(' · '))}</em> — `}${esc(n.text)}</div>`).join('')}`
+          : (anything ? `<p class="muted" style="font-size:13px">${esc(t('routine.noConflicts'))}</p>` : '');
       }
     }
     wire();
@@ -1344,7 +1338,7 @@ export async function routine(root) {
       btn.onclick = async () => {
         await store.setRoutine({ am: draft.am, pm: draft.pm });
         dirty = false;
-        message = 'Saved.';
+        message = t('common.saved');
         draw();
       };
     });
@@ -1427,16 +1421,14 @@ export async function discoveries(root) {
 
   if (!AI_FEATURES || !apiKey) {
     root.innerHTML = `
-      <div class="view-head">${headerArt('discoveries')}<h1 class="page-title">Discoveries</h1></div>
+      <div class="view-head">${headerArt('discoveries')}<h1 class="page-title">${esc(t('disc.title'))}</h1></div>
       <div class="empty">
-        <p>This looks for Japanese and Korean products that suit your latest reading and fill a
-           gap on your shelf.</p>
+        <p>${esc(t('disc.intro'))}</p>
         ${AI_FEATURES
-          ? `<p>It needs a model connected under Settings.</p>
-             <a class="btn" href="#/settings">Connect one</a>`
-          : `<p>This copy of the library does not talk to any model. Copy a briefing from
-               Settings and ask an assistant of your own instead.</p>
-             <a class="btn" href="#/settings">Copy a briefing</a>`}
+          ? `<p>${esc(t('disc.needsModel'))}</p>
+             <a class="btn" href="#/settings">${esc(t('disc.connectOne'))}</a>`
+          : `<p>${esc(t('disc.noModelHere'))}</p>
+             <a class="btn" href="#/settings">${esc(t('disc.copyBriefing'))}</a>`}
       </div>`;
     return;
   }
@@ -1446,26 +1438,24 @@ export async function discoveries(root) {
     root.innerHTML = `
       <div class="view-head">
         ${headerArt('discoveries')}
-        <h1 class="page-title">Discoveries</h1>
+        <h1 class="page-title">${esc(t('disc.title'))}</h1>
         <div class="btn-row">
-          <button class="btn" id="look">${picks ? 'Look again' : 'Look for something new'}</button>
+          <button class="btn" id="look">${esc(picks ? t('disc.lookAgain') : t('disc.look'))}</button>
           <span class="field-hint" style="margin:0" id="pick-note">${esc(note || '')}</span>
         </div>
       </div>
 
       ${picks ? `
-        ${picks.grounded === false ? `<div class="notice"><strong>Not web-checked</strong> —
-          search was unavailable, so these come from the model's memory. Products may be
-          discontinued or misremembered. Verify each one before buying.</div>` : ''}
-        <p class="muted" style="margin-bottom:32px">Found ${esc(fmtStamp(picks.generatedAt))}${stale ? ' — over a month ago, worth looking again.' : '.'}
-          ${picks.grounded === false ? '' : 'Searched on the web, but check the details yourself before buying.'}</p>
+        ${picks.grounded === false ? `<div class="notice">${t('disc.notWebChecked')}</div>` : ''}
+        <p class="muted" style="margin-bottom:32px">${esc(t('disc.foundOn', { date: fmtStamp(picks.generatedAt) }))}${esc(stale ? t('disc.stale') : '')}
+          ${picks.grounded === false ? '' : esc(t('disc.checkYourself'))}</p>
         <div class="carousel">
           <div class="carousel-bar">
-            <button class="link-btn" id="pick-prev">← Previous</button>
+            <button class="link-btn" id="pick-prev">${esc(t('disc.prev'))}</button>
             <span class="carousel-dots" id="pick-dots">
-              ${(picks.items || []).map((_, i) => `<button class="carousel-dot${i === 0 ? ' is-on' : ''}" data-go="${i}" aria-label="Go to ${i + 1}"></button>`).join('')}
+              ${(picks.items || []).map((_, i) => `<button class="carousel-dot${i === 0 ? ' is-on' : ''}" data-go="${i}" aria-label="${esc(t('disc.goTo', { n: i + 1 }))}"></button>`).join('')}
             </span>
-            <button class="link-btn" id="pick-next">Next →</button>
+            <button class="link-btn" id="pick-next">${esc(t('disc.next'))}</button>
           </div>
           <div class="carousel-track" id="picks-track">
             ${(picks.items || []).map((item, i) => {
@@ -1475,7 +1465,7 @@ export async function discoveries(root) {
               <article class="pick" aria-roledescription="slide"
                        aria-label="${i + 1} of ${(picks.items || []).length}">
                 <a class="pick-link" href="${esc(href)}" target="_blank" rel="noreferrer noopener"
-                   title="Opens ${item.url ? 'where this was found' : 'a search for this product'}">
+                   title="${esc(item.url ? t('disc.opensFound') : t('disc.opensSearch'))}">
                   ${pickArt(item, i)}
                 </a>
                 <div class="pick-body">
@@ -1486,14 +1476,14 @@ export async function discoveries(root) {
                   </div>
                   <div class="pick-why">${esc(item.why || '')}</div>
                   <button class="link-btn pick-more" data-more="${i}"
-                          aria-expanded="false" aria-controls="pick-detail-${i}">Details +</button>
+                          aria-expanded="false" aria-controls="pick-detail-${i}">${esc(t('common.details'))} +</button>
                   <div class="pick-details" id="pick-detail-${i}" hidden>
-                    ${item.kind ? `<div class="pick-meta"><strong>What it is</strong> — ${esc(item.kind)}</div>` : ''}
-                    ${item.actives ? `<div class="pick-meta"><strong>Actives</strong> — ${esc(item.actives)}</div>` : ''}
-                    ${item.caution ? `<div class="pick-meta"><strong>Caution</strong> — ${esc(item.caution)}</div>` : ''}
+                    ${item.kind ? `<div class="pick-meta"><strong>${esc(t('disc.whatItIs'))}</strong> — ${esc(item.kind)}</div>` : ''}
+                    ${item.actives ? `<div class="pick-meta"><strong>${esc(t('disc.actives'))}</strong> — ${esc(item.actives)}</div>` : ''}
+                    ${item.caution ? `<div class="pick-meta"><strong>${esc(t('disc.caution'))}</strong> — ${esc(item.caution)}</div>` : ''}
                     <div class="pick-meta"><a class="pick-link" href="${esc(href)}" target="_blank"
-                      rel="noreferrer noopener" style="text-decoration:underline">${item.url
-                        ? 'Where this was found ↗' : 'Search for this product ↗'}</a></div>
+                      rel="noreferrer noopener" style="text-decoration:underline">${esc(item.url
+                        ? t('disc.whereFound') : t('disc.searchFor'))}</a></div>
                   </div>
                 </div>
               </article>`;
@@ -1501,12 +1491,12 @@ export async function discoveries(root) {
           </div>
         </div>
         ${(picks.sources || []).length ? `<div class="block">
-          <h2 class="section-title">Where this came from</h2>
+          <h2 class="section-title">${esc(t('disc.sources'))}</h2>
           <div class="chips">
             ${picks.sources.map(s => `<a class="chip" href="${esc(s.url)}" target="_blank" rel="noreferrer noopener">${esc(s.title)}</a>`).join('')}
           </div>
         </div>` : ''}`
-      : `<div class="empty"><p>Nothing looked up yet.</p></div>`}`;
+      : `<div class="empty"><p>${esc(t('disc.nothingYet'))}</p></div>`}`;
 
     /* Carousel: scroll-snap does the moving, buttons and dots just nudge it. */
     const track = root.querySelector('#picks-track');
@@ -1553,20 +1543,20 @@ export async function discoveries(root) {
           const opening = body.hidden;
           body.hidden = !opening;
           btn.setAttribute('aria-expanded', String(opening));
-          btn.textContent = opening ? 'Details –' : 'Details +';
+          btn.textContent = t('common.details') + (opening ? ' –' : ' +');
         };
       });
     }
 
     root.querySelector('#look').onclick = async () => {
       const button = root.querySelector('#look');
-      const restore = waiting(button, 'Searching');
-      root.querySelector('#pick-note').innerHTML = `This takes a moment${dots()}`;
+      const restore = waiting(button, t('common.searching'));
+      root.querySelector('#pick-note').innerHTML = `${esc(t('disc.takesAMoment'))}${dots()}`;
       try {
         const assessments = (await store.getAssessments()).sort((a, b) => b.date.localeCompare(a.date));
         const fresh = await discover({ library: products, assessment: assessments[0] });
         await store.setPicks(fresh);
-        paint(fresh, `Found ${fresh.items.length}.`);
+        paint(fresh, t('disc.found', { n: fresh.items.length }));
       } catch (err) {
         restore();
         root.querySelector('#pick-note').textContent = err.message;
@@ -1590,113 +1580,118 @@ export async function settings(root) {
   const allAssessments = await store.getAll('assessments');
 
   root.innerHTML = `
-    <div class="view-head">${headerArt('settings')}<h1 class="page-title">Settings</h1></div>
+    <div class="view-head">${headerArt('settings')}<h1 class="page-title">${esc(t('set.title'))}</h1></div>
 
     <div class="prose">
-      <h2 class="section-title">Profiles</h2>
-      <p class="muted">Everyone at home can have their own shelf, readings and routine. Switch
-        between them at the top of the page. They are kept apart for tidiness, not for privacy —
-        anyone at this browser can look at any of them.</p>
+      <h2 class="section-title">${esc(t('set.language'))}</h2>
+      <p class="muted">${esc(t('set.languageNote'))}</p>
+      <div class="choices" style="margin-top:20px">
+        ${LANGS.map(l => `
+          <input type="radio" name="lang" id="lang-${esc(l.id)}" value="${esc(l.id)}"${l.id === lang() ? ' checked' : ''}>
+          <label for="lang-${esc(l.id)}">${esc(l.label)}</label>`).join('')}
+      </div>
+    </div>
+
+    <div class="prose block">
+      <h2 class="section-title">${esc(t('set.profiles'))}</h2>
+      <p class="muted">${esc(t('set.profilesNote'))}</p>
 
       <div class="picker" style="margin-top:24px">
         ${profiles.map(p => {
-          const t = tallies[p.id] || { products: 0, assessments: 0 };
+          const tally = tallies[p.id] || { products: 0, assessments: 0 };
           return `<div class="picker-row">
             <span class="grow">
               <input type="text" class="profile-name" data-id="${esc(p.id)}" value="${esc(p.name)}"
-                     aria-label="Profile name">
+                     aria-label="${esc(t('set.profileName'))}">
             </span>
-            <span class="picker-step">${t.products} ${t.products === 1 ? 'product' : 'products'} · ${t.assessments} ${t.assessments === 1 ? 'reading' : 'readings'}</span>
-            ${p.id === activeId ? '<span class="picker-step" style="color:var(--amber)">Showing</span>' : ''}
-            ${profiles.length > 1 ? `<button class="link-btn" data-remove="${esc(p.id)}">Remove</button>` : ''}
+            <span class="picker-step">${esc(plural(tally.products, 'set.productsOne', 'set.productsMany'))} · ${esc(plural(tally.assessments, 'set.readingsOne', 'set.readingsMany'))}</span>
+            ${p.id === activeId ? `<span class="picker-step" style="color:var(--amber)">${esc(t('set.showing'))}</span>` : ''}
+            ${profiles.length > 1 ? `<button class="link-btn" data-remove="${esc(p.id)}">${esc(t('common.remove'))}</button>` : ''}
           </div>`;
         }).join('')}
       </div>
 
       <div class="field" style="max-width:360px;margin-top:32px">
-        <label for="new-profile">Add someone</label>
-        <input type="text" id="new-profile" placeholder="Their name" autocomplete="off">
+        <label for="new-profile">${esc(t('set.addSomeone'))}</label>
+        <input type="text" id="new-profile" placeholder="${esc(t('set.theirName'))}" autocomplete="off">
       </div>
       <div class="btn-row">
-        <button class="btn" id="add-profile">Add profile</button>
+        <button class="btn" id="add-profile">${esc(t('set.addProfile'))}</button>
         <span class="field-hint" style="margin:0" id="profile-note"></span>
       </div>
     </div>
 
     <div class="prose block">
-      <h2 class="section-title">Your library</h2>
-      <p class="muted">${allProducts.length} products and ${allAssessments.length} assessments across
-        ${profiles.length} ${profiles.length === 1 ? 'profile' : 'profiles'}, held in this browser's
-        storage. Clearing site data would remove them, so keep a backup.</p>
+      <h2 class="section-title">${esc(t('set.yourLibrary'))}</h2>
+      <p class="muted">${esc(t('set.libraryNote', {
+        products: allProducts.length, assessments: allAssessments.length, profiles: profiles.length }))}</p>
       <div class="btn-row" style="margin:24px 0 8px">
-        <button class="btn" id="export">Export a backup</button>
-        <button class="btn btn-quiet" id="import-btn">Restore from a backup</button>
+        <button class="btn" id="export">${esc(t('set.export'))}</button>
+        <button class="btn btn-quiet" id="import-btn">${esc(t('set.import'))}</button>
         <input type="file" id="import" accept="application/json" style="display:none">
       </div>
       <p class="field-hint" id="backup-note"></p>
     </div>
 
     <div class="prose block">
-      <h2 class="section-title">Ask another assistant</h2>
-      <p class="muted">Copies your shelf, your routine and your last self-assessment as text you
-        can paste into Gemini, Claude or anything else, along with a photograph of your skin.
-        Nothing is sent by this app — you paste it yourself, so you can read exactly what you are
-        sharing first.</p>
+      <h2 class="section-title">${esc(t('set.askAnother'))}</h2>
+      <p class="muted">${esc(t('set.askAnotherNote'))}</p>
       <div class="btn-row" style="margin-top:24px">
-        <button class="btn" id="copy-briefing">Copy briefing</button>
-        <button class="btn btn-quiet" id="download-briefing">Download as a file</button>
+        <button class="btn" id="copy-briefing">${esc(t('set.copyBriefing'))}</button>
+        <button class="btn btn-quiet" id="download-briefing">${esc(t('set.downloadBriefing'))}</button>
         <span class="field-hint" style="margin:0" id="briefing-note"></span>
       </div>
     </div>
 
     ${AI_FEATURES ? `<div class="prose block">
-      <h2 class="section-title">Connecting a model</h2>
-      <p class="muted">With a key saved here, the app can read product labels for you, read your
-        skin photograph, answer questions in the chat panel, and look for new products each month.
-        Without one, everything else still works and nothing is ever sent anywhere.</p>
-      <p class="muted"><strong>What leaves this Mac, and when.</strong> Reading a label sends that
-        photograph. An assessment sends your answers, your shelf and your routine — and your skin
-        photograph only if you tick the box, which is off by default. Chat sends your shelf and
-        routine with each message. Google’s free tier commonly uses what you submit to improve
-        their products; that is the trade for it costing nothing. The app asks Google not to
-        retain each request, but that setting does not override their terms. Your key is kept in
-        this browser and is left out of backups.</p>
+      <h2 class="section-title">${esc(t('set.connecting'))}</h2>
+      <p class="muted">${esc(t('set.connectingNote'))}</p>
+      <p class="muted">${t('set.privacyNote')}</p>
 
       <div class="field-pair" style="max-width:640px;margin-top:24px">
         <div class="field">
-          <label for="provider">Provider</label>
+          <label for="provider">${esc(t('set.provider'))}</label>
           <select id="provider">
             ${PROVIDERS.map(p => option(p.id, p.label, current.provider)).join('')}
           </select>
         </div>
         <div class="field">
-          <label for="model">Model</label>
+          <label for="model">${esc(t('set.model'))}</label>
           <input type="text" id="model" value="${esc(current.model)}" autocomplete="off">
         </div>
       </div>
       <div class="field" style="max-width:640px">
-        <label for="api-key">API key</label>
+        <label for="api-key">${esc(t('set.apiKey'))}</label>
         <input type="password" id="api-key" placeholder="${current.provider === 'anthropic' ? 'sk-ant-…' : 'AIza…'}" value="${esc(current.apiKey)}">
       </div>
       <div class="btn-row">
-        <button class="btn" id="save-key">Save</button>
-        <button class="btn btn-quiet" id="clear-key">Remove key</button>
+        <button class="btn" id="save-key">${esc(t('common.save'))}</button>
+        <button class="btn btn-quiet" id="clear-key">${esc(t('set.removeKey'))}</button>
         <span class="field-hint" style="margin:0" id="key-note"></span>
       </div>
-      <p class="field-hint">A Gemini key is free from <code>aistudio.google.com</code>. If a model
-        name is refused, your tier may not include it — try <code>gemini-3.5-flash-lite</code>.</p>
+      <p class="field-hint">${t('set.keyHint')}</p>
     </div>` : ''}
 
     <div class="prose block">
-      <h2 class="section-title">Erase</h2>
-      <p class="muted">Removes every product, photograph, assessment and routine from this browser.</p>
+      <h2 class="section-title">${esc(t('set.erase'))}</h2>
+      <p class="muted">${esc(t('set.eraseNote'))}</p>
       <div class="btn-row" style="margin-top:16px">
-        <button class="btn btn-quiet btn-danger" id="wipe">Erase everything</button>
+        <button class="btn btn-quiet btn-danger" id="wipe">${esc(t('set.eraseAll'))}</button>
       </div>
     </div>`;
 
   const note = root.querySelector('#backup-note');
   const profileNote = root.querySelector('#profile-note');
+
+  /* Switching language redraws everything, including the masthead. */
+  root.querySelectorAll('input[name="lang"]').forEach(radio => {
+    radio.onchange = async () => {
+      if (!radio.checked) return;
+      applyLang(radio.value);
+      await store.setLangPref(radio.value);
+      rerender();
+    };
+  });
 
   root.querySelector('#copy-briefing').onclick = async () => {
     const briefingNote = root.querySelector('#briefing-note');
@@ -1704,8 +1699,8 @@ export async function settings(root) {
       const { copied, text } = await copyBriefing();
       const words = text.split(/\s+/).length;
       briefingNote.textContent = copied
-        ? `Copied — about ${words} words. Paste it wherever you like.`
-        : 'Could not reach the clipboard. Use the file instead.';
+        ? t('set.briefingCopied', { n: words })
+        : t('set.briefingClipboardFailed');
     } catch (err) {
       briefingNote.textContent = err.message;
     }
@@ -1714,7 +1709,7 @@ export async function settings(root) {
   root.querySelector('#download-briefing').onclick = async () => {
     try {
       await downloadBriefing();
-      root.querySelector('#briefing-note').textContent = 'Saved to your downloads.';
+      root.querySelector('#briefing-note').textContent = t('set.briefingSaved');
     } catch (err) {
       root.querySelector('#briefing-note').textContent = err.message;
     }
@@ -1727,7 +1722,7 @@ export async function settings(root) {
       const created = await store.createProfile(field.value);
       await store.setActiveProfileId(created.id);
       await redraw();
-      root.querySelector('#profile-note').textContent = `${created.name} added, and now showing.`;
+      root.querySelector('#profile-note').textContent = t('set.profileAdded', { name: created.name });
     } catch (err) {
       profileNote.textContent = err.message;
     }
@@ -1748,15 +1743,14 @@ export async function settings(root) {
     btn.onclick = async () => {
       const id = btn.dataset.remove;
       const person = profiles.find(p => p.id === id);
-      const t = tallies[id] || { products: 0, assessments: 0 };
-      if (!confirm(
-        `Remove ${person.name}? Their ${t.products} products, ${t.assessments} readings and their ` +
-        `routine go with them, and this cannot be undone.`
-      )) return;
+      const tally = tallies[id] || { products: 0, assessments: 0 };
+      if (!confirm(t('set.confirmRemoveProfile', {
+        name: person.name, products: tally.products, readings: tally.assessments
+      }))) return;
       try {
         await store.deleteProfile(id);
         await redraw();
-        root.querySelector('#profile-note').textContent = `${person.name} removed.`;
+        root.querySelector('#profile-note').textContent = t('set.profileRemoved', { name: person.name });
       } catch (err) {
         profileNote.textContent = err.message;
       }
@@ -1771,8 +1765,8 @@ export async function settings(root) {
     a.download = `skincare-library-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(a.href);
-    note.textContent = `Exported ${data.products.length} products.` +
-      (data._keyOmitted ? ' The API key was left out.' : '');
+    note.textContent = t('set.exported', { n: data.products.length })
+      + (data._keyOmitted ? t('set.keyOmitted') : '');
   };
 
   const fileInput = root.querySelector('#import');
@@ -1780,15 +1774,15 @@ export async function settings(root) {
   fileInput.onchange = async () => {
     const file = fileInput.files[0];
     if (!file) return;
-    if (!confirm('Restoring replaces everything currently in the library. Continue?')) {
+    if (!confirm(t('set.confirmImport'))) {
       fileInput.value = '';
       return;
     }
     try {
       const data = JSON.parse(await file.text());
       const counts = await store.importAll(data);
-      const message = `Restored ${counts.products} products and ${counts.assessments} assessments `
-        + `across ${counts.profiles} ${counts.profiles === 1 ? 'profile' : 'profiles'}.`;
+      const message = t('set.restored', {
+        products: counts.products, assessments: counts.assessments, profiles: counts.profiles });
       await profileBar();
       await settings(root);            // redraw so the profile list reflects the restore
       root.querySelector('#backup-note').textContent = message;
@@ -1806,13 +1800,13 @@ export async function settings(root) {
         model: root.querySelector('#model').value.trim(),
         apiKey: root.querySelector('#api-key').value.trim()
       });
-      root.querySelector('#key-note').textContent = 'Saved.';
+      root.querySelector('#key-note').textContent = t('common.saved');
       await settings(root);
     };
     root.querySelector('#clear-key').onclick = async () => {
       await store.setSettings({ ...current, apiKey: '' });
       await settings(root);
-      root.querySelector('#key-note').textContent = 'Key removed.';
+      root.querySelector('#key-note').textContent = t('set.keyRemoved');
     };
     /* Switching provider swaps the sensible default model with it. */
     root.querySelector('#provider').onchange = e => {
@@ -1822,8 +1816,8 @@ export async function settings(root) {
   }
 
   root.querySelector('#wipe').onclick = async () => {
-    if (!confirm('Erase the entire library? Export a backup first if you want to keep it.')) return;
-    if (!confirm('This is permanent. Erase everything?')) return;
+    if (!confirm(t('set.confirmErase'))) return;
+    if (!confirm(t('set.confirmErase2'))) return;
     await store.wipe();
     location.hash = '#/';
   };

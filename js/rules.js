@@ -2,6 +2,7 @@
    The assessment engine reads from here, and so does the routine view. */
 
 import { tagsFor, normalize } from './ingredients.js';
+import { t, dayLabel } from './i18n.js';
 
 export const CATEGORIES = [
   'Oil cleanser', 'Cleanser', 'Exfoliant', 'Toner', 'Essence', 'Serum',
@@ -44,7 +45,9 @@ export const stepsFor = period => STEPS.filter(s => s.period === period);
 /* Days of the week, Monday first. A routine entry carries the days it applies
    to, so an alternated retinoid is recorded honestly rather than as if it were
    used nightly — which also stops the conflict rules crying wolf. */
-export const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+export const DAY_KEYS = [0, 1, 2, 3, 4, 5, 6];
+/* Read through i18n on every call — the language can change between renders. */
+export const days = () => DAY_KEYS.map(dayLabel);
 export const EVERY_DAY = [0, 1, 2, 3, 4, 5, 6];
 
 export const daysOf = entry =>
@@ -54,10 +57,10 @@ export const isEveryDay = entry => daysOf(entry).length === 7;
 
 /* "Mon · Wed · Fri", or "Every day". */
 export function describeDays(entry) {
-  if (isEveryDay(entry)) return 'Every day';
+  if (isEveryDay(entry)) return t('routine.everyDay');
   const chosen = daysOf(entry);
-  if (!chosen.length) return 'No days';
-  return chosen.slice().sort((a, b) => a - b).map(d => DAYS[d]).join(' · ');
+  if (!chosen.length) return t('routine.noDays');
+  return chosen.slice().sort((a, b) => a - b).map(dayLabel).join(' · ');
 }
 
 /* ---------- concerns ---------- */
@@ -143,38 +146,38 @@ export function conflictsFor(products, period) {
   if (retinoids.length && acids.length) {
     notes.push({
       severity: 'high',
-      text: `${retinoids[0].name} and ${acids[0].name} in one routine is a common cause of irritation. Alternate them on different evenings rather than layering.`
+      text: t('clash.retinoidAcid', { a: retinoids[0].name, b: acids[0].name })
     });
   }
   if (ahas.length && bhas.length) {
     notes.push({
       severity: 'medium',
-      text: 'An AHA and a BHA together is a lot of exfoliation for one sitting. Consider keeping one of them for a separate night.'
+      text: t('clash.ahaBha')
     });
   }
   if (retinoids.length > 1) {
-    notes.push({ severity: 'medium', text: 'Two retinoids in the same routine gives no extra benefit, only extra irritation.' });
+    notes.push({ severity: 'medium', text: t('clash.twoRetinoids') });
   }
   if (period === 'am' && (retinoids.length || acids.length)) {
     notes.push({
       severity: 'medium',
-      text: 'Retinoids and acids leave skin more sun-sensitive. They sit more comfortably in the evening.'
+      text: t('clash.amActives')
     });
   }
   if (period === 'am' && !filters.length && products.length) {
-    notes.push({ severity: 'high', text: 'No sunscreen in the morning routine. Everything else you do for tone and lines depends on it.' });
+    notes.push({ severity: 'high', text: t('clash.noSunscreen') });
   }
   const bp = products.filter(p => hasIngredient(p, 'benzoyl peroxide'));
   if (bp.length && retinoids.length) {
-    notes.push({ severity: 'medium', text: 'Benzoyl peroxide can degrade a retinoid applied at the same time. Use them at opposite ends of the day.' });
+    notes.push({ severity: 'medium', text: t('clash.bpRetinoid') });
   }
   const vitc = withTag('vitamin-c');
   if (vitc.length && retinoids.length) {
-    notes.push({ severity: 'low', text: 'Vitamin C and a retinoid together is tolerable but busy. Vitamin C in the morning, retinoid at night, is the easier split.' });
+    notes.push({ severity: 'low', text: t('clash.vitcRetinoid') });
   }
   const fragranced = withTag('fragrance').concat(withTag('essential-oil'));
   if (new Set(fragranced).size >= 3) {
-    notes.push({ severity: 'low', text: 'Three or more fragranced products in one routine. Worth thinning out if your skin ever runs reactive.' });
+    notes.push({ severity: 'low', text: t('clash.fragrance') });
   }
   return notes;
 }

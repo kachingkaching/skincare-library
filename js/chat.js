@@ -8,6 +8,7 @@
 import * as store from './store.js';
 import { chatStream, shelfDigest, routineDigest, aiSettings } from './ai.js';
 import { esc, dots } from './views.js';
+import { t } from './i18n.js';
 
 let history = [];
 let busy = false;
@@ -48,16 +49,14 @@ function draw() {
   if (!log) return;
 
   log.innerHTML = history.length
-    ? history.map(t => `
-        <div class="chat-turn chat-${t.role}">
-          <div class="chat-who">${t.role === 'user' ? 'You' : 'Reply'}</div>
-          <div class="chat-text">${t.pending && !t.text
+    ? history.map(turn => `
+        <div class="chat-turn chat-${turn.role}">
+          <div class="chat-who">${esc(turn.role === 'user' ? t('chat.you') : t('chat.reply'))}</div>
+          <div class="chat-text">${turn.pending && !turn.text
             ? dots()
-            : esc(t.text).replace(/\n/g, '<br>')}</div>
+            : esc(turn.text).replace(/\n/g, '<br>')}</div>
         </div>`).join('')
-    : `<p class="muted" style="font-size:13px">Ask about anything on your shelf — whether two
-       things clash, what to use when your skin is unhappy, what a particular ingredient is for.
-       It can see your shelf and your routine.</p>`;
+    : `<p class="muted" style="font-size:13px">${esc(t('chat.empty'))}</p>`;
 
   log.scrollTop = log.scrollHeight;
 }
@@ -89,7 +88,7 @@ async function send() {
         draw();
       }
     });
-    if (!streamed) history[index].text = 'No reply came back.';
+    if (!streamed) history[index].text = t('chat.noReply');
   } catch (err) {
     history[index].text = err.message;
   } finally {
@@ -104,6 +103,7 @@ async function send() {
    and reloads history when the profile changes underneath it. */
 export async function refreshChat() {
   if (!mounted) return;
+  relabel();
   const { apiKey } = await aiSettings();
   el('chat-launch').hidden = !apiKey;
   if (!apiKey) el('chat-panel').hidden = true;
@@ -115,31 +115,47 @@ export async function refreshChat() {
   }
 }
 
+/* The panel is mounted once and outlives every render, so its own furniture has
+   to be re-labelled when the language changes rather than rebuilt. */
+function relabel() {
+  const launch = el('chat-launch');
+  if (!launch) return;
+  launch.setAttribute('aria-label', t('chat.launcher'));
+  launch.querySelector('text').textContent = t('chat.ask');
+  el('chat-panel').setAttribute('aria-label', t('chat.launcher'));
+  el('chat-panel').querySelector('.label').textContent = t('chat.ask');
+  el('chat-clear').textContent = t('common.clear');
+  el('chat-close').textContent = t('common.close');
+  el('chat-input').placeholder = t('chat.placeholder');
+  el('chat-form').querySelector('button[type="submit"]').textContent = t('common.send');
+  draw();
+}
+
 export function mountChat() {
   if (mounted) return;
 
   const holder = document.createElement('div');
   holder.innerHTML = `
-    <button class="chat-launch" id="chat-launch" hidden aria-label="Ask about your skincare">
+    <button class="chat-launch" id="chat-launch" hidden aria-label="${esc(t('chat.launcher'))}">
       <svg viewBox="0 0 120 96" aria-hidden="true" focusable="false">
         <g class="cloud">
           <rect x="4" y="8" width="104" height="56" rx="28"/>
           <path d="M62 50 92 88 84 50z"/>
         </g>
-        <text x="56" y="42">ASK</text>
+        <text x="56" y="42">${esc(t('chat.ask'))}</text>
       </svg>
     </button>
-    <section class="chat-panel" id="chat-panel" hidden aria-label="Ask about your skincare">
+    <section class="chat-panel" id="chat-panel" hidden aria-label="${esc(t('chat.launcher'))}">
       <header class="chat-head">
-        <span class="label">Ask</span>
+        <span class="label">${esc(t('chat.ask'))}</span>
         <span style="flex:1"></span>
-        <button class="link-btn" id="chat-clear">Clear</button>
-        <button class="link-btn" id="chat-close">Close</button>
+        <button class="link-btn" id="chat-clear">${esc(t('common.clear'))}</button>
+        <button class="link-btn" id="chat-close">${esc(t('common.close'))}</button>
       </header>
       <div class="chat-log" id="chat-log"></div>
       <form class="chat-form" id="chat-form">
-        <input type="text" id="chat-input" placeholder="Ask a question" autocomplete="off">
-        <button class="btn" type="submit">Send</button>
+        <input type="text" id="chat-input" placeholder="${esc(t('chat.placeholder'))}" autocomplete="off">
+        <button class="btn" type="submit">${esc(t('common.send'))}</button>
       </form>
     </section>`;
   document.body.appendChild(holder);

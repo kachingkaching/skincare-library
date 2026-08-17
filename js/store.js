@@ -230,12 +230,45 @@ export async function profileTallies() {
 
 /* ---------- products (scoped to the active profile) ---------- */
 
+/* Quantity arrived after the first shelves were built, so every record written
+   before it has none. Normalised on the way out rather than by a migration
+   pass: an old backup can still be imported, and a product nobody has counted
+   yet is one product. */
+const withQuantity = p => (p && !Number.isFinite(p.quantity) ? { ...p, quantity: 1 } : p);
+
 export async function getProducts() {
   const pid = await getActiveProfileId();
-  return (await getAll('products')).filter(p => p.profileId === pid);
+  return (await getAll('products')).filter(p => p.profileId === pid).map(withQuantity);
 }
 
-export const getProduct = id => get('products', id);
+/* Two bottles of the same serum are one record with a count, not two records.
+   Matched on brand and name only — size and price are exactly what differs
+   between a full-size and a travel one, and those should stay apart. */
+const matchKey = (brand, name) =>
+  `${(brand || '').trim().toLowerCase().replace(/\s+/g, ' ')}|${(name || '').trim().toLowerCase().replace(/\s+/g, ' ')}`;
+
+export async function findProductLike(brand, name) {
+  if (!(name || '').trim()) return null;
+  const key = matchKey(brand, name);
+  return (await getProducts()).find(p => matchKey(p.brand, p.name) === key) || null;
+}
+
+/* Clamped at zero, and an emptied product marks itself finished rather than
+   disappearing — its ingredients and its history are still referred to by past
+   assessments and by the routine. */
+export async function setQuantity(id, quantity) {
+  const p = withQuantity(await getProduct(id));
+  if (!p) return null;
+  const next = Math.max(0, Math.round(Number(quantity) || 0));
+  p.quantity = next;
+  if (next === 0 && p.status === 'active') p.status = 'finished';
+  if (next > 0 && p.status === 'finished') p.status = 'active';
+  p.updatedAt = new Date().toISOString();
+  await put('products', p);
+  return p;
+}
+
+export const getProduct = async id => withQuantity(await get('products', id));
 
 export async function saveProduct(p) {
   if (!p.profileId) p.profileId = await getActiveProfileId();
@@ -269,6 +302,9 @@ export async function copyProductToProfile(productId, targetProfileId) {
     id: uid(),
     profileId: targetProfileId,
     imageId: blob ? await putImage(blob) : null,
+    // The same bottle on two shelves is still one bottle — carrying the count
+    // across would double it.
+    quantity: 1,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };

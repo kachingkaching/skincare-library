@@ -382,6 +382,60 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
 
 .shelf-item { display: block; }
 
+.shelf-link { display: block; }
+
+/* An emptied product is still on the shelf, just clearly spent. */
+.shelf-item.is-empty .shelf-link { opacity: 0.45; }
+
+/* How many you have, over the corner of the photograph. Only shown above one —
+   a "1" on every card would be noise. */
+.shelf-frame { position: relative; }
+
+.shelf-tally {
+  position: absolute;
+  top: 0;
+  right: 0;
+  min-width: 30px;
+  padding: 5px 8px;
+  background: var(--ink);
+  color: var(--bone);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-align: center;
+}
+
+/* Counting up and down without leaving the shelf. */
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.step-btn {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  line-height: 1;
+  background: none;
+  border: 1px solid var(--rule);
+  border-radius: 0;
+  color: var(--ink-muted);
+  cursor: pointer;
+  transition: border-color var(--ease), color var(--ease), background var(--ease);
+}
+
+.step-btn:hover:not(:disabled) { border-color: var(--ink); color: var(--ink); }
+.step-btn:focus-visible { outline: 1px solid var(--amber); outline-offset: 2px; }
+.step-btn:disabled { opacity: 0.3; cursor: default; }
+
+.stepper-count {
+  min-width: 2ch;
+  text-align: center;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
 .shelf-frame {
   background: var(--bone-deep);
   aspect-ratio: 4 / 5;

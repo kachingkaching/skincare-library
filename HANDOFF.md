@@ -57,6 +57,20 @@ server, one hard reload (Cmd+Shift+R) is needed to break out.
   dates → notes. Period-after-opening and rating were removed from the form and
   from the dossier; `saveProduct` still carries both through untouched so editing
   an older record does not discard what it held.
+- **Inventory** — every product carries a `quantity`. The shelf shows a tally
+  over the corner of the photograph above one, a running "N on hand" in the
+  filter bar, and a − / ＋ stepper under each card that writes straight to
+  IndexedDB without redrawing the grid. Reaching zero marks the product
+  **Finished** and drops it out of the default view, with the bar saying how
+  many are being kept back and a one-click reveal; stepping back up to one
+  makes it active again. The record is never deleted — assessments and the
+  routine still point at it. Reading a label counts identical units in the
+  photograph (`count` in `readLabel`, clamped to 1–99), and adding something
+  whose brand and name already match offers to add to that product's count
+  instead of making a second card. Matching is on brand and name only, so a
+  travel size and a full size stay apart. Legacy records with no `quantity`
+  read back as 1 — `withQuantity()` in store.js normalises on the way out
+  rather than by a migration pass, so old backups still import.
 - **Profiles** — per-person shelf, assessments, routine; switcher in the masthead
 - **Routine** — **the week is the interface.** Seven cards standing across the
   page (`.week-strip`), scrolling sideways below tablet width. One is always
@@ -127,6 +141,16 @@ paragraph is gone; the add form's field order and the two removed fields;
 Previous/Next sit above the carousel track; details fold and unfold; and
 `pickUrl()` turns a `javascript:` URL, a malformed one and a missing one into a
 search link. All six routes render in the flattened share build.
+
+**Verified for the inventory:** a record written without `quantity` reads back
+as 1; the stepper writes through to IndexedDB and updates the card in place;
+zero marks Finished, disables the minus, dims the card and hides it from the
+default view behind a labelled reveal; stepping back up restores In use; the
+duplicate notice matches across differing case and spacing, tracks the quantity
+field, disappears when the name changes, and merging folds 3 + 2 into one
+record of 5 and lands on it; `readLabel` returns 2 for two bottles and clamps a
+missing, negative or absurd count to 1–99. All of it renders in the three
+languages and in the flattened share build.
 
 **Verified for the three languages:** every route renders in all three with no
 console errors, in both the module build and the flattened one; `missingKeys()`
@@ -266,15 +290,19 @@ artifact remains for anyone who should not have to.
    download path works.
 4. `index.html` carries `?v=2` on the app script to break a cache entry poisoned
    before `serve.py` existed. Harmless; removable once nobody has that stale copy.
-5. The Chinese has not been proofread by a native speaker, and the Simplified
+5. Copying a product to another profile resets its count to 1 on purpose — the
+   same bottle on two shelves is still one bottle. If two people genuinely each
+   own one, that is what you want; if it is a shared stash, the count is now
+   wrong on one of the shelves.
+6. The Chinese has not been proofread by a native speaker, and the Simplified
    half is OpenCC-converted from the Traditional for the ingredient
    descriptions (the interface strings are authored separately in both, because
    the vocabulary differs — 設定/设置, 洗面/洁面 — not only the characters).
-6. The carousel's scrolling has never run in a real viewport — see above. The
+7. The carousel's scrolling has never run in a real viewport — see above. The
    same session that built the day-first routine lost its viewport partway
    through, so that work was verified by reading the DOM rather than by
    screenshot from the point the pane collapsed.
-7. Republishing the artifact only keeps its URL from the conversation that created
+8. Republishing the artifact only keeps its URL from the conversation that created
    it. From a new session, pass the URL as the Artifact tool's `url` parameter, or
    a second artifact is minted and the shared link quietly stops updating.
 

@@ -163,6 +163,10 @@ const dropzoneMarkup = (id, caption) => `
    ============================================================ */
 
 const shelfFilters = { category: '', status: '', active: '' };
+/* Emptied products stay in the library but drop out of the default view. One
+   click brings them back, and the bar says how many are being kept back — a
+   product that silently vanishes when you count the last one out is alarming. */
+let showEmptied = false;
 
 export async function shelf(root) {
   const products = (await store.getProducts()).sort(byShelfOrder);
@@ -183,11 +187,17 @@ export async function shelf(root) {
     if (ACTIVE_TAGS.includes(tag)) activesPresent.add(tag);
   }));
 
-  const visible = products.filter(p =>
+  const matches = products.filter(p =>
     (!shelfFilters.category || p.category === shelfFilters.category) &&
     (!shelfFilters.status || p.status === shelfFilters.status) &&
     (!shelfFilters.active || tagsFor(p.ingredients || []).has(shelfFilters.active))
   );
+  // Asking for Finished explicitly means you want to see them.
+  const keepEmptied = showEmptied || shelfFilters.status === 'finished';
+  const visible = keepEmptied ? matches : matches.filter(p => p.quantity > 0);
+  const emptiedHidden = matches.length - visible.length;
+
+  const onHand = products.reduce((n, p) => n + p.quantity, 0);
 
   const categoriesPresent = [...new Set(products.map(p => p.category).filter(Boolean))].sort();
 
@@ -220,8 +230,15 @@ export async function shelf(root) {
           ${[...activesPresent].map(x => option(x, tagLabel(x), shelfFilters.active)).join('')}
         </select>
       </div>
-      <span class="filter-count">${esc(t('shelf.count', { shown: visible.length, total: products.length }))}</span>
+      <span class="filter-count">${esc(t('shelf.count', { shown: visible.length, total: products.length }))}
+        · ${esc(t('shelf.onHand', { n: onHand }))}</span>
     </div>
+
+    ${emptiedHidden ? `<p class="field-hint" style="margin:-32px 0 32px">
+      ${esc(t('shelf.emptiedHidden', { n: emptiedHidden }))}
+      <button class="link-btn" id="show-emptied">${esc(t('shelf.showEmptied'))}</button></p>` : ''}
+    ${showEmptied && !emptiedHidden ? `<p class="field-hint" style="margin:-32px 0 32px">
+      <button class="link-btn" id="hide-emptied">${esc(t('shelf.hideEmptied'))}</button></p>` : ''}
 
     <div class="shelf" id="shelf-grid"></div>
     ${visible.length ? '' : `<p class="muted">${esc(t('shelf.noMatch'))}</p>`}`;
@@ -229,18 +246,63 @@ export async function shelf(root) {
   const grid = root.querySelector('#shelf-grid');
   for (const p of visible) {
     const blob = await store.getImage(p.imageId);
-    const a = document.createElement('a');
-    a.className = 'shelf-item';
-    a.href = `#/product/${p.id}`;
-    a.innerHTML = `
-      <div class="shelf-frame">
-        ${blob ? `<img src="${imgUrl(blob)}" alt="${esc(p.name)}">` : `<span class="no-image">${esc(t('shelf.noPhoto'))}</span>`}
-      </div>
-      <div class="shelf-brand">${esc(p.brand || '—')}</div>
-      <div class="shelf-name">${esc(p.name)}</div>
-      <div class="shelf-meta">${esc(p.category ? categoryLabel(p.category) : '')}${p.status && p.status !== 'active' ? ' · ' + esc(statusLabel(p.status)) : ''}</div>`;
-    grid.appendChild(a);
+    const item = document.createElement('div');
+    item.className = `shelf-item${p.quantity === 0 ? ' is-empty' : ''}`;
+    item.innerHTML = `
+      <a class="shelf-link" href="#/product/${esc(p.id)}">
+        <div class="shelf-frame">
+          ${blob ? `<img src="${imgUrl(blob)}" alt="${esc(p.name)}">` : `<span class="no-image">${esc(t('shelf.noPhoto'))}</span>`}
+          ${p.quantity > 1 ? `<span class="shelf-tally">${esc(String(p.quantity))}</span>` : ''}
+        </div>
+        <div class="shelf-brand">${esc(p.brand || '—')}</div>
+        <div class="shelf-name">${esc(p.name)}</div>
+        <div class="shelf-meta">${esc(p.category ? categoryLabel(p.category) : '')}${p.status && p.status !== 'active' ? ' · ' + esc(statusLabel(p.status)) : ''}</div>
+      </a>
+      <div class="stepper">
+        <button class="step-btn" data-less="${esc(p.id)}" ${p.quantity === 0 ? 'disabled' : ''}
+                aria-label="${esc(t('shelf.oneFewer', { name: p.name }))}">−</button>
+        <span class="stepper-count" data-count="${esc(p.id)}">${esc(String(p.quantity))}</span>
+        <button class="step-btn" data-more="${esc(p.id)}"
+                aria-label="${esc(t('shelf.oneMore', { name: p.name }))}">＋</button>
+      </div>`;
+    grid.appendChild(item);
   }
+
+  /* Counting up and down happens in place — redrawing the whole shelf would
+     lose your scroll position and rebuild every image URL. Only when a product
+     empties, or refills, does the card need to change class. */
+  const stepBy = async (id, delta) => {
+    const before = products.find(x => x.id === id);
+    const updated = await store.setQuantity(id, (before?.quantity ?? 1) + delta);
+    if (!updated) return;
+    if (before) { before.quantity = updated.quantity; before.status = updated.status; }
+
+    const card = root.querySelector(`[data-count="${CSS.escape(id)}"]`)?.closest('.shelf-item');
+    if (!card) return;
+    card.querySelector(`[data-count="${CSS.escape(id)}"]`).textContent = String(updated.quantity);
+    card.querySelector(`[data-less="${CSS.escape(id)}"]`).disabled = updated.quantity === 0;
+    card.classList.toggle('is-empty', updated.quantity === 0);
+
+    const frame = card.querySelector('.shelf-frame');
+    frame.querySelector('.shelf-tally')?.remove();
+    if (updated.quantity > 1) {
+      const tally = document.createElement('span');
+      tally.className = 'shelf-tally';
+      tally.textContent = String(updated.quantity);
+      frame.appendChild(tally);
+    }
+    const meta = card.querySelector('.shelf-meta');
+    meta.textContent = `${updated.category ? categoryLabel(updated.category) : ''}`
+      + (updated.status && updated.status !== 'active' ? ' · ' + statusLabel(updated.status) : '');
+  };
+
+  root.querySelectorAll('[data-less]').forEach(b => { b.onclick = () => stepBy(b.dataset.less, -1); });
+  root.querySelectorAll('[data-more]').forEach(b => { b.onclick = () => stepBy(b.dataset.more, +1); });
+
+  const showBtn = root.querySelector('#show-emptied');
+  if (showBtn) showBtn.onclick = () => { showEmptied = true; shelf(root); };
+  const hideBtn = root.querySelector('#hide-emptied');
+  if (hideBtn) hideBtn.onclick = () => { showEmptied = false; shelf(root); };
 
   root.querySelector('#f-cat').onchange = e => { shelfFilters.category = e.target.value; shelf(root); };
   root.querySelector('#f-status').onchange = e => { shelfFilters.status = e.target.value; shelf(root); };
@@ -279,6 +341,7 @@ export async function product(root, { id }) {
   const spec = [
     [t('product.category'), p.category ? categoryLabel(p.category) : ''],
     [t('product.status'), statusLabel(p.status)],
+    [t('product.quantity'), String(p.quantity)],
     [t('product.size'), p.size],
     [t('product.price'), p.price],
     [t('product.purchased'), fmtDate(p.purchasedAt)],
@@ -433,6 +496,17 @@ export async function form(root, { id } = {}) {
           </div>
         </div>
 
+        <div class="field-pair">
+          <div class="field">
+            <label for="quantity">${esc(t('product.quantity'))}</label>
+            <input type="number" id="quantity" min="0" max="99" step="1" value="${esc(String(p?.quantity ?? 1))}">
+            <div class="field-hint">${esc(t('form.quantityHint'))}</div>
+          </div>
+          <div class="field"></div>
+        </div>
+
+        <div id="dupe" hidden></div>
+
         <div class="field">
           <label for="ingredients">${esc(t('product.ingredients'))}</label>
           <textarea id="ingredients" placeholder="${esc(t('form.ingredientsPlaceholder'))}">${esc((p?.ingredients || []).join(', '))}</textarea>
@@ -514,6 +588,47 @@ export async function form(root, { id } = {}) {
   };
   ingField.addEventListener('input', refreshParse);
   refreshParse();
+
+  /* Adding something you already own should add to the count, not put a second
+     card on the shelf. Checked whenever the brand or name changes, and again
+     after the label is read — but never acted on without being asked, because
+     a travel size and a full size share a name and should stay apart. */
+  const dupeBox = root.querySelector('#dupe');
+  let dupe = null;
+
+  const checkDuplicate = async () => {
+    if (!dupeBox) return;
+    const brand = root.querySelector('#brand').value.trim();
+    const name = root.querySelector('#name').value.trim();
+    const found = await store.findProductLike(brand, name);
+
+    // Editing a product is not a duplicate of itself.
+    dupe = found && found.id !== p?.id ? found : null;
+    if (!dupe) { dupeBox.hidden = true; dupeBox.innerHTML = ''; return; }
+
+    const adding = Math.max(1, Math.round(Number(root.querySelector('#quantity').value) || 1));
+    dupeBox.hidden = false;
+    dupeBox.innerHTML = `
+      <div class="notice">
+        <strong>${esc(t('form.alreadyOwn', {
+          name: `${dupe.brand ? dupe.brand + ' ' : ''}${dupe.name}`, n: dupe.quantity }))}</strong>
+        <div class="btn-row" style="margin-top:12px">
+          <button type="button" class="btn btn-quiet" id="merge">${esc(t('form.addToThat', { n: adding }))}</button>
+          <span class="field-hint" style="margin:0">${esc(t('form.orKeepSeparate'))}</span>
+        </div>
+      </div>`;
+
+    dupeBox.querySelector('#merge').onclick = async () => {
+      await store.setQuantity(dupe.id, dupe.quantity + adding);
+      location.hash = `#/product/${dupe.id}`;
+    };
+  };
+
+  if (!editing) {
+    ['#brand', '#name', '#quantity'].forEach(sel => {
+      root.querySelector(sel).addEventListener('change', checkDuplicate);
+    });
+  }
 
   /* Fold a found list into whatever is already typed, and say where it came
      from. Used by the label reader's fallback and by the lookup button. */
@@ -598,6 +713,9 @@ export async function form(root, { id } = {}) {
         fill('#brand', read.brand);
         fill('#name', read.name);
         fill('#size', read.size);
+        // Two identical bottles in one photograph are two bottles.
+        if (read.count > 1) root.querySelector('#quantity').value = String(read.count);
+        await checkDuplicate();
         if (read.category && CATEGORIES.includes(read.category) && !root.querySelector('#category').dataset.touched) {
           root.querySelector('#category').value = read.category;
         }
@@ -641,6 +759,7 @@ export async function form(root, { id } = {}) {
       price: val('#price'),
       purchasedAt: val('#purchasedAt'),
       openedAt: val('#openedAt'),
+      quantity: Math.max(0, Math.round(Number(val('#quantity')) || 0)),
       // No longer editable, but carried through so editing an older record
       // does not quietly discard what it already held.
       paoMonths: p?.paoMonths || '',

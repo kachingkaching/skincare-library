@@ -101,7 +101,9 @@ export async function autofillFromLabel(blob, apiKey) {
       name: parsed.name || '',
       size: parsed.size || '',
       category: parsed.category || '',
-      ingredients: Array.isArray(parsed.ingredients) ? parsed.ingredients.filter(Boolean) : []
+      ingredients: Array.isArray(parsed.ingredients) ? parsed.ingredients.filter(Boolean) : [],
+      // This reader does not count units; one is the safe answer.
+      count: 1
     };
   } catch {
     throw new Error('The reply could not be read as product details.');

@@ -40,7 +40,8 @@ export function shelfDigest(products) {
     const actives = activesIn(p.ingredients || []).map(tagLabel);
     const flags = flagsIn(p.ingredients || []).map(tagLabel);
     return [
-      `- id:${p.id} | ${p.category || 'Uncategorised'} | ${named(p)}`,
+      `- id:${p.id} | ${p.category || 'Uncategorised'} | ${named(p)}`
+        + (p.quantity > 1 ? ` | ${p.quantity} on hand` : p.quantity === 0 ? ' | none left' : ''),
       actives.length ? `  actives: ${actives.join(', ')}` : '  actives: none recognised',
       flags.length ? `  watch: ${flags.join(', ')}` : null
     ].filter(Boolean).join('\n');
@@ -97,9 +98,10 @@ export async function readLabel(blob) {
       name: { type: 'string' },
       size: { type: 'string' },
       category: { type: 'string', enum: CATEGORIES },
-      ingredients: { type: 'array', items: { type: 'string' } }
+      ingredients: { type: 'array', items: { type: 'string' } },
+      count: { type: 'integer' }
     },
-    required: ['brand', 'name', 'size', 'category', 'ingredients']
+    required: ['brand', 'name', 'size', 'category', 'ingredients', 'count']
   };
 
   const { text } = await gemini.generate({
@@ -107,8 +109,9 @@ export async function readLabel(blob) {
     model,
     system: 'Transcribe skincare packaging exactly as printed. Never invent an ingredient that is not visible. Leave any field you cannot read as an empty string or empty list.',
     turns: [gemini.userTurn(
-      'Read this photograph of skincare packaging: brand, product name, size, best-fitting category, and the full ingredient list.\n\n'
-      + 'The ingredient list is usually the block of small print on the back or side, often beginning with Aqua or Water. Read it carefully, in printed order, transcribing every entry even where the type is very small. If no ingredient list is visible in this photograph, return an empty list rather than recalling one for this product from memory.',
+      'Read this photograph of skincare packaging: brand, product name, size, best-fitting category, the full ingredient list, and how many units are in the picture.\n\n'
+      + 'The ingredient list is usually the block of small print on the back or side, often beginning with Aqua or Water. Read it carefully, in printed order, transcribing every entry even where the type is very small. If no ingredient list is visible in this photograph, return an empty list rather than recalling one for this product from memory.\n\n'
+      + 'For "count": how many separate units of this same product are visible — two identical bottles standing side by side is 2. Count only units that are plainly the same product; a box and the bottle that came out of it are one unit, not two, and a different product alongside it does not count. If you can see only one, or cannot tell, answer 1.',
       { base64: await gemini.blobToBase64(blob), mimeType: 'image/jpeg' }
     )],
     schema
@@ -120,7 +123,8 @@ export async function readLabel(blob) {
     name: parsed.name || '',
     size: parsed.size || '',
     category: parsed.category || '',
-    ingredients: Array.isArray(parsed.ingredients) ? parsed.ingredients.filter(Boolean) : []
+    ingredients: Array.isArray(parsed.ingredients) ? parsed.ingredients.filter(Boolean) : [],
+    count: Math.min(99, Math.max(1, Math.round(Number(parsed.count) || 1)))
   };
 }
 

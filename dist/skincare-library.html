@@ -390,6 +390,60 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
 
 .shelf-item { display: block; }
 
+.shelf-link { display: block; }
+
+/* An emptied product is still on the shelf, just clearly spent. */
+.shelf-item.is-empty .shelf-link { opacity: 0.45; }
+
+/* How many you have, over the corner of the photograph. Only shown above one —
+   a "1" on every card would be noise. */
+.shelf-frame { position: relative; }
+
+.shelf-tally {
+  position: absolute;
+  top: 0;
+  right: 0;
+  min-width: 30px;
+  padding: 5px 8px;
+  background: var(--ink);
+  color: var(--bone);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-align: center;
+}
+
+/* Counting up and down without leaving the shelf. */
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.step-btn {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  line-height: 1;
+  background: none;
+  border: 1px solid var(--rule);
+  border-radius: 0;
+  color: var(--ink-muted);
+  cursor: pointer;
+  transition: border-color var(--ease), color var(--ease), background var(--ease);
+}
+
+.step-btn:hover:not(:disabled) { border-color: var(--ink); color: var(--ink); }
+.step-btn:focus-visible { outline: 1px solid var(--amber); outline-offset: 2px; }
+.step-btn:disabled { opacity: 0.3; cursor: default; }
+
+.stepper-count {
+  min-width: 2ch;
+  text-align: center;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
 .shelf-frame {
   background: var(--bone-deep);
   aspect-ratio: 4 / 5;
@@ -1857,6 +1911,12 @@ const en = {
   'shelf.count': '{shown} of {total}',
   'shelf.noMatch': 'Nothing matches that combination.',
   'shelf.noPhoto': 'No photograph',
+  'shelf.onHand': '{n} on hand',
+  'shelf.emptiedHidden': '{n} finished and not on the shelf.',
+  'shelf.showEmptied': 'Show them',
+  'shelf.hideEmptied': 'Hide finished',
+  'shelf.oneMore': 'One more {name}',
+  'shelf.oneFewer': 'One fewer {name}',
 
   /* product */
   'product.back': '← The shelf',
@@ -1869,6 +1929,7 @@ const en = {
   'product.price': 'Price',
   'product.purchased': 'Purchased',
   'product.opened': 'Opened',
+  'product.quantity': 'On hand',
   'product.notes': 'Notes',
   'product.ingredients': 'Ingredients',
   'product.ingredientsAnnotated': 'Ingredients — {matched} of {total} annotated',
@@ -1889,6 +1950,10 @@ const en = {
   'form.readLabelHint': 'Reads brand, name and ingredients off a photograph of the packaging. If the ingredient print is not legible, it searches the web for the product’s published list instead.',
   'form.photoHint': 'Photographs are resized and kept in this browser.',
   'form.selectedPhoto': 'Selected photograph',
+  'form.quantityHint': 'How many of this you have. Photograph two identical bottles and the label reader counts them.',
+  'form.alreadyOwn': 'You already have {name} on your shelf — {n} on hand.',
+  'form.addToThat': 'Add {n} to that instead',
+  'form.orKeepSeparate': 'Or carry on below to keep this as a separate entry.',
   'form.brand': 'Brand',
   'form.name': 'Product name',
   'form.notesPlaceholder': 'How it wears, what it sits well under, whether you would buy it again.',
@@ -2262,6 +2327,12 @@ const zhHant = {
   'shelf.count': '{total} 件中的 {shown} 件',
   'shelf.noMatch': '沒有符合這組條件的產品。',
   'shelf.noPhoto': '沒有照片',
+  'shelf.onHand': '共 {n} 件在手',
+  'shelf.emptiedHidden': '有 {n} 件已用完，未顯示在架上。',
+  'shelf.showEmptied': '顯示它們',
+  'shelf.hideEmptied': '隱藏已用完的',
+  'shelf.oneMore': '{name} 增加一件',
+  'shelf.oneFewer': '{name} 減少一件',
 
   'product.back': '← 產品架',
   'product.gone': '這件產品已不在圖書館裡。',
@@ -2273,6 +2344,7 @@ const zhHant = {
   'product.price': '價格',
   'product.purchased': '購買日期',
   'product.opened': '開封日期',
+  'product.quantity': '在手數量',
   'product.notes': '筆記',
   'product.ingredients': '成分',
   'product.ingredientsAnnotated': '成分 — 共 {total} 項，已註解 {matched} 項',
@@ -2292,6 +2364,10 @@ const zhHant = {
   'form.readLabelHint': '從包裝照片讀出品牌、名稱與成分。如果成分字太小看不清楚，會改為上網搜尋這件產品公布的成分表。',
   'form.photoHint': '照片會縮小後存在這部瀏覽器裡。',
   'form.selectedPhoto': '已選擇的照片',
+  'form.quantityHint': '你手上有幾件。拍下兩瓶相同的產品，讀取標籤時會自動數出來。',
+  'form.alreadyOwn': '你的產品架上已經有 {name} — 目前 {n} 件。',
+  'form.addToThat': '直接加 {n} 件上去',
+  'form.orKeepSeparate': '或繼續往下填，另外建立一筆記錄。',
   'form.brand': '品牌',
   'form.name': '產品名稱',
   'form.notesPlaceholder': '用起來的感覺、適合疊在什麼下面、會不會再買。',
@@ -2651,6 +2727,12 @@ const zhHans = {
   'shelf.count': '{total} 件中的 {shown} 件',
   'shelf.noMatch': '没有符合这组条件的产品。',
   'shelf.noPhoto': '没有照片',
+  'shelf.onHand': '共 {n} 件在手',
+  'shelf.emptiedHidden': '有 {n} 件已用完，未显示在架上。',
+  'shelf.showEmptied': '显示它们',
+  'shelf.hideEmptied': '隐藏已用完的',
+  'shelf.oneMore': '{name} 增加一件',
+  'shelf.oneFewer': '{name} 减少一件',
 
   'product.back': '← 产品架',
   'product.gone': '这件产品已不在图书馆里。',
@@ -2662,6 +2744,7 @@ const zhHans = {
   'product.price': '价格',
   'product.purchased': '购买日期',
   'product.opened': '开封日期',
+  'product.quantity': '在手数量',
   'product.notes': '笔记',
   'product.ingredients': '成分',
   'product.ingredientsAnnotated': '成分 — 共 {total} 项，已注解 {matched} 项',
@@ -2681,6 +2764,10 @@ const zhHans = {
   'form.readLabelHint': '从包装照片读出品牌、名称与成分。如果成分字太小看不清楚，会改为上网搜索这件产品公布的成分表。',
   'form.photoHint': '照片会缩小后存在这个浏览器里。',
   'form.selectedPhoto': '已选择的照片',
+  'form.quantityHint': '你手上有几件。拍下两瓶相同的产品，读取标签时会自动数出来。',
+  'form.alreadyOwn': '你的产品架上已经有 {name} — 目前 {n} 件。',
+  'form.addToThat': '直接加 {n} 件上去',
+  'form.orKeepSeparate': '或继续往下填，另外建立一条记录。',
   'form.brand': '品牌',
   'form.name': '产品名称',
   'form.notesPlaceholder': '用起来的感觉、适合叠在什么下面、会不会再买。',
@@ -3860,12 +3947,45 @@ async function profileTallies() {
 
 /* ---------- products (scoped to the active profile) ---------- */
 
+/* Quantity arrived after the first shelves were built, so every record written
+   before it has none. Normalised on the way out rather than by a migration
+   pass: an old backup can still be imported, and a product nobody has counted
+   yet is one product. */
+const withQuantity = p => (p && !Number.isFinite(p.quantity) ? { ...p, quantity: 1 } : p);
+
 async function getProducts() {
   const pid = await getActiveProfileId();
-  return (await getAll('products')).filter(p => p.profileId === pid);
+  return (await getAll('products')).filter(p => p.profileId === pid).map(withQuantity);
 }
 
-const getProduct = id => get('products', id);
+/* Two bottles of the same serum are one record with a count, not two records.
+   Matched on brand and name only — size and price are exactly what differs
+   between a full-size and a travel one, and those should stay apart. */
+const matchKey = (brand, name) =>
+  `${(brand || '').trim().toLowerCase().replace(/\s+/g, ' ')}|${(name || '').trim().toLowerCase().replace(/\s+/g, ' ')}`;
+
+async function findProductLike(brand, name) {
+  if (!(name || '').trim()) return null;
+  const key = matchKey(brand, name);
+  return (await getProducts()).find(p => matchKey(p.brand, p.name) === key) || null;
+}
+
+/* Clamped at zero, and an emptied product marks itself finished rather than
+   disappearing — its ingredients and its history are still referred to by past
+   assessments and by the routine. */
+async function setQuantity(id, quantity) {
+  const p = withQuantity(await getProduct(id));
+  if (!p) return null;
+  const next = Math.max(0, Math.round(Number(quantity) || 0));
+  p.quantity = next;
+  if (next === 0 && p.status === 'active') p.status = 'finished';
+  if (next > 0 && p.status === 'finished') p.status = 'active';
+  p.updatedAt = new Date().toISOString();
+  await put('products', p);
+  return p;
+}
+
+const getProduct = async id => withQuantity(await get('products', id));
 
 async function saveProduct(p) {
   if (!p.profileId) p.profileId = await getActiveProfileId();
@@ -3899,6 +4019,9 @@ async function copyProductToProfile(productId, targetProfileId) {
     id: uid(),
     profileId: targetProfileId,
     imageId: blob ? await putImage(blob) : null,
+    // The same bottle on two shelves is still one bottle — carrying the count
+    // across would double it.
+    quantity: 1,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
@@ -4102,7 +4225,7 @@ async function wipe() {
 }
 
 
-const store = { uid, get, getAll, put, del, clear, getProfiles, getActiveProfileId, setActiveProfileId, saveProfile, getActiveProfile, createProfile, renameProfile, deleteProfile, ensureProfile, profileTallies, getProducts, getProduct, saveProduct, deleteProduct, copyProductToProfile, putImage, getImage, resizeImage, getRoutine, setRoutine, getChat, setChat, getPicks, setPicks, getSettings, setSettings, getLangPref, setLangPref, getAssessments, saveAssessment, deleteAssessment, exportAll, importAll, wipe };
+const store = { uid, get, getAll, put, del, clear, getProfiles, getActiveProfileId, setActiveProfileId, saveProfile, getActiveProfile, createProfile, renameProfile, deleteProfile, ensureProfile, profileTallies, getProducts, findProductLike, setQuantity, getProduct, saveProduct, deleteProduct, copyProductToProfile, putImage, getImage, resizeImage, getRoutine, setRoutine, getChat, setChat, getPicks, setPicks, getSettings, setSettings, getLangPref, setLangPref, getAssessments, saveAssessment, deleteAssessment, exportAll, importAll, wipe };
 
 /* ===== offline stubs (share build) ===== */
 /* The shared copy talks to nothing. These stand in for the modules that would,
@@ -4716,6 +4839,10 @@ const dropzoneMarkup = (id, caption) => `
    ============================================================ */
 
 const shelfFilters = { category: '', status: '', active: '' };
+/* Emptied products stay in the library but drop out of the default view. One
+   click brings them back, and the bar says how many are being kept back — a
+   product that silently vanishes when you count the last one out is alarming. */
+let showEmptied = false;
 
 async function shelf(root) {
   const products = (await store.getProducts()).sort(byShelfOrder);
@@ -4736,11 +4863,17 @@ async function shelf(root) {
     if (ACTIVE_TAGS.includes(tag)) activesPresent.add(tag);
   }));
 
-  const visible = products.filter(p =>
+  const matches = products.filter(p =>
     (!shelfFilters.category || p.category === shelfFilters.category) &&
     (!shelfFilters.status || p.status === shelfFilters.status) &&
     (!shelfFilters.active || tagsFor(p.ingredients || []).has(shelfFilters.active))
   );
+  // Asking for Finished explicitly means you want to see them.
+  const keepEmptied = showEmptied || shelfFilters.status === 'finished';
+  const visible = keepEmptied ? matches : matches.filter(p => p.quantity > 0);
+  const emptiedHidden = matches.length - visible.length;
+
+  const onHand = products.reduce((n, p) => n + p.quantity, 0);
 
   const categoriesPresent = [...new Set(products.map(p => p.category).filter(Boolean))].sort();
 
@@ -4773,8 +4906,15 @@ async function shelf(root) {
           ${[...activesPresent].map(x => option(x, tagLabel(x), shelfFilters.active)).join('')}
         </select>
       </div>
-      <span class="filter-count">${esc(t('shelf.count', { shown: visible.length, total: products.length }))}</span>
+      <span class="filter-count">${esc(t('shelf.count', { shown: visible.length, total: products.length }))}
+        · ${esc(t('shelf.onHand', { n: onHand }))}</span>
     </div>
+
+    ${emptiedHidden ? `<p class="field-hint" style="margin:-32px 0 32px">
+      ${esc(t('shelf.emptiedHidden', { n: emptiedHidden }))}
+      <button class="link-btn" id="show-emptied">${esc(t('shelf.showEmptied'))}</button></p>` : ''}
+    ${showEmptied && !emptiedHidden ? `<p class="field-hint" style="margin:-32px 0 32px">
+      <button class="link-btn" id="hide-emptied">${esc(t('shelf.hideEmptied'))}</button></p>` : ''}
 
     <div class="shelf" id="shelf-grid"></div>
     ${visible.length ? '' : `<p class="muted">${esc(t('shelf.noMatch'))}</p>`}`;
@@ -4782,18 +4922,63 @@ async function shelf(root) {
   const grid = root.querySelector('#shelf-grid');
   for (const p of visible) {
     const blob = await store.getImage(p.imageId);
-    const a = document.createElement('a');
-    a.className = 'shelf-item';
-    a.href = `#/product/${p.id}`;
-    a.innerHTML = `
-      <div class="shelf-frame">
-        ${blob ? `<img src="${imgUrl(blob)}" alt="${esc(p.name)}">` : `<span class="no-image">${esc(t('shelf.noPhoto'))}</span>`}
-      </div>
-      <div class="shelf-brand">${esc(p.brand || '—')}</div>
-      <div class="shelf-name">${esc(p.name)}</div>
-      <div class="shelf-meta">${esc(p.category ? categoryLabel(p.category) : '')}${p.status && p.status !== 'active' ? ' · ' + esc(statusLabel(p.status)) : ''}</div>`;
-    grid.appendChild(a);
+    const item = document.createElement('div');
+    item.className = `shelf-item${p.quantity === 0 ? ' is-empty' : ''}`;
+    item.innerHTML = `
+      <a class="shelf-link" href="#/product/${esc(p.id)}">
+        <div class="shelf-frame">
+          ${blob ? `<img src="${imgUrl(blob)}" alt="${esc(p.name)}">` : `<span class="no-image">${esc(t('shelf.noPhoto'))}</span>`}
+          ${p.quantity > 1 ? `<span class="shelf-tally">${esc(String(p.quantity))}</span>` : ''}
+        </div>
+        <div class="shelf-brand">${esc(p.brand || '—')}</div>
+        <div class="shelf-name">${esc(p.name)}</div>
+        <div class="shelf-meta">${esc(p.category ? categoryLabel(p.category) : '')}${p.status && p.status !== 'active' ? ' · ' + esc(statusLabel(p.status)) : ''}</div>
+      </a>
+      <div class="stepper">
+        <button class="step-btn" data-less="${esc(p.id)}" ${p.quantity === 0 ? 'disabled' : ''}
+                aria-label="${esc(t('shelf.oneFewer', { name: p.name }))}">−</button>
+        <span class="stepper-count" data-count="${esc(p.id)}">${esc(String(p.quantity))}</span>
+        <button class="step-btn" data-more="${esc(p.id)}"
+                aria-label="${esc(t('shelf.oneMore', { name: p.name }))}">＋</button>
+      </div>`;
+    grid.appendChild(item);
   }
+
+  /* Counting up and down happens in place — redrawing the whole shelf would
+     lose your scroll position and rebuild every image URL. Only when a product
+     empties, or refills, does the card need to change class. */
+  const stepBy = async (id, delta) => {
+    const before = products.find(x => x.id === id);
+    const updated = await store.setQuantity(id, (before?.quantity ?? 1) + delta);
+    if (!updated) return;
+    if (before) { before.quantity = updated.quantity; before.status = updated.status; }
+
+    const card = root.querySelector(`[data-count="${CSS.escape(id)}"]`)?.closest('.shelf-item');
+    if (!card) return;
+    card.querySelector(`[data-count="${CSS.escape(id)}"]`).textContent = String(updated.quantity);
+    card.querySelector(`[data-less="${CSS.escape(id)}"]`).disabled = updated.quantity === 0;
+    card.classList.toggle('is-empty', updated.quantity === 0);
+
+    const frame = card.querySelector('.shelf-frame');
+    frame.querySelector('.shelf-tally')?.remove();
+    if (updated.quantity > 1) {
+      const tally = document.createElement('span');
+      tally.className = 'shelf-tally';
+      tally.textContent = String(updated.quantity);
+      frame.appendChild(tally);
+    }
+    const meta = card.querySelector('.shelf-meta');
+    meta.textContent = `${updated.category ? categoryLabel(updated.category) : ''}`
+      + (updated.status && updated.status !== 'active' ? ' · ' + statusLabel(updated.status) : '');
+  };
+
+  root.querySelectorAll('[data-less]').forEach(b => { b.onclick = () => stepBy(b.dataset.less, -1); });
+  root.querySelectorAll('[data-more]').forEach(b => { b.onclick = () => stepBy(b.dataset.more, +1); });
+
+  const showBtn = root.querySelector('#show-emptied');
+  if (showBtn) showBtn.onclick = () => { showEmptied = true; shelf(root); };
+  const hideBtn = root.querySelector('#hide-emptied');
+  if (hideBtn) hideBtn.onclick = () => { showEmptied = false; shelf(root); };
 
   root.querySelector('#f-cat').onchange = e => { shelfFilters.category = e.target.value; shelf(root); };
   root.querySelector('#f-status').onchange = e => { shelfFilters.status = e.target.value; shelf(root); };
@@ -4832,6 +5017,7 @@ async function product(root, { id }) {
   const spec = [
     [t('product.category'), p.category ? categoryLabel(p.category) : ''],
     [t('product.status'), statusLabel(p.status)],
+    [t('product.quantity'), String(p.quantity)],
     [t('product.size'), p.size],
     [t('product.price'), p.price],
     [t('product.purchased'), fmtDate(p.purchasedAt)],
@@ -4986,6 +5172,17 @@ async function form(root, { id } = {}) {
           </div>
         </div>
 
+        <div class="field-pair">
+          <div class="field">
+            <label for="quantity">${esc(t('product.quantity'))}</label>
+            <input type="number" id="quantity" min="0" max="99" step="1" value="${esc(String(p?.quantity ?? 1))}">
+            <div class="field-hint">${esc(t('form.quantityHint'))}</div>
+          </div>
+          <div class="field"></div>
+        </div>
+
+        <div id="dupe" hidden></div>
+
         <div class="field">
           <label for="ingredients">${esc(t('product.ingredients'))}</label>
           <textarea id="ingredients" placeholder="${esc(t('form.ingredientsPlaceholder'))}">${esc((p?.ingredients || []).join(', '))}</textarea>
@@ -5067,6 +5264,47 @@ async function form(root, { id } = {}) {
   };
   ingField.addEventListener('input', refreshParse);
   refreshParse();
+
+  /* Adding something you already own should add to the count, not put a second
+     card on the shelf. Checked whenever the brand or name changes, and again
+     after the label is read — but never acted on without being asked, because
+     a travel size and a full size share a name and should stay apart. */
+  const dupeBox = root.querySelector('#dupe');
+  let dupe = null;
+
+  const checkDuplicate = async () => {
+    if (!dupeBox) return;
+    const brand = root.querySelector('#brand').value.trim();
+    const name = root.querySelector('#name').value.trim();
+    const found = await store.findProductLike(brand, name);
+
+    // Editing a product is not a duplicate of itself.
+    dupe = found && found.id !== p?.id ? found : null;
+    if (!dupe) { dupeBox.hidden = true; dupeBox.innerHTML = ''; return; }
+
+    const adding = Math.max(1, Math.round(Number(root.querySelector('#quantity').value) || 1));
+    dupeBox.hidden = false;
+    dupeBox.innerHTML = `
+      <div class="notice">
+        <strong>${esc(t('form.alreadyOwn', {
+          name: `${dupe.brand ? dupe.brand + ' ' : ''}${dupe.name}`, n: dupe.quantity }))}</strong>
+        <div class="btn-row" style="margin-top:12px">
+          <button type="button" class="btn btn-quiet" id="merge">${esc(t('form.addToThat', { n: adding }))}</button>
+          <span class="field-hint" style="margin:0">${esc(t('form.orKeepSeparate'))}</span>
+        </div>
+      </div>`;
+
+    dupeBox.querySelector('#merge').onclick = async () => {
+      await store.setQuantity(dupe.id, dupe.quantity + adding);
+      location.hash = `#/product/${dupe.id}`;
+    };
+  };
+
+  if (!editing) {
+    ['#brand', '#name', '#quantity'].forEach(sel => {
+      root.querySelector(sel).addEventListener('change', checkDuplicate);
+    });
+  }
 
   /* Fold a found list into whatever is already typed, and say where it came
      from. Used by the label reader's fallback and by the lookup button. */
@@ -5151,6 +5389,9 @@ async function form(root, { id } = {}) {
         fill('#brand', read.brand);
         fill('#name', read.name);
         fill('#size', read.size);
+        // Two identical bottles in one photograph are two bottles.
+        if (read.count > 1) root.querySelector('#quantity').value = String(read.count);
+        await checkDuplicate();
         if (read.category && CATEGORIES.includes(read.category) && !root.querySelector('#category').dataset.touched) {
           root.querySelector('#category').value = read.category;
         }
@@ -5194,6 +5435,7 @@ async function form(root, { id } = {}) {
       price: val('#price'),
       purchasedAt: val('#purchasedAt'),
       openedAt: val('#openedAt'),
+      quantity: Math.max(0, Math.round(Number(val('#quantity')) || 0)),
       // No longer editable, but carried through so editing an older record
       // does not quietly discard what it already held.
       paoMonths: p?.paoMonths || '',

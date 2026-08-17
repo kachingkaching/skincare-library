@@ -995,7 +995,8 @@ export async function routine(root) {
   const productLabel = p => `${p.brand ? p.brand + ' · ' : ''}${p.name}`;
 
   const expanded = new Set();          // day toggles open, inside the full builder
-  let openDay = (new Date().getDay() + 6) % 7;   // Monday-first, so today opens
+  const todayIndex = (new Date().getDay() + 6) % 7;   // DAYS is Monday-first
+  let openDay = todayIndex;            // a day is always chosen; today to begin with
   let openComplete = false;
   let dirty = false;
   let message = '';
@@ -1082,39 +1083,41 @@ export async function routine(root) {
     </div>`;
   };
 
-  const dayBlock = (label, day) => {
-    const morning = onDay('am', day);
-    const evening = onDay('pm', day);
-    const notes = [...conflictsFor(morning, 'am'), ...conflictsFor(evening, 'pm')];
-    const clashes = notes.filter(n => n.severity === 'high');
-    const open = openDay === day;
-    const line = list => (list.length
-      ? esc(list.map(p => p.name).join(', '))
-      : '<span class="muted">nothing</span>');
+  /* Seven cards standing across the page. The card itself carries only the day
+     — a list of product names in each was noise at this size, and the day you
+     have chosen shows its whole routine directly beneath the row anyway. */
+  const dayCard = (label, day) => {
+    const clashes = [...conflictsFor(onDay('am', day), 'am'), ...conflictsFor(onDay('pm', day), 'pm')]
+      .filter(n => n.severity === 'high');
+    const chosen = openDay === day;
+    const count = onDay('am', day).length + onDay('pm', day).length;
 
-    return `<div class="day-block${clashes.length ? ' week-clash' : ''}">
-      <button class="day-head" data-openday="${day}" aria-expanded="${open}" aria-controls="day-${day}">
-        <span class="week-day">${esc(label)}</span>
-        <span class="grow">
-          <span class="week-slot"><span class="week-when">AM</span>${line(morning)}</span>
-          <span class="week-slot"><span class="week-when">PM</span>${line(evening)}</span>
-          ${clashes.length && !open ? `<span class="week-warn">${esc(clashes[0].text)}</span>` : ''}
-        </span>
-        <span class="history-mark" aria-hidden="true">${open ? '–' : '+'}</span>
-      </button>
-      ${open ? `<div class="day-body" id="day-${day}">
-        <div class="routine-cols">
-          ${dayColumn('am', 'Morning', day)}
-          ${dayColumn('pm', 'Evening', day)}
-        </div>
-        ${notes.length ? notes.map(n => `<div class="notice" style="margin-top:24px">
-            <strong>${n.severity === 'high' ? 'Take care' : n.severity === 'medium' ? 'Consider' : 'Note'}</strong>
-            ${esc(n.text)}</div>`).join('') : ''}
-        <div class="btn-row day-save">
-          <button class="btn btn-lg" data-save>Save routine</button>
-          <span class="field-hint" style="margin:0">${esc(saveNote())}</span>
-        </div>
-      </div>` : ''}
+    return `<button class="day-card${chosen ? ' is-on' : ''}${clashes.length ? ' has-clash' : ''}"
+              data-openday="${day}" aria-pressed="${chosen}" aria-controls="day-detail">
+      <span class="day-card-name">${esc(label)}</span>
+      <span class="day-card-foot">
+        ${day === todayIndex ? '<span class="day-card-today">Today</span>' : ''}
+        <span class="day-card-count">${count ? `${count} step${count === 1 ? '' : 's'}` : 'Nothing yet'}</span>
+        ${clashes.length ? '<span class="day-card-clash">Take care</span>' : ''}
+      </span>
+    </button>`;
+  };
+
+  /* The chosen day, opened out under the row of cards. */
+  const dayDetail = day => {
+    const notes = [...conflictsFor(onDay('am', day), 'am'), ...conflictsFor(onDay('pm', day), 'pm')];
+    return `<div class="day-body" id="day-detail">
+      <div class="routine-cols">
+        ${dayColumn('am', 'Morning', day)}
+        ${dayColumn('pm', 'Evening', day)}
+      </div>
+      ${notes.map(n => `<div class="notice" style="margin-top:24px">
+          <strong>${n.severity === 'high' ? 'Take care' : n.severity === 'medium' ? 'Consider' : 'Note'}</strong>
+          ${esc(n.text)}</div>`).join('')}
+      <div class="btn-row day-save">
+        <button class="btn btn-lg" data-save>Save routine</button>
+        <span class="field-hint" style="margin:0">${esc(saveNote())}</span>
+      </div>
     </div>`;
   };
 
@@ -1189,10 +1192,11 @@ export async function routine(root) {
 
       <div class="block" style="margin-top:0">
         <h2 class="block-title">Your week</h2>
-        <p class="muted" style="font-size:13px;margin:0 0 24px">Open a day to see what you are
+        <p class="muted" style="font-size:13px;margin:0 0 24px">Choose a day to see what you are
           using and change it. What you add belongs to that day alone — the rest of the week
           keeps whatever it had.</p>
-        <div class="week">${DAYS.map((label, day) => dayBlock(label, day)).join('')}</div>
+        <div class="week-strip">${DAYS.map((label, day) => dayCard(label, day)).join('')}</div>
+        ${dayDetail(openDay)}
       </div>
 
       <div class="block">
@@ -1240,10 +1244,12 @@ export async function routine(root) {
   const touched = () => { dirty = true; message = ''; };
 
   function wire() {
+    /* One day is always chosen — there is nothing useful to show with none. */
     root.querySelectorAll('[data-openday]').forEach(btn => {
       btn.onclick = () => {
         const day = Number(btn.dataset.openday);
-        openDay = openDay === day ? null : day;
+        if (day === openDay) return;
+        openDay = day;
         draw();
       };
     });

@@ -332,8 +332,8 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
 
 .shelf {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 56px 40px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 56px 32px;
 }
 
 .shelf-item { display: block; }
@@ -699,17 +699,9 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
   .header-art { width: 68px; height: 40px; }
 }
 
-/* ---------- the week ---------- */
+/* ---------- disclosure header ----------
 
-.week { border-top: 1px solid var(--rule); }
-
-.week-row {
-  display: grid;
-  grid-template-columns: 90px minmax(0, 1fr);
-  gap: 24px;
-  padding: 14px 0;
-  border-bottom: 1px solid var(--rule);
-}
+   Used by the complete routine, which folds away under the week. */
 
 .week-day {
   font-size: 11px;
@@ -717,32 +709,6 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
   text-transform: uppercase;
   color: var(--ink-muted);
 }
-
-.week-slot { display: block; font-size: 14px; line-height: 1.55; }
-
-.week-when {
-  display: inline-block;
-  min-width: 30px;
-  font-size: 10px;
-  letter-spacing: 0.14em;
-  color: var(--ink-muted);
-}
-
-.week-clash .week-day { color: var(--amber); }
-
-.week-warn {
-  display: block;
-  margin-top: 6px;
-  font-size: 13px;
-  color: var(--amber);
-}
-
-/* ---------- a day of the week, opened ----------
-
-   The week is a list of seven disclosures. Closed, a day says what you use on
-   it; open, it is where you change it. */
-
-.day-block { border-bottom: 1px solid var(--rule); }
 
 .day-head {
   display: flex;
@@ -753,6 +719,8 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
   text-align: left;
   background: none;
   border: none;
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
   border-radius: 0;
   cursor: pointer;
   transition: opacity var(--ease);
@@ -760,10 +728,74 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
 
 .day-head:hover { opacity: 0.62; }
 .day-head:focus-visible { outline: 1px solid var(--amber); outline-offset: 2px; }
-.day-head .week-day { min-width: 90px; flex: 0 0 auto; }
+.day-head .week-day { min-width: 140px; flex: 0 0 auto; }
 .day-head .grow { flex: 1; min-width: 0; }
 
-.day-body { padding: 8px 0 40px; }
+/* ---------- the week, as seven cards ----------
+
+   Seven cards standing side by side across the page. The chosen one is filled
+   in ink, and its morning and evening open out directly underneath the row.
+   Below tablet width the row scrolls sideways rather than crushing the cards. */
+
+.week-strip {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+}
+
+.week-strip::-webkit-scrollbar { display: none; }
+
+.day-card {
+  flex: 1 1 0;
+  min-width: 118px;
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 24px;
+  min-height: 128px;
+  padding: 18px 18px 16px;
+  text-align: left;
+  background: none;
+  border: 1px solid var(--rule);
+  border-radius: 0;
+  cursor: pointer;
+  transition: border-color var(--ease), background var(--ease), color var(--ease);
+}
+
+.day-card:hover { border-color: var(--ink); }
+.day-card:focus-visible { outline: 1px solid var(--amber); outline-offset: 2px; }
+
+.day-card.is-on {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--bone);
+}
+
+.day-card-name { font-size: 22px; line-height: 1.1; letter-spacing: -0.01em; }
+
+.day-card-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.day-card.is-on .day-card-foot { color: var(--bone-sink); }
+
+.day-card-today { color: var(--amber); }
+.day-card.is-on .day-card-today { color: var(--bone); }
+
+.day-card-clash { color: var(--amber); }
+.day-card.is-on .day-card-clash { color: var(--bone); }
+
+.day-body { padding: 40px 0 40px; }
 
 /* The save belongs at the end of the editing, where the eye already is. */
 .day-save { margin-top: 36px; padding-top: 24px; border-top: 1px solid var(--rule); }
@@ -1051,6 +1083,12 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
 
 /* ---------- responsive ---------- */
 
+/* Four across is right at full width; below that the frames get too small to
+   read a label in, so drop a column at a time. */
+@media (max-width: 1240px) {
+  .shelf { grid-template-columns: repeat(3, 1fr); }
+}
+
 @media (max-width: 1080px) {
   :root { --gutter: 32px; }
   .shelf { grid-template-columns: repeat(2, 1fr); gap: 48px 32px; }
@@ -1079,10 +1117,11 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
   .filter-bar { gap: 20px; }
   .colophon { flex-direction: column; gap: 8px; }
   .pick { flex-basis: 78vw; }
-  .week-row { grid-template-columns: 1fr; gap: 6px; }
   .day-head { gap: 14px; }
-  .day-head .week-day { min-width: 58px; }
-  .day-body { padding-bottom: 28px; }
+  .day-head .week-day { min-width: 0; }
+  .day-card { min-width: 104px; min-height: 108px; padding: 14px; }
+  .day-card-name { font-size: 19px; }
+  .day-body { padding: 28px 0; }
   .chat-panel { left: var(--gutter); right: var(--gutter); width: auto; height: 70vh; }
   .chat-launch { right: 12px; bottom: 12px; width: 112px; height: 90px; }
 }
@@ -1586,8 +1625,8 @@ const STEPS = [
   { key: 'pm-tone',        period: 'pm', label: 'Tone',          categories: ['Toner', 'Mist'], essential: false },
   { key: 'am-essence',     period: 'am', label: 'Essence',       categories: ['Essence'], essential: false },
   { key: 'pm-essence',     period: 'pm', label: 'Essence',       categories: ['Essence'], essential: false },
-  { key: 'am-treat',       period: 'am', label: 'Serum / treatment', categories: ['Serum', 'Treatment'], essential: true, multiple: true },
-  { key: 'pm-treat',       period: 'pm', label: 'Serum / treatment', categories: ['Serum', 'Treatment'], essential: true, multiple: true },
+  { key: 'am-treat',       period: 'am', label: 'Serum', categories: ['Serum', 'Treatment'], essential: true, multiple: true },
+  { key: 'pm-treat',       period: 'pm', label: 'Serum', categories: ['Serum', 'Treatment'], essential: true, multiple: true },
   { key: 'am-eye',         period: 'am', label: 'Eye',           categories: ['Eye cream'], essential: false },
   { key: 'pm-eye',         period: 'pm', label: 'Eye',           categories: ['Eye cream'], essential: false },
   { key: 'am-moisturise',  period: 'am', label: 'Moisturise',    categories: ['Moisturiser'], essential: true },
@@ -3670,7 +3709,8 @@ async function routine(root) {
   const productLabel = p => `${p.brand ? p.brand + ' · ' : ''}${p.name}`;
 
   const expanded = new Set();          // day toggles open, inside the full builder
-  let openDay = (new Date().getDay() + 6) % 7;   // Monday-first, so today opens
+  const todayIndex = (new Date().getDay() + 6) % 7;   // DAYS is Monday-first
+  let openDay = todayIndex;            // a day is always chosen; today to begin with
   let openComplete = false;
   let dirty = false;
   let message = '';
@@ -3757,39 +3797,41 @@ async function routine(root) {
     </div>`;
   };
 
-  const dayBlock = (label, day) => {
-    const morning = onDay('am', day);
-    const evening = onDay('pm', day);
-    const notes = [...conflictsFor(morning, 'am'), ...conflictsFor(evening, 'pm')];
-    const clashes = notes.filter(n => n.severity === 'high');
-    const open = openDay === day;
-    const line = list => (list.length
-      ? esc(list.map(p => p.name).join(', '))
-      : '<span class="muted">nothing</span>');
+  /* Seven cards standing across the page. The card itself carries only the day
+     — a list of product names in each was noise at this size, and the day you
+     have chosen shows its whole routine directly beneath the row anyway. */
+  const dayCard = (label, day) => {
+    const clashes = [...conflictsFor(onDay('am', day), 'am'), ...conflictsFor(onDay('pm', day), 'pm')]
+      .filter(n => n.severity === 'high');
+    const chosen = openDay === day;
+    const count = onDay('am', day).length + onDay('pm', day).length;
 
-    return `<div class="day-block${clashes.length ? ' week-clash' : ''}">
-      <button class="day-head" data-openday="${day}" aria-expanded="${open}" aria-controls="day-${day}">
-        <span class="week-day">${esc(label)}</span>
-        <span class="grow">
-          <span class="week-slot"><span class="week-when">AM</span>${line(morning)}</span>
-          <span class="week-slot"><span class="week-when">PM</span>${line(evening)}</span>
-          ${clashes.length && !open ? `<span class="week-warn">${esc(clashes[0].text)}</span>` : ''}
-        </span>
-        <span class="history-mark" aria-hidden="true">${open ? '–' : '+'}</span>
-      </button>
-      ${open ? `<div class="day-body" id="day-${day}">
-        <div class="routine-cols">
-          ${dayColumn('am', 'Morning', day)}
-          ${dayColumn('pm', 'Evening', day)}
-        </div>
-        ${notes.length ? notes.map(n => `<div class="notice" style="margin-top:24px">
-            <strong>${n.severity === 'high' ? 'Take care' : n.severity === 'medium' ? 'Consider' : 'Note'}</strong>
-            ${esc(n.text)}</div>`).join('') : ''}
-        <div class="btn-row day-save">
-          <button class="btn btn-lg" data-save>Save routine</button>
-          <span class="field-hint" style="margin:0">${esc(saveNote())}</span>
-        </div>
-      </div>` : ''}
+    return `<button class="day-card${chosen ? ' is-on' : ''}${clashes.length ? ' has-clash' : ''}"
+              data-openday="${day}" aria-pressed="${chosen}" aria-controls="day-detail">
+      <span class="day-card-name">${esc(label)}</span>
+      <span class="day-card-foot">
+        ${day === todayIndex ? '<span class="day-card-today">Today</span>' : ''}
+        <span class="day-card-count">${count ? `${count} step${count === 1 ? '' : 's'}` : 'Nothing yet'}</span>
+        ${clashes.length ? '<span class="day-card-clash">Take care</span>' : ''}
+      </span>
+    </button>`;
+  };
+
+  /* The chosen day, opened out under the row of cards. */
+  const dayDetail = day => {
+    const notes = [...conflictsFor(onDay('am', day), 'am'), ...conflictsFor(onDay('pm', day), 'pm')];
+    return `<div class="day-body" id="day-detail">
+      <div class="routine-cols">
+        ${dayColumn('am', 'Morning', day)}
+        ${dayColumn('pm', 'Evening', day)}
+      </div>
+      ${notes.map(n => `<div class="notice" style="margin-top:24px">
+          <strong>${n.severity === 'high' ? 'Take care' : n.severity === 'medium' ? 'Consider' : 'Note'}</strong>
+          ${esc(n.text)}</div>`).join('')}
+      <div class="btn-row day-save">
+        <button class="btn btn-lg" data-save>Save routine</button>
+        <span class="field-hint" style="margin:0">${esc(saveNote())}</span>
+      </div>
     </div>`;
   };
 
@@ -3864,10 +3906,11 @@ async function routine(root) {
 
       <div class="block" style="margin-top:0">
         <h2 class="block-title">Your week</h2>
-        <p class="muted" style="font-size:13px;margin:0 0 24px">Open a day to see what you are
+        <p class="muted" style="font-size:13px;margin:0 0 24px">Choose a day to see what you are
           using and change it. What you add belongs to that day alone — the rest of the week
           keeps whatever it had.</p>
-        <div class="week">${DAYS.map((label, day) => dayBlock(label, day)).join('')}</div>
+        <div class="week-strip">${DAYS.map((label, day) => dayCard(label, day)).join('')}</div>
+        ${dayDetail(openDay)}
       </div>
 
       <div class="block">
@@ -3915,10 +3958,12 @@ async function routine(root) {
   const touched = () => { dirty = true; message = ''; };
 
   function wire() {
+    /* One day is always chosen — there is nothing useful to show with none. */
     root.querySelectorAll('[data-openday]').forEach(btn => {
       btn.onclick = () => {
         const day = Number(btn.dataset.openday);
-        openDay = openDay === day ? null : day;
+        if (day === openDay) return;
+        openDay = day;
         draw();
       };
     });

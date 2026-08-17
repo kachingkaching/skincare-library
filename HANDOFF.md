@@ -55,12 +55,15 @@ server, one hard reload (Cmd+Shift+R) is needed to break out.
   from the dossier; `saveProduct` still carries both through untouched so editing
   an older record does not discard what it held.
 - **Profiles** — per-person shelf, assessments, routine; switcher in the masthead
-- **Routine** — **the week is the interface.** Seven day disclosures, one open at
-  a time, today open by default. Opening a day shows that day's morning and
-  evening in application order and edits it: adding puts the product on *that day
-  only*, removing takes it off that day and off the routine entirely when it was
-  its last. The old every-step builder is intact underneath, collapsed as
-  "Complete routine", and still holds the per-entry day toggles and the reorder.
+- **Routine** — **the week is the interface.** Seven cards standing across the
+  page (`.week-strip`), scrolling sideways below tablet width. One is always
+  chosen — today to begin with — and its morning and evening open out directly
+  beneath the row. A card carries only the day, a step count and a Today or Take
+  care marker; listing product names on each was noise at that size. Editing a
+  day puts the product on *that day only*, and removing takes it off that day —
+  and off the routine entirely when it was its last. The old every-step builder
+  is intact underneath, collapsed as "Complete routine", and still holds the
+  per-entry day toggles and the reorder.
   Both sections end in their own Save; edits are held in a draft until then, and
   the note beside Save says "Unsaved changes." until they are written.
   Underneath, entries still carry `days: [0-6]` (Monday first), and **conflicts
@@ -98,12 +101,16 @@ and disabled states; briefing content; profile isolation and cascade delete;
 backup export/wipe/import incl. images; every route renders with no console
 errors; mobile and tablet layouts; the shared build is inert.
 
-**Verified on 17 August (day-first routine and the rest):** adding to one day
-leaves the other six alone; the adder drops a product once that day's step is
-filled; per-day conflict notices appear inside the open day and mark the closed
-header; the accordion opens one day at a time; Save writes the draft to
+**Verified on 17 August (week strip, shelf, and the rest):** the seven cards sit
+flat across a 1280 viewport and scroll sideways at 375; choosing a day swaps the
+breakdown beneath and the chosen card survives the redraw; adding to one day
+leaves the other six alone and only that card's step count moves; the adder
+drops a product once that day's step is filled; per-day conflict notices appear
+under the chosen day; the shelf is four across, three below 1240 and two below
+1080; the step reads "Serum" everywhere. Save writes the draft to
 IndexedDB and the note flips from "Unsaved changes." to "Saved."; the complete
-routine still lists every step with its day toggles and per-period conflicts;
+routine still opens under the week, listing every step with its day toggles and
+its per-period conflicts;
 "Previous readings" renders at 21px with no rule under it and the off/on
 paragraph is gone; the add form's field order and the two removed fields;
 Previous/Next sit above the carousel track; details fold and unfold; and

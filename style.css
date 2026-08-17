@@ -324,8 +324,8 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
 
 .shelf {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 56px 40px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 56px 32px;
 }
 
 .shelf-item { display: block; }
@@ -691,17 +691,9 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
   .header-art { width: 68px; height: 40px; }
 }
 
-/* ---------- the week ---------- */
+/* ---------- disclosure header ----------
 
-.week { border-top: 1px solid var(--rule); }
-
-.week-row {
-  display: grid;
-  grid-template-columns: 90px minmax(0, 1fr);
-  gap: 24px;
-  padding: 14px 0;
-  border-bottom: 1px solid var(--rule);
-}
+   Used by the complete routine, which folds away under the week. */
 
 .week-day {
   font-size: 11px;
@@ -709,32 +701,6 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
   text-transform: uppercase;
   color: var(--ink-muted);
 }
-
-.week-slot { display: block; font-size: 14px; line-height: 1.55; }
-
-.week-when {
-  display: inline-block;
-  min-width: 30px;
-  font-size: 10px;
-  letter-spacing: 0.14em;
-  color: var(--ink-muted);
-}
-
-.week-clash .week-day { color: var(--amber); }
-
-.week-warn {
-  display: block;
-  margin-top: 6px;
-  font-size: 13px;
-  color: var(--amber);
-}
-
-/* ---------- a day of the week, opened ----------
-
-   The week is a list of seven disclosures. Closed, a day says what you use on
-   it; open, it is where you change it. */
-
-.day-block { border-bottom: 1px solid var(--rule); }
 
 .day-head {
   display: flex;
@@ -745,6 +711,8 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
   text-align: left;
   background: none;
   border: none;
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
   border-radius: 0;
   cursor: pointer;
   transition: opacity var(--ease);
@@ -752,10 +720,74 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
 
 .day-head:hover { opacity: 0.62; }
 .day-head:focus-visible { outline: 1px solid var(--amber); outline-offset: 2px; }
-.day-head .week-day { min-width: 90px; flex: 0 0 auto; }
+.day-head .week-day { min-width: 140px; flex: 0 0 auto; }
 .day-head .grow { flex: 1; min-width: 0; }
 
-.day-body { padding: 8px 0 40px; }
+/* ---------- the week, as seven cards ----------
+
+   Seven cards standing side by side across the page. The chosen one is filled
+   in ink, and its morning and evening open out directly underneath the row.
+   Below tablet width the row scrolls sideways rather than crushing the cards. */
+
+.week-strip {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+}
+
+.week-strip::-webkit-scrollbar { display: none; }
+
+.day-card {
+  flex: 1 1 0;
+  min-width: 118px;
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 24px;
+  min-height: 128px;
+  padding: 18px 18px 16px;
+  text-align: left;
+  background: none;
+  border: 1px solid var(--rule);
+  border-radius: 0;
+  cursor: pointer;
+  transition: border-color var(--ease), background var(--ease), color var(--ease);
+}
+
+.day-card:hover { border-color: var(--ink); }
+.day-card:focus-visible { outline: 1px solid var(--amber); outline-offset: 2px; }
+
+.day-card.is-on {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--bone);
+}
+
+.day-card-name { font-size: 22px; line-height: 1.1; letter-spacing: -0.01em; }
+
+.day-card-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.day-card.is-on .day-card-foot { color: var(--bone-sink); }
+
+.day-card-today { color: var(--amber); }
+.day-card.is-on .day-card-today { color: var(--bone); }
+
+.day-card-clash { color: var(--amber); }
+.day-card.is-on .day-card-clash { color: var(--bone); }
+
+.day-body { padding: 40px 0 40px; }
 
 /* The save belongs at the end of the editing, where the eye already is. */
 .day-save { margin-top: 36px; padding-top: 24px; border-top: 1px solid var(--rule); }
@@ -1043,6 +1075,12 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
 
 /* ---------- responsive ---------- */
 
+/* Four across is right at full width; below that the frames get too small to
+   read a label in, so drop a column at a time. */
+@media (max-width: 1240px) {
+  .shelf { grid-template-columns: repeat(3, 1fr); }
+}
+
 @media (max-width: 1080px) {
   :root { --gutter: 32px; }
   .shelf { grid-template-columns: repeat(2, 1fr); gap: 48px 32px; }
@@ -1071,10 +1109,11 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
   .filter-bar { gap: 20px; }
   .colophon { flex-direction: column; gap: 8px; }
   .pick { flex-basis: 78vw; }
-  .week-row { grid-template-columns: 1fr; gap: 6px; }
   .day-head { gap: 14px; }
-  .day-head .week-day { min-width: 58px; }
-  .day-body { padding-bottom: 28px; }
+  .day-head .week-day { min-width: 0; }
+  .day-card { min-width: 104px; min-height: 108px; padding: 14px; }
+  .day-card-name { font-size: 19px; }
+  .day-body { padding: 28px 0; }
   .chat-panel { left: var(--gutter); right: var(--gutter); width: auto; height: 70vh; }
   .chat-launch { right: 12px; bottom: 12px; width: 112px; height: 90px; }
 }

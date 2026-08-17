@@ -265,24 +265,13 @@ export async function product(root, { id }) {
   const flags = FLAG_TAGS.filter(t => tags.has(t));
   const matched = ingredients.filter(i => lookup(i)).length;
 
-  let expiryNotice = '';
-  if (p.openedAt && p.paoMonths) {
-    const due = new Date(p.openedAt + 'T00:00:00');
-    due.setMonth(due.getMonth() + Number(p.paoMonths));
-    const past = due < new Date();
-    const dueText = due.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
-    expiryNotice = `<div class="notice"><strong>${past ? 'Past its date — ' + esc(dueText) + '.' : 'Use by ' + esc(dueText) + '.'}</strong>
-      Opened ${esc(fmtDate(p.openedAt))}, with ${Number(p.paoMonths)} months after opening.</div>`;
-  }
-
   const spec = [
     ['Category', p.category],
     ['Status', STATUS_LABEL[p.status] || p.status],
     ['Size', p.size],
     ['Price', p.price],
     ['Purchased', fmtDate(p.purchasedAt)],
-    ['Opened', fmtDate(p.openedAt)],
-    ['Rating', p.rating ? '★'.repeat(Number(p.rating)) + '☆'.repeat(5 - Number(p.rating)) : '']
+    ['Opened', fmtDate(p.openedAt)]
   ].filter(([, v]) => v);
 
   root.innerHTML = `
@@ -297,8 +286,6 @@ export async function product(root, { id }) {
 
         ${actives.length ? `<div class="chips" style="margin-bottom:16px">${actives.map(t => tagChip(t, false)).join('')}</div>` : ''}
         ${flags.length ? `<div class="chips" style="margin-bottom:32px">${flags.map(t => tagChip(t, true)).join('')}</div>` : ''}
-
-        ${expiryNotice}
 
         <dl class="spec">
           ${spec.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}
@@ -409,7 +396,8 @@ export async function form(root, { id } = {}) {
           <button type="button" class="btn btn-quiet" id="autofill" ${AI_FEATURES && settings.apiKey ? '' : 'hidden'}>Read the label</button>
         </div>
         <p class="field-hint" id="photo-hint">${AI_FEATURES && settings.apiKey
-          ? 'A key is configured — Claude can read brand, name and ingredients from a photograph of the packaging.'
+          ? 'Reads brand, name and ingredients off a photograph of the packaging. If the ingredient '
+            + 'print is not legible, it searches the web for the product’s published list instead.'
           : 'Photographs are resized and kept in this browser.'}</p>
       </div>
 
@@ -436,6 +424,16 @@ export async function form(root, { id } = {}) {
           </div>
         </div>
 
+        <div class="field">
+          <label for="ingredients">Ingredients</label>
+          <textarea id="ingredients" placeholder="Paste the list straight from the packaging. Commas are enough.">${esc((p?.ingredients || []).join(', '))}</textarea>
+          <div class="btn-row" style="margin-top:12px">
+            <button type="button" class="btn btn-quiet" id="lookup" ${AI_FEATURES && settings.apiKey ? '' : 'hidden'}>Look these up online</button>
+          </div>
+          <div class="field-hint" id="parse-summary"></div>
+          <div class="chips" id="parse-chips" style="margin-top:12px"></div>
+        </div>
+
         <div class="field-pair">
           <div class="field">
             <label for="size">Size</label>
@@ -458,30 +456,9 @@ export async function form(root, { id } = {}) {
           </div>
         </div>
 
-        <div class="field-pair">
-          <div class="field">
-            <label for="paoMonths">Period after opening (months)</label>
-            <input type="number" id="paoMonths" min="1" max="60" value="${esc(p?.paoMonths)}">
-          </div>
-          <div class="field">
-            <label for="rating">Rating</label>
-            <select id="rating">
-              ${option('', 'Unrated', p?.rating || '')}
-              ${[1, 2, 3, 4, 5].map(n => option(String(n), '★'.repeat(n), String(p?.rating || ''))).join('')}
-            </select>
-          </div>
-        </div>
-
         <div class="field">
           <label for="notes">Notes</label>
           <textarea id="notes" placeholder="How it wears, what it sits well under, whether you would buy it again.">${esc(p?.notes)}</textarea>
-        </div>
-
-        <div class="field">
-          <label for="ingredients">Ingredients</label>
-          <textarea id="ingredients" placeholder="Paste the list straight from the packaging. Commas are enough.">${esc((p?.ingredients || []).join(', '))}</textarea>
-          <div class="field-hint" id="parse-summary"></div>
-          <div class="chips" id="parse-chips" style="margin-top:12px"></div>
         </div>
 
         <div class="btn-row">
@@ -529,6 +506,67 @@ export async function form(root, { id } = {}) {
   ingField.addEventListener('input', refreshParse);
   refreshParse();
 
+  /* Fold a found list into whatever is already typed, and say where it came
+     from. Used by the label reader's fallback and by the lookup button. */
+  const merge = list => {
+    const already = parseIngredients(ingField.value);
+    const seen = new Set(already.map(i => i.toLowerCase()));
+    const added = list.filter(i => !seen.has(i.toLowerCase()));
+    ingField.value = [...already, ...added].join(', ');
+    refreshParse();
+    return added.length;
+  };
+
+  const sourceLinks = found => (found.sources || []).length
+    ? found.sources.slice(0, 3).map(s =>
+        `<a href="${esc(s.url)}" target="_blank" rel="noreferrer noopener" style="text-decoration:underline">${esc(s.title)}</a>`).join(', ')
+    : '';
+
+  /* Look the product up by name. Returns a sentence for the hint, or null if
+     there was nothing to go on. */
+  const lookupInto = async (hint, lead = '') => {
+    const brand = root.querySelector('#brand').value.trim();
+    const name = root.querySelector('#name').value.trim();
+    if (!name && !brand) return null;
+
+    hint.innerHTML = `${lead}Looking up ${esc([brand, name].filter(Boolean).join(' '))}${dots()}`;
+    const found = await lookupIngredients({ brand, name });
+
+    if (!found.ingredients.length) {
+      hint.textContent = found.searchRan
+        ? 'Searched the web and could not find an ingredient list for this product. '
+          + 'Check the brand and product name are right, or photograph the back of the pack.'
+        : 'No ingredient list could be found for this product, on the web or from memory. '
+          + 'Check the brand and product name are right, or photograph the back of the pack.';
+      return found;
+    }
+
+    const count = merge(found.ingredients);
+    const note = found.note ? esc(found.note) + ' ' : '';
+    hint.innerHTML = found.grounded
+      ? `Found ${count} ingredients online — <strong>not read off your pack</strong>, so check them against it. ${note}${sourceLinks(found)}`
+      : `Found ${count} ingredients, but <strong>web search was unavailable</strong>, so these came from the
+         model’s memory rather than a source. Formulations change — check them against your pack
+         carefully before trusting them. ${note}`;
+    return found;
+  };
+
+  /* Look up on demand, without needing a photograph at all. */
+  const lookupBtn = root.querySelector('#lookup');
+  if (lookupBtn) {
+    lookupBtn.onclick = async () => {
+      const restore = waiting(lookupBtn, 'Looking up');
+      try {
+        const done = await lookupInto(hint);
+        if (!done) hint.textContent = 'Type a brand or product name first — that is what gets looked up.';
+      } catch (err) {
+        hint.textContent = err.message;
+      } finally {
+        restore();
+      }
+    };
+  }
+
   /* optional label reading */
   const autofillBtn = root.querySelector('#autofill');
   if (autofillBtn) {
@@ -559,42 +597,17 @@ export async function form(root, { id } = {}) {
           root.querySelector('#category').value = read.category;
         }
 
-        const merge = list => {
-          const already = parseIngredients(ingField.value);
-          const seen = new Set(already.map(i => i.toLowerCase()));
-          const added = list.filter(i => !seen.has(i.toLowerCase()));
-          ingField.value = [...already, ...added].join(', ');
-          refreshParse();
-          return added.length;
-        };
-
         if (read.ingredients?.length) {
           hint.textContent = `Read ${merge(read.ingredients)} ingredients off the pack. `
             + 'Check them before saving.';
         } else {
-          /* Nothing legible on the pack — go and look the product up instead. */
-          const brand = root.querySelector('#brand').value.trim();
-          const name = root.querySelector('#name').value.trim();
-
-          if (!name && !brand) {
-            hint.textContent = 'No ingredient list was legible, and there is no product name to look up.';
-          } else {
-            hint.innerHTML = `No list visible on the pack. Looking up ${esc([brand, name].filter(Boolean).join(' '))}${dots()}`;
-            const found = await lookupIngredients({ brand, name });
-
-            if (!found.ingredients.length) {
-              hint.textContent = 'No ingredient list was legible, and none could be found online. '
-                + 'Try a close, straight-on photograph of the back of the pack.';
-            } else {
-              const count = merge(found.ingredients);
-              hint.innerHTML = found.grounded
-                ? `Found ${count} ingredients online for this product — <strong>not read off your pack</strong>, so check them against it. `
-                  + `${found.note ? esc(found.note) + ' ' : ''}`
-                  + (found.sources?.length
-                    ? found.sources.slice(0, 3).map(s => `<a href="${esc(s.url)}" target="_blank" rel="noreferrer noopener" style="text-decoration:underline">${esc(s.title)}</a>`).join(', ')
-                    : '')
-                : `Found ${count} ingredients, but <strong>web search was unavailable</strong>, so these came from the model’s memory rather than a source. Formulations change — check them against your pack carefully.`;
-            }
+          /* Nothing legible on the pack — go and look the product up instead,
+             which is the whole point of having read the brand and name first. */
+          const done = await lookupInto(hint, 'No list visible on the pack. ');
+          if (!done) {
+            hint.textContent = 'No ingredient list was legible in that photograph, and there is no '
+              + 'brand or product name to look one up by. Type either in, or photograph the front '
+              + 'of the pack first.';
           }
         }
       } catch (err) {
@@ -628,8 +641,10 @@ export async function form(root, { id } = {}) {
       price: val('#price'),
       purchasedAt: val('#purchasedAt'),
       openedAt: val('#openedAt'),
-      paoMonths: val('#paoMonths'),
-      rating: val('#rating'),
+      // No longer editable, but carried through so editing an older record
+      // does not quietly discard what it already held.
+      paoMonths: p?.paoMonths || '',
+      rating: p?.rating || '',
       notes: root.querySelector('#notes').value.trim(),
       ingredients: parseIngredients(ingField.value),
       imageId,
@@ -750,7 +765,6 @@ export async function assess(root, { id } = {}) {
   const settings = await aiSettings();
   const keyConfigured = AI_FEATURES && Boolean(settings.apiKey);
   const sendPhotoDefault = settings.sendPhoto;
-  const providerName = PROVIDERS.find(p => p.id === settings.provider)?.label || settings.provider;
 
   /* Viewing one from the archive. */
   if (id) {
@@ -782,7 +796,7 @@ export async function assess(root, { id } = {}) {
      mean losing your place on the page. */
   const historyMarkup = history.length ? `
     <div class="block">
-      <h2 class="section-title">Previous readings — ${history.length}</h2>
+      <h2 class="block-title">Previous readings — ${history.length}</h2>
       <div class="history">
         ${history.map(a => `
           <div class="history-item">
@@ -817,9 +831,7 @@ export async function assess(root, { id } = {}) {
           <div class="choices" style="margin-top:20px">
             <input type="checkbox" id="send-photo" ${sendPhotoDefault ? 'checked' : ''}>
             <label for="send-photo">Let the model look at it</label>
-          </div>
-          <p class="field-hint">Off, the reading comes from your answers and your shelf and the
-            photograph never leaves this Mac. On, it is sent to ${esc(providerName)} to be read.</p>`
+          </div>`
         : ''}
       </div>
       <div>
@@ -980,7 +992,133 @@ export async function routine(root) {
   /* Everything below edits this draft; Save writes it. */
   const draft = { am: [...(saved.am || [])], pm: [...(saved.pm || [])] };
   const inStep = (period, key) => draft[period].filter(e => e.step === key);
-  const expanded = new Set();   // rows whose day toggles are open
+  const productLabel = p => `${p.brand ? p.brand + ' · ' : ''}${p.name}`;
+
+  const expanded = new Set();          // day toggles open, inside the full builder
+  let openDay = (new Date().getDay() + 6) % 7;   // Monday-first, so today opens
+  let openComplete = false;
+  let dirty = false;
+  let message = '';
+  const saveNote = () => (dirty ? 'Unsaved changes.' : message);
+
+  /* ---------- the week, one day at a time ----------
+
+     The day is what a person actually lives, so it is what they edit. Each day
+     lists what goes on that morning and evening in application order, and a
+     product added here is scheduled for that day alone — the other days keep
+     whatever they had. */
+
+  /* Entries applying on one day, in the order they go on. */
+  const entriesOn = (period, day) => stepsFor(period).flatMap(step =>
+    draft[period]
+      .filter(e => e.step === step.key && daysOf(e).includes(day) && byId[e.productId])
+      .map(entry => ({ entry, step })));
+
+  const onDay = (period, day) => entriesOn(period, day).map(({ entry }) => byId[entry.productId]);
+
+  const addOnDay = (period, stepKey, productId, day) => {
+    const already = draft[period].find(e => e.step === stepKey && e.productId === productId);
+    if (already) already.days = [...new Set([...daysOf(already), day])].sort((a, b) => a - b);
+    else draft[period].push({ step: stepKey, productId, days: [day] });
+  };
+
+  /* Taking a product off one day leaves it on the others. Taking it off its
+     last remaining day is a removal, not an empty schedule. */
+  const removeOnDay = (period, stepKey, productId, day) => {
+    const i = draft[period].findIndex(e => e.step === stepKey && e.productId === productId);
+    if (i < 0) return;
+    const left = daysOf(draft[period][i]).filter(d => d !== day);
+    if (left.length) draft[period][i].days = left;
+    else draft[period].splice(i, 1);
+  };
+
+  /* One select for the whole period, grouped by step — eight separate menus
+     for eight steps would bury the two you actually use. */
+  const dayAdder = (period, day) => {
+    const groups = stepsFor(period).map(step => {
+      const already = draft[period].filter(e => e.step === step.key && daysOf(e).includes(day));
+      if (!step.multiple && already.length) return '';        // that slot is taken
+      const taken = new Set(already.map(e => e.productId));
+      const candidates = products.filter(p => step.categories.includes(p.category) && !taken.has(p.id));
+      if (!candidates.length) return '';
+      return `<optgroup label="${esc(step.label)}">${candidates.map(p =>
+        `<option value="${esc(step.key)}|${esc(p.id)}">${esc(productLabel(p))}</option>`).join('')}</optgroup>`;
+    }).join('');
+
+    if (!groups) return '';
+    return `<div class="picker-row">
+      <span class="picker-step" style="min-width:110px"></span>
+      <span class="grow">
+        <select class="inline-select" data-dayadd="${esc(period)}|${day}">
+          <option value="">＋ add a product</option>${groups}
+        </select>
+      </span>
+    </div>`;
+  };
+
+  /* Inside Monday, a chip reading "Mon" says nothing. What is worth knowing is
+     whether this product turns up on other days too. */
+  const scheduleOf = (entry, day) => {
+    if (isEveryDay(entry)) return '';
+    const days = daysOf(entry);
+    return days.length === 1 && days[0] === day ? 'This day only' : describeDays(entry);
+  };
+
+  const dayColumn = (period, title, day) => {
+    const rows = entriesOn(period, day).map(({ entry, step }) => `
+      <div class="picker-row">
+        <span class="picker-step" style="min-width:110px">${esc(step.label)}</span>
+        <span class="grow">${esc(productLabel(byId[entry.productId]))}</span>
+        <span class="picker-step">${esc(scheduleOf(entry, day))}</span>
+        <button class="link-btn" data-dayoff="${esc(period)}|${esc(step.key)}|${esc(entry.productId)}|${day}">Remove</button>
+      </div>`).join('');
+
+    return `<div>
+      <h3 class="section-title">${esc(title)}</h3>
+      <div class="picker">
+        ${rows || '<div class="picker-row"><span class="grow muted">Nothing on this day</span></div>'}
+        ${dayAdder(period, day)}
+      </div>
+    </div>`;
+  };
+
+  const dayBlock = (label, day) => {
+    const morning = onDay('am', day);
+    const evening = onDay('pm', day);
+    const notes = [...conflictsFor(morning, 'am'), ...conflictsFor(evening, 'pm')];
+    const clashes = notes.filter(n => n.severity === 'high');
+    const open = openDay === day;
+    const line = list => (list.length
+      ? esc(list.map(p => p.name).join(', '))
+      : '<span class="muted">nothing</span>');
+
+    return `<div class="day-block${clashes.length ? ' week-clash' : ''}">
+      <button class="day-head" data-openday="${day}" aria-expanded="${open}" aria-controls="day-${day}">
+        <span class="week-day">${esc(label)}</span>
+        <span class="grow">
+          <span class="week-slot"><span class="week-when">AM</span>${line(morning)}</span>
+          <span class="week-slot"><span class="week-when">PM</span>${line(evening)}</span>
+          ${clashes.length && !open ? `<span class="week-warn">${esc(clashes[0].text)}</span>` : ''}
+        </span>
+        <span class="history-mark" aria-hidden="true">${open ? '–' : '+'}</span>
+      </button>
+      ${open ? `<div class="day-body" id="day-${day}">
+        <div class="routine-cols">
+          ${dayColumn('am', 'Morning', day)}
+          ${dayColumn('pm', 'Evening', day)}
+        </div>
+        ${notes.length ? notes.map(n => `<div class="notice" style="margin-top:24px">
+            <strong>${n.severity === 'high' ? 'Take care' : n.severity === 'medium' ? 'Consider' : 'Note'}</strong>
+            ${esc(n.text)}</div>`).join('') : ''}
+        <div class="btn-row day-save">
+          <button class="btn btn-lg" data-save>Save routine</button>
+          <span class="field-hint" style="margin:0">${esc(saveNote())}</span>
+        </div>
+      </div>` : ''}
+    </div>`;
+  };
+
+  /* ---------- the whole thing at once, for when a day at a time is too slow ---------- */
 
   const dayToggles = (period, productId, stepKey, entry) => {
     const id = `${period}|${productId}|${stepKey}`;
@@ -1008,7 +1146,7 @@ export async function routine(root) {
       if (!p) return '';
       return `<div class="picker-row">
         <span class="picker-step" style="min-width:110px">${i === 0 ? esc(step.label) : ''}</span>
-        <span class="grow">${esc(p.brand ? p.brand + ' · ' : '')}${esc(p.name)}</span>
+        <span class="grow">${esc(productLabel(p))}</span>
         ${dayToggles(period, entry.productId, step.key, entry)}
         ${i > 0 ? `<button class="link-btn" data-up="${esc(period)}|${esc(step.key)}|${i}">Move up</button>` : ''}
         <button class="link-btn" data-drop="${esc(period)}|${esc(entry.productId)}|${esc(step.key)}">Remove</button>
@@ -1019,10 +1157,9 @@ export async function routine(root) {
       ? `<div class="picker-row">
           <span class="picker-step" style="min-width:110px">${chosen.length ? '' : esc(step.label)}</span>
           <span class="grow">
-            <select class="step-add" data-add="${esc(period)}|${esc(step.key)}"
-                    style="width:100%;background:none;border:none;border-bottom:1px solid var(--rule);padding:4px 0;border-radius:0">
+            <select class="inline-select step-add" data-add="${esc(period)}|${esc(step.key)}">
               ${option('', chosen.length ? '＋ add another' : '—', '')}
-              ${candidates.map(p => option(p.id, `${p.brand ? p.brand + ' · ' : ''}${p.name}`, '')).join('')}
+              ${candidates.map(p => option(p.id, productLabel(p), '')).join('')}
             </select>
           </span>
         </div>`
@@ -1036,43 +1173,11 @@ export async function routine(root) {
 
   const column = (period, title) => `
     <div>
-      <h2 class="section-title">${esc(title)}</h2>
+      <h3 class="section-title">${esc(title)}</h3>
       <div class="picker">
         ${stepsFor(period).map(step => stepRows(period, step)).join('')}
       </div>
       <div id="conflicts-${period}" class="block" style="margin-top:32px"></div>
-    </div>`;
-
-  /* Products actually used on a given day, in application order. */
-  const onDay = (period, day) => {
-    const out = [];
-    for (const step of stepsFor(period)) {
-      for (const entry of draft[period].filter(e => e.step === step.key && daysOf(e).includes(day))) {
-        const p = byId[entry.productId];
-        if (p) out.push(p);
-      }
-    }
-    return out;
-  };
-
-  const weekTable = () => `
-    <div class="week">
-      ${DAYS.map((label, day) => {
-        const morning = onDay('am', day);
-        const evening = onDay('pm', day);
-        const clashes = [...conflictsFor(morning, 'am'), ...conflictsFor(evening, 'pm')]
-          .filter(n => n.severity === 'high');
-        return `<div class="week-row${clashes.length ? ' week-clash' : ''}">
-          <div class="week-day">${esc(label)}</div>
-          <div>
-            <div class="week-slot"><span class="week-when">AM</span>${morning.length
-              ? morning.map(p => esc(p.name)).join(', ') : '<span class="muted">nothing</span>'}</div>
-            <div class="week-slot"><span class="week-when">PM</span>${evening.length
-              ? evening.map(p => esc(p.name)).join(', ') : '<span class="muted">nothing</span>'}</div>
-            ${clashes.length ? `<div class="week-warn">${esc(clashes[0].text)}</div>` : ''}
-          </div>
-        </div>`;
-      }).join('')}
     </div>`;
 
   const draw = () => {
@@ -1080,49 +1185,100 @@ export async function routine(root) {
       <div class="view-head">
         ${headerArt('routine')}
         <h1 class="page-title">Routine</h1>
-        <div class="btn-row">
-          <button class="btn" id="save-routine">Save</button>
-          <span class="field-hint" style="margin:0" id="routine-note"></span>
-        </div>
       </div>
 
       <div class="block" style="margin-top:0">
-        <h2 class="section-title">Your week</h2>
-        ${weekTable()}
+        <h2 class="block-title">Your week</h2>
+        <p class="muted" style="font-size:13px;margin:0 0 24px">Open a day to see what you are
+          using and change it. What you add belongs to that day alone — the rest of the week
+          keeps whatever it had.</p>
+        <div class="week">${DAYS.map((label, day) => dayBlock(label, day)).join('')}</div>
       </div>
 
-      <div class="routine-cols block">
-        ${column('am', 'Morning')}
-        ${column('pm', 'Evening')}
+      <div class="block">
+        <button class="day-head" id="open-complete" aria-expanded="${openComplete}" aria-controls="complete">
+          <span class="week-day">Complete routine</span>
+          <span class="grow muted">Every step, and which days each product is used</span>
+          <span class="history-mark" aria-hidden="true">${openComplete ? '–' : '+'}</span>
+        </button>
+        ${openComplete ? `<div class="day-body" id="complete">
+          <div class="routine-cols">
+            ${column('am', 'Morning')}
+            ${column('pm', 'Evening')}
+          </div>
+          <div class="btn-row day-save">
+            <button class="btn btn-lg" data-save>Save routine</button>
+            <span class="field-hint" style="margin:0">${esc(saveNote())}</span>
+          </div>
+        </div>` : ''}
       </div>`;
 
-    /* Conflicts are judged per day now — things you alternate never meet, so
+    /* Conflicts are judged per day — things you alternate never meet, so
        warning about them was crying wolf. */
-    for (const period of ['am', 'pm']) {
-      const byText = new Map();
-      for (let day = 0; day < 7; day++) {
-        for (const note of conflictsFor(onDay(period, day), period)) {
-          if (!byText.has(note.text)) byText.set(note.text, { ...note, days: [] });
-          byText.get(note.text).days.push(DAYS[day]);
+    if (openComplete) {
+      for (const period of ['am', 'pm']) {
+        const byText = new Map();
+        for (let day = 0; day < 7; day++) {
+          for (const note of conflictsFor(onDay(period, day), period)) {
+            if (!byText.has(note.text)) byText.set(note.text, { ...note, days: [] });
+            byText.get(note.text).days.push(DAYS[day]);
+          }
         }
+        const notes = [...byText.values()];
+        const anything = draft[period].length;
+        root.querySelector(`#conflicts-${period}`).innerHTML = notes.length
+          ? `<h3 class="section-title">Worth knowing</h3>${notes.map(n =>
+              `<div class="notice"><strong>${n.severity === 'high' ? 'Take care' : n.severity === 'medium' ? 'Consider' : 'Note'}</strong>
+                ${n.days.length === 7 ? '' : `<em>${esc(n.days.join(', '))}</em> — `}${esc(n.text)}</div>`).join('')}`
+          : (anything ? '<p class="muted" style="font-size:13px">Nothing conflicts on any day.</p>' : '');
       }
-      const notes = [...byText.values()];
-      const anything = draft[period].length;
-      root.querySelector(`#conflicts-${period}`).innerHTML = notes.length
-        ? `<h2 class="section-title">Worth knowing</h2>${notes.map(n =>
-            `<div class="notice"><strong>${n.severity === 'high' ? 'Take care' : n.severity === 'medium' ? 'Consider' : 'Note'}</strong>
-              ${n.days.length === 7 ? '' : `<em>${esc(n.days.join(', '))}</em> — `}${esc(n.text)}</div>`).join('')}`
-        : (anything ? '<p class="muted" style="font-size:13px">Nothing conflicts on any day.</p>' : '');
     }
     wire();
   };
 
+  /* Any edit invalidates what is stored, so the note stops saying "Saved." */
+  const touched = () => { dirty = true; message = ''; };
+
   function wire() {
+    root.querySelectorAll('[data-openday]').forEach(btn => {
+      btn.onclick = () => {
+        const day = Number(btn.dataset.openday);
+        openDay = openDay === day ? null : day;
+        draw();
+      };
+    });
+
+    root.querySelector('#open-complete').onclick = () => {
+      openComplete = !openComplete;
+      draw();
+    };
+
+    root.querySelectorAll('[data-dayadd]').forEach(sel => {
+      sel.onchange = () => {
+        if (!sel.value) return;
+        const [period, dayText] = sel.dataset.dayadd.split('|');
+        const [stepKey, productId] = sel.value.split('|');
+        addOnDay(period, stepKey, productId, Number(dayText));
+        touched();
+        draw();
+      };
+    });
+
+    root.querySelectorAll('[data-dayoff]').forEach(btn => {
+      btn.onclick = () => {
+        const [period, stepKey, productId, dayText] = btn.dataset.dayoff.split('|');
+        removeOnDay(period, stepKey, productId, Number(dayText));
+        touched();
+        draw();
+      };
+    });
+
     root.querySelectorAll('.step-add').forEach(sel => {
       sel.onchange = () => {
         if (!sel.value) return;
         const [period, stepKey] = sel.dataset.add.split('|');
         draft[period].push({ step: stepKey, productId: sel.value, days: [...EVERY_DAY] });
+        touched();
         draw();
       };
     });
@@ -1147,6 +1303,7 @@ export async function routine(root) {
         // Never leave an entry on no days at all — that is a removal, not a schedule.
         entry.days = days.size ? [...days].sort((a, b) => a - b) : [...EVERY_DAY];
         expanded.add(`${period}|${productId}|${stepKey}`);
+        touched();
         draw();
       };
     });
@@ -1156,6 +1313,7 @@ export async function routine(root) {
         const [period, productId, stepKey] = btn.dataset.drop.split('|');
         const i = draft[period].findIndex(e => e.productId === productId && e.step === stepKey);
         if (i > -1) draft[period].splice(i, 1);
+        touched();
         draw();
       };
     });
@@ -1171,14 +1329,19 @@ export async function routine(root) {
         const a = positions[within - 1];
         const b = positions[within];
         [draft[period][a], draft[period][b]] = [draft[period][b], draft[period][a]];
+        touched();
         draw();
       };
     });
 
-    root.querySelector('#save-routine').onclick = async () => {
-      await store.setRoutine({ am: draft.am, pm: draft.pm });
-      root.querySelector('#routine-note').textContent = 'Saved.';
-    };
+    root.querySelectorAll('[data-save]').forEach(btn => {
+      btn.onclick = async () => {
+        await store.setRoutine({ am: draft.am, pm: draft.pm });
+        dirty = false;
+        message = 'Saved.';
+        draw();
+      };
+    });
   }
 
   draw();
@@ -1233,6 +1396,24 @@ function pickArt(item, index) {
   </svg>`;
 }
 
+/* Where to send someone who wants to see the real thing.
+
+   The model supplies the address, so it is treated as untrusted: anything that
+   is not a plain http(s) URL is dropped, and if there is none — older picks
+   were found before this was asked for — we fall back to a search for the
+   product by name, which is what the person would type anyway. */
+function pickUrl(item) {
+  const name = `${item.brand || ''} ${item.product || ''}`.trim();
+  const search = 'https://www.google.com/search?q=' + encodeURIComponent(name || 'skincare');
+  if (!item.url) return search;
+  try {
+    const url = new URL(item.url);
+    return (url.protocol === 'https:' || url.protocol === 'http:') ? url.href : search;
+  } catch {
+    return search;
+  }
+}
+
 export async function discoveries(root) {
   const { apiKey } = await aiSettings();
   const products = await store.getProducts();
@@ -1273,27 +1454,44 @@ export async function discoveries(root) {
         <p class="muted" style="margin-bottom:32px">Found ${esc(fmtStamp(picks.generatedAt))}${stale ? ' — over a month ago, worth looking again.' : '.'}
           ${picks.grounded === false ? '' : 'Searched on the web, but check the details yourself before buying.'}</p>
         <div class="carousel">
-          <div class="carousel-track" id="picks-track">
-            ${(picks.items || []).map((item, i) => `
-              <article class="pick" aria-roledescription="slide"
-                       aria-label="${i + 1} of ${(picks.items || []).length}">
-                ${pickArt(item, i)}
-                <div class="pick-body">
-                  <div class="pick-brand">${esc(item.brand || '')}</div>
-                  <div class="pick-name">${esc(item.product || '')}</div>
-                  <div class="pick-kind">${esc(item.kind || '')}</div>
-                  <div class="pick-why">${esc(item.why || '')}</div>
-                  ${item.actives ? `<div class="pick-meta"><strong>Actives</strong> — ${esc(item.actives)}</div>` : ''}
-                  ${item.caution ? `<div class="pick-meta"><strong>Caution</strong> — ${esc(item.caution)}</div>` : ''}
-                </div>
-              </article>`).join('')}
-          </div>
           <div class="carousel-bar">
             <button class="link-btn" id="pick-prev">← Previous</button>
             <span class="carousel-dots" id="pick-dots">
               ${(picks.items || []).map((_, i) => `<button class="carousel-dot${i === 0 ? ' is-on' : ''}" data-go="${i}" aria-label="Go to ${i + 1}"></button>`).join('')}
             </span>
             <button class="link-btn" id="pick-next">Next →</button>
+          </div>
+          <div class="carousel-track" id="picks-track">
+            ${(picks.items || []).map((item, i) => {
+              const href = pickUrl(item);
+              const title = `${item.brand || ''} ${item.product || ''}`.trim();
+              return `
+              <article class="pick" aria-roledescription="slide"
+                       aria-label="${i + 1} of ${(picks.items || []).length}">
+                <a class="pick-link" href="${esc(href)}" target="_blank" rel="noreferrer noopener"
+                   title="Opens ${item.url ? 'where this was found' : 'a search for this product'}">
+                  ${pickArt(item, i)}
+                </a>
+                <div class="pick-body">
+                  <div class="pick-brand">${esc(item.brand || '')}</div>
+                  <div class="pick-name">
+                    <a class="pick-link" href="${esc(href)}" target="_blank" rel="noreferrer noopener">${esc(title)}
+                      <span class="pick-out" aria-hidden="true">↗</span></a>
+                  </div>
+                  <div class="pick-why">${esc(item.why || '')}</div>
+                  <button class="link-btn pick-more" data-more="${i}"
+                          aria-expanded="false" aria-controls="pick-detail-${i}">Details +</button>
+                  <div class="pick-details" id="pick-detail-${i}" hidden>
+                    ${item.kind ? `<div class="pick-meta"><strong>What it is</strong> — ${esc(item.kind)}</div>` : ''}
+                    ${item.actives ? `<div class="pick-meta"><strong>Actives</strong> — ${esc(item.actives)}</div>` : ''}
+                    ${item.caution ? `<div class="pick-meta"><strong>Caution</strong> — ${esc(item.caution)}</div>` : ''}
+                    <div class="pick-meta"><a class="pick-link" href="${esc(href)}" target="_blank"
+                      rel="noreferrer noopener" style="text-decoration:underline">${item.url
+                        ? 'Where this was found ↗' : 'Search for this product ↗'}</a></div>
+                  </div>
+                </div>
+              </article>`;
+            }).join('')}
           </div>
         </div>
         ${(picks.sources || []).length ? `<div class="block">
@@ -1340,6 +1538,18 @@ export async function discoveries(root) {
         if (ev.key === 'ArrowLeft') { ev.preventDefault(); goTo(current() - 1); }
       });
       mark();
+
+      /* Everything but the blurb folds away, so four picks can be compared at
+         a glance and read in full one at a time. */
+      root.querySelectorAll('.pick-more').forEach(btn => {
+        btn.onclick = () => {
+          const body = root.querySelector(`#pick-detail-${CSS.escape(btn.dataset.more)}`);
+          const opening = body.hidden;
+          body.hidden = !opening;
+          btn.setAttribute('aria-expanded', String(opening));
+          btn.textContent = opening ? 'Details –' : 'Details +';
+        };
+      });
     }
 
     root.querySelector('#look').onclick = async () => {

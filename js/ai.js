@@ -119,10 +119,27 @@ export async function readLabel(blob) {
 
 /* ---------- 1b. look the ingredients up when the pack does not show them ----
 
-   Only used when the photograph has no visible list. A looked-up list is less
-   trustworthy than a transcribed one — formulations change and regional
-   versions differ — so the caller is told where it came from and whether a real
-   search backed it up. */
+   Used whenever the photograph has no legible list, and available on demand.
+   A looked-up list is less trustworthy than a transcribed one — formulations
+   change and regional versions differ — so the caller is told where it came
+   from and whether a real search backed it up.
+
+   Two passes, because the free tier's search quota is separate from its
+   ordinary one and runs out first. The first pass searches and is strict:
+   no verified list, no answer. If search was refused outright, or came back
+   empty-handed, the second pass asks the model to recall the list from its own
+   training and the result is flagged `grounded: false` so every caller can say
+   plainly that nobody checked it. An unchecked list the user can verify against
+   their pack beats no list at all — but only if it is labelled as such. */
+
+const INGREDIENT_SCHEMA = {
+  type: 'object',
+  properties: {
+    ingredients: { type: 'array', items: { type: 'string' } },
+    note: { type: 'string' }
+  },
+  required: ['ingredients', 'note']
+};
 
 export async function lookupIngredients({ brand, name, signal }) {
   const { provider, apiKey, model } = await aiSettings();
@@ -132,7 +149,7 @@ export async function lookupIngredients({ brand, name, signal }) {
   const product = [brand, name].filter(Boolean).join(' ').trim();
   if (!product) throw new Error('A brand or product name is needed to look anything up.');
 
-  const { text, citations, dropped } = await gemini.generate({
+  const searched = await gemini.generate({
     apiKey,
     model,
     system: `${CARE}
@@ -142,23 +159,43 @@ You are retrieving a published INCI ingredient list for a specific product. Retu
       + 'Give the ingredients in printed order. If several versions exist, use the current one and say which in "note". If you cannot find a reliable list, return an empty array.'
     )],
     tools: [{ type: 'google_search' }],
-    schema: {
-      type: 'object',
-      properties: {
-        ingredients: { type: 'array', items: { type: 'string' } },
-        note: { type: 'string' }
-      },
-      required: ['ingredients', 'note']
-    },
+    schema: INGREDIENT_SCHEMA,
     signal
   });
 
-  const parsed = gemini.parseJson(text);
+  const first = gemini.parseJson(searched.text);
+  const found = Array.isArray(first.ingredients) ? first.ingredients.filter(Boolean) : [];
+  const grounded = !searched.dropped.includes('tools');
+
+  if (found.length && grounded) {
+    return { ingredients: found, note: first.note || '', grounded: true, sources: searched.citations };
+  }
+
+  /* No search, or search found nothing. Ask what the model remembers instead. */
+  const recalled = await gemini.generate({
+    apiKey,
+    model,
+    system: `${CARE}
+You are recalling a published INCI ingredient list from your own training, without searching. The person asking already knows this is unverified and will check it against the packaging in their hand, so a good-faith recollection is useful to them. Give the list you believe is right, in printed order. Use "note" to say how confident you are and anything that would make it wrong — a reformulation, or regional versions. Only return an empty array if you genuinely do not know this product at all.`,
+    turns: [gemini.userTurn(
+      `From memory, what is the full INCI ingredient list for this skincare product?\n\n${product}\n\n`
+      + 'Printed order. Say in "note" how sure you are and what might have changed since.'
+    )],
+    schema: INGREDIENT_SCHEMA,
+    signal
+  });
+
+  const second = gemini.parseJson(recalled.text);
+  const remembered = Array.isArray(second.ingredients) ? second.ingredients.filter(Boolean) : [];
+
   return {
-    ingredients: Array.isArray(parsed.ingredients) ? parsed.ingredients.filter(Boolean) : [],
-    note: parsed.note || '',
-    grounded: !dropped.includes('tools'),
-    sources: citations
+    ingredients: remembered.length ? remembered : found,
+    note: (remembered.length ? second.note : first.note) || '',
+    grounded: false,
+    // Distinguish "search was refused" from "search ran and found nothing" —
+    // they warrant different wording to the person reading the result.
+    searchRan: grounded,
+    sources: searched.citations
   };
 }
 
@@ -334,10 +371,17 @@ My concerns: ${concerns}
 Already on my shelf — do not recommend these or close duplicates of them:
 ${shelfDigest(library)}
 
-Search for products that are currently sold, and check what is actually in them. For each, give the brand, the product name, what kind of product it is, the ingredients that make it suit my concerns, and one honest caution. Prefer things that fill a genuine gap rather than duplicating what I have.
+Search for products that are currently sold, and check what is actually in them. Prefer things that fill a genuine gap rather than duplicating what I have.
+
+For each product give:
+- brand, product, kind: what it is.
+- why: two sentences at most, addressed to me, saying why this one suits *my* skin in particular. Name the concern of mine it answers, and where it helps, say how it sits with something already on my shelf — filling a gap next to it, or working like something I clearly get on with. Be concrete; do not write generic marketing copy.
+- actives: the ingredients that do the work.
+- caution: one honest drawback or warning.
+- url: where I can read about it or buy it — the brand's own product page by preference, otherwise a reputable retailer or a review that covers this exact product. Give a full https address you actually found, and leave it empty rather than inventing one.
 
 Return JSON only, in a fenced code block:
-{"items":[{"brand":"","product":"","kind":"","why":"","actives":"","caution":""}]}`;
+{"items":[{"brand":"","product":"","kind":"","why":"","actives":"","caution":"","url":""}]}`;
 
   const { text, citations, dropped } = await gemini.generate({
     apiKey,

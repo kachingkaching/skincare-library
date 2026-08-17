@@ -120,7 +120,15 @@ export function mountChat() {
 
   const holder = document.createElement('div');
   holder.innerHTML = `
-    <button class="chat-launch" id="chat-launch" hidden>Ask</button>
+    <button class="chat-launch" id="chat-launch" hidden aria-label="Ask about your skincare">
+      <svg viewBox="0 0 120 96" aria-hidden="true" focusable="false">
+        <g class="cloud">
+          <rect x="4" y="8" width="104" height="56" rx="28"/>
+          <path d="M62 50 92 88 84 50z"/>
+        </g>
+        <text x="56" y="42">ASK</text>
+      </svg>
+    </button>
     <section class="chat-panel" id="chat-panel" hidden aria-label="Ask about your skincare">
       <header class="chat-head">
         <span class="label">Ask</span>

@@ -79,6 +79,15 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
   margin: 0 0 24px;
 }
 
+/* A heading that carries a whole section of the page, rather than labelling a
+   column of it. No rule beneath: the thing it introduces has its own. */
+.block-title {
+  font-size: 21px;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  margin: 0 0 16px;
+}
+
 .muted { color: var(--ink-muted); }
 
 .prose { max-width: 62ch; }
@@ -701,7 +710,7 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
   color: var(--ink-muted);
 }
 
-.week-slot { font-size: 14px; line-height: 1.55; }
+.week-slot { display: block; font-size: 14px; line-height: 1.55; }
 
 .week-when {
   display: inline-block;
@@ -714,10 +723,58 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
 .week-clash .week-day { color: var(--amber); }
 
 .week-warn {
+  display: block;
   margin-top: 6px;
   font-size: 13px;
   color: var(--amber);
 }
+
+/* ---------- a day of the week, opened ----------
+
+   The week is a list of seven disclosures. Closed, a day says what you use on
+   it; open, it is where you change it. */
+
+.day-block { border-bottom: 1px solid var(--rule); }
+
+.day-head {
+  display: flex;
+  gap: 24px;
+  align-items: baseline;
+  width: 100%;
+  padding: 16px 0;
+  text-align: left;
+  background: none;
+  border: none;
+  border-radius: 0;
+  cursor: pointer;
+  transition: opacity var(--ease);
+}
+
+.day-head:hover { opacity: 0.62; }
+.day-head:focus-visible { outline: 1px solid var(--amber); outline-offset: 2px; }
+.day-head .week-day { min-width: 90px; flex: 0 0 auto; }
+.day-head .grow { flex: 1; min-width: 0; }
+
+.day-body { padding: 8px 0 40px; }
+
+/* The save belongs at the end of the editing, where the eye already is. */
+.day-save { margin-top: 36px; padding-top: 24px; border-top: 1px solid var(--rule); }
+
+.btn-lg { padding: 15px 34px; font-size: 12px; }
+
+/* Selects that sit in a row of text rather than in a labelled field. */
+.inline-select {
+  width: 100%;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--rule);
+  padding: 4px 0;
+  border-radius: 0;
+  cursor: pointer;
+  transition: border-color var(--ease);
+}
+
+.inline-select:hover, .inline-select:focus { border-bottom-color: var(--ink); outline: none; }
 
 /* day toggles on a routine row */
 
@@ -804,24 +861,42 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
 
 /* ---------- chat ---------- */
 
+/* A speech cloud rather than a bar: at this size it is unmissable, and it says
+   what it does without a word of instruction. */
 .chat-launch {
   position: fixed;
   right: var(--gutter);
-  bottom: 28px;
+  bottom: 20px;
   z-index: 40;
-  background: var(--ink);
-  color: var(--bone);
+  width: 132px;
+  height: 106px;
+  background: none;
   border: none;
-  border-radius: 0;
-  padding: 14px 26px;
-  font-size: 11px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  padding: 0;
   cursor: pointer;
-  transition: opacity var(--ease);
+  transition: transform var(--ease), opacity var(--ease);
 }
 
-.chat-launch:hover { opacity: 0.82; }
+.chat-launch svg { width: 100%; height: 100%; display: block; overflow: visible; }
+
+/* Body and tail are two overlapping shapes rather than one outline: a single
+   path leaves a nick where the tail meets the curve, and it shows at this size. */
+.chat-launch .cloud { fill: var(--ink); }
+
+.chat-launch text {
+  fill: var(--bone);
+  font-family: var(--sans);
+  font-size: 17px;
+  letter-spacing: 0.18em;
+  text-anchor: middle;
+}
+
+.chat-launch:hover { transform: translateY(-2px); opacity: 0.9; }
+.chat-launch:focus-visible { outline: 1px solid var(--amber); outline-offset: 4px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-launch:hover { transform: none; }
+}
 
 .chat-panel {
   position: fixed;
@@ -890,7 +965,7 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
 
 /* ---------- discoveries ---------- */
 
-.carousel { border-top: 1px solid var(--rule); padding-top: 32px; }
+.carousel { border-top: 1px solid var(--rule); }
 
 .carousel-track {
   display: flex;
@@ -915,13 +990,12 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
 
 .pick-art { width: 100%; height: auto; display: block; }
 
+/* Above the pictures, where the eye is before it starts reading a card. */
 .carousel-bar {
   display: flex;
   align-items: center;
   gap: 20px;
-  padding-top: 20px;
-  margin-top: 24px;
-  border-top: 1px solid var(--rule);
+  padding: 18px 0 28px;
 }
 
 .carousel-dots { display: flex; gap: 8px; flex: 1; justify-content: center; }
@@ -950,8 +1024,22 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
 
 .pick-name { font-size: 17px; line-height: 1.35; }
 .pick-kind { color: var(--ink-muted); font-size: 13px; margin-top: 4px; }
-.pick-why { line-height: 1.6; }
+.pick-why { line-height: 1.6; margin-top: 10px; }
 .pick-meta { color: var(--ink-muted); font-size: 13px; margin-top: 10px; }
+
+/* The picture and the name both go where the product was found. */
+.pick-link { display: block; transition: opacity var(--ease); }
+.pick-link:hover { opacity: 0.72; }
+.pick-name .pick-link { display: inline; }
+.pick-out { color: var(--ink-muted); font-size: 13px; }
+
+.pick-more { margin-top: 16px; }
+
+.pick-details {
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px solid var(--rule);
+}
 
 /* ---------- responsive ---------- */
 
@@ -984,6 +1072,9 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
   .colophon { flex-direction: column; gap: 8px; }
   .pick { flex-basis: 78vw; }
   .week-row { grid-template-columns: 1fr; gap: 6px; }
+  .day-head { gap: 14px; }
+  .day-head .week-day { min-width: 58px; }
+  .day-body { padding-bottom: 28px; }
   .chat-panel { left: var(--gutter); right: var(--gutter); width: auto; height: 70vh; }
-  .chat-launch { right: var(--gutter); bottom: 20px; }
+  .chat-launch { right: 12px; bottom: 12px; width: 112px; height: 90px; }
 }

@@ -1,6 +1,6 @@
 # Handoff — Skincare Library
 
-State of the work as of 12 August 2026. `README.md` covers how to *use* the app;
+State of the work as of 17 August 2026. `README.md` covers how to *use* the app;
 this covers how the code got here, what is proven, and what will bite you.
 
 ## What it is
@@ -49,22 +49,41 @@ server, one hard reload (Cmd+Shift+R) is needed to break out.
 
 ## What is built
 
-- **Shelf, product dossiers, add/edit** with live ingredient parsing and annotation
+- **Shelf, product dossiers, add/edit** with live ingredient parsing and annotation.
+  The add form runs brand/name → category/status → **ingredients** → size/price →
+  dates → notes. Period-after-opening and rating were removed from the form and
+  from the dossier; `saveProduct` still carries both through untouched so editing
+  an older record does not discard what it held.
 - **Profiles** — per-person shelf, assessments, routine; switcher in the masthead
-- **Routine** — canonical step order, *multiple products per step* (serums layer),
-  and each entry carries `days: [0-6]` (Monday first) so alternated products are
-  recorded honestly. A week table shows what is applied each day, and **conflicts
+- **Routine** — **the week is the interface.** Seven day disclosures, one open at
+  a time, today open by default. Opening a day shows that day's morning and
+  evening in application order and edits it: adding puts the product on *that day
+  only*, removing takes it off that day and off the routine entirely when it was
+  its last. The old every-step builder is intact underneath, collapsed as
+  "Complete routine", and still holds the per-entry day toggles and the reorder.
+  Both sections end in their own Save; edits are held in a draft until then, and
+  the note beside Save says "Unsaved changes." until they are written.
+  Underneath, entries still carry `days: [0-6]` (Monday first), and **conflicts
   are judged per day** — a retinoid on Mon/Wed/Fri and an acid on Tue/Thu no
   longer warn, because they never meet. `daysOf()` / `describeDays()` in rules.js
   are the accessors; missing `days` means every day.
 - **Assessment** — rules engine always; with a key, Gemini reads the photograph
   (opt-in tickbox, **off by default**) and adds observations / what's working /
   what to change
-- **Chat** — floating panel, streamed, carries shelf + routine + latest reading
+- **Chat** — floating panel, streamed, carries shelf + routine + latest reading.
+  The launcher is a large drawn speech cloud. Its body and tail are two
+  overlapping filled shapes, not one path: a single outline leaves a visible nick
+  where the tail meets the curve at that size.
 - **Discoveries** — monthly J/K-beauty picks via Google Search grounding, shown
-  as a scroll-snap carousel. Each pick gets a silhouette drawn deterministically
-  from its name and kind (`pickArt()` in views.js) — real photographs are not
-  obtainable client-side, so this is deliberate, not a placeholder awaiting images
+  as a scroll-snap carousel with Previous/Next **above** the images. Each pick
+  gets a silhouette drawn deterministically from its name and kind (`pickArt()`
+  in views.js) — real photographs are not obtainable client-side, so this is
+  deliberate, not a placeholder awaiting images. The picture and the name link
+  out to where the product was found; the model is asked for a `url` and
+  `pickUrl()` **treats it as untrusted** — anything that is not http(s), and
+  every pick cached before this existed, falls back to a search by product name.
+  Only the blurb shows; kind, actives, caution and the source fold away under
+  "Details".
 - **Header marks** — one hairline line drawing per view (`headerArt()`, `ART` in
   views.js), decorative and `aria-hidden`
 - **Briefing export** — the no-key path, works everywhere including the shared copy
@@ -79,12 +98,27 @@ and disabled states; briefing content; profile isolation and cascade delete;
 backup export/wipe/import incl. images; every route renders with no console
 errors; mobile and tablet layouts; the shared build is inert.
 
+**Verified on 17 August (day-first routine and the rest):** adding to one day
+leaves the other six alone; the adder drops a product once that day's step is
+filled; per-day conflict notices appear inside the open day and mark the closed
+header; the accordion opens one day at a time; Save writes the draft to
+IndexedDB and the note flips from "Unsaved changes." to "Saved."; the complete
+routine still lists every step with its day toggles and per-period conflicts;
+"Previous readings" renders at 21px with no rule under it and the off/on
+paragraph is gone; the add form's field order and the two removed fields;
+Previous/Next sit above the carousel track; details fold and unfold; and
+`pickUrl()` turns a `javascript:` URL, a malformed one and a missing one into a
+search link. All six routes render in the flattened share build.
+
 **Verified against a mocked API** (no key in my browser — by design, the key
 lives only in the user's): the self-correcting retry, SSE streaming and its
 fallbacks, grounding-quota degradation, all three ingredient-source states.
 
 **Confirmed working by the user with a real key:** label reading (brand, name,
 category), chat.
+
+**Not exercised against a live model:** the two-pass ingredient lookup, and the
+`url` field now asked of `discover()`. Both were driven with fixtures only.
 
 **Still unconfirmed end to end:** the skin assessment with the photo tickbox on.
 Discoveries returns results but the user's free tier has no grounding quota, so
@@ -93,6 +127,16 @@ unverified — the automation pane collapses to zero width and a zero-width
 container refuses to scroll; only the index maths was checked standalone.
 
 ## Gotchas
+
+**Ingredient lookup runs twice on purpose.** The free tier's *search* quota is
+separate from its ordinary one and empties first. The first pass searches and is
+strict — no verified source, no list — which on an exhausted quota meant the
+label reader always came back "could not find an ingredient list", which is what
+it was doing before 17 August. So a second pass now asks the model to recall the
+list from training, and the result is returned `grounded: false` with
+`searchRan` telling the caller *why*, so the UI can say plainly that nobody
+checked it. Do not quietly drop that flagging: an unchecked ingredient list read
+as a checked one is the worst outcome this app can produce.
 
 **The Gemini API is newer than the model's training.** It is *not*
 `models/{id}:generateContent` with `contents`/`parts`. It is:
@@ -170,7 +214,10 @@ artifact remains for anyone who should not have to.
    download path works.
 4. `index.html` carries `?v=2` on the app script to break a cache entry poisoned
    before `serve.py` existed. Harmless; removable once nobody has that stale copy.
-5. The carousel's scrolling has never run in a real viewport — see above.
+5. The carousel's scrolling has never run in a real viewport — see above. The
+   same session that built the day-first routine lost its viewport partway
+   through, so that work was verified by reading the DOM rather than by
+   screenshot from the point the pane collapsed.
 6. Republishing the artifact only keeps its URL from the conversation that created
    it. From a new session, pass the URL as the Artifact tool's `url` parameter, or
    a second artifact is minted and the shared link quietly stops updating.

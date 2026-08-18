@@ -2101,7 +2101,8 @@ const en = {
   'routine.unsaved': 'Unsaved changes.',
   'routine.complete': 'Complete routine',
   'routine.completeHint': 'Every step, and which days each product is used',
-  'routine.nothingInCategory': 'Nothing in this category',
+  'routine.nothingLeft': 'Everything on the shelf is already here',
+  'routine.otherProducts': '── anything else on the shelf ──',
   'routine.moveUp': 'Move up',
   'routine.done': 'Done',
   'routine.everyDay': 'Every day',
@@ -2524,7 +2525,8 @@ const zhHant = {
   'routine.unsaved': '有尚未儲存的變更。',
   'routine.complete': '完整流程',
   'routine.completeHint': '所有步驟，以及每件產品在星期幾使用',
-  'routine.nothingInCategory': '這個類別沒有產品',
+  'routine.nothingLeft': '架上的產品都已經加進來了',
+  'routine.otherProducts': '── 架上其他產品 ──',
   'routine.moveUp': '往前移',
   'routine.done': '完成',
   'routine.everyDay': '每天',
@@ -2935,7 +2937,8 @@ const zhHans = {
   'routine.unsaved': '有尚未保存的修改。',
   'routine.complete': '完整流程',
   'routine.completeHint': '所有步骤，以及每件产品在星期几使用',
-  'routine.nothingInCategory': '这个类别没有产品',
+  'routine.nothingLeft': '架上的产品都已经加进来了',
+  'routine.otherProducts': '── 架上其他产品 ──',
   'routine.moveUp': '往前移',
   'routine.done': '完成',
   'routine.everyDay': '每天',
@@ -6118,17 +6121,36 @@ async function routine(root) {
     else draft[period].splice(i, 1);
   };
 
+  /* What a step will take.
+
+     Its own categories come first, because that is what you almost always
+     want. Everything else follows after a rule, because a routine is yours:
+     a mask, a spot treatment or a body cream matches no step in the canonical
+     order and would otherwise be impossible to record at all, and there is no
+     good reason the app should refuse a second moisturiser. Nothing here is
+     forbidden — the natural answer is merely the easiest to reach. */
+  const offerFor = (period, step, taken) => {
+    const free = products.filter(p => !taken.has(p.id));
+    const natural = free.filter(p => step.categories.includes(p.category));
+    const rest = free.filter(p => !step.categories.includes(p.category));
+    const opt = p => `<option value="${esc(step.key)}|${esc(p.id)}">${esc(productLabel(p))}</option>`;
+    if (!free.length) return '';
+    return natural.map(opt).join('')
+      + (rest.length
+        ? `<option disabled>${esc(t('routine.otherProducts'))}</option>${rest.map(opt).join('')}`
+        : '');
+  };
+
   /* One select for the whole period, grouped by step — eight separate menus
      for eight steps would bury the two you actually use. */
   const dayAdder = (period, day) => {
     const groups = stepsFor(period).map(step => {
-      const already = draft[period].filter(e => e.step === step.key && daysOf(e).includes(day));
-      if (!step.multiple && already.length) return '';        // that slot is taken
-      const taken = new Set(already.map(e => e.productId));
-      const candidates = products.filter(p => step.categories.includes(p.category) && !taken.has(p.id));
-      if (!candidates.length) return '';
-      return `<optgroup label="${esc(stepLabel(step))}">${candidates.map(p =>
-        `<option value="${esc(step.key)}|${esc(p.id)}">${esc(productLabel(p))}</option>`).join('')}</optgroup>`;
+      const taken = new Set(draft[period]
+        .filter(e => e.step === step.key && daysOf(e).includes(day))
+        .map(e => e.productId));
+      const options = offerFor(period, step, taken);
+      if (!options) return '';
+      return `<optgroup label="${esc(stepLabel(step))}">${options}</optgroup>`;
     }).join('');
 
     if (!groups) return '';
@@ -6226,8 +6248,7 @@ async function routine(root) {
   const stepRows = (period, step) => {
     const chosen = inStep(period, step.key);
     const taken = new Set(chosen.map(e => e.productId));
-    const candidates = products.filter(p => step.categories.includes(p.category) && !taken.has(p.id));
-    const canAdd = step.multiple ? candidates.length > 0 : chosen.length === 0 && candidates.length > 0;
+    const options = offerFor(period, step, taken);
 
     const rows = chosen.map((entry, i) => {
       const p = byId[entry.productId];
@@ -6241,19 +6262,19 @@ async function routine(root) {
       </div>`;
     }).join('');
 
-    const adder = canAdd
+    const adder = options
       ? `<div class="picker-row">
           <span class="picker-step" style="min-width:110px">${chosen.length ? '' : esc(stepLabel(step))}</span>
           <span class="grow">
             <select class="inline-select step-add" data-add="${esc(period)}|${esc(step.key)}">
-              ${option('', chosen.length ? t('routine.addAnother') : '—', '')}
-              ${candidates.map(p => option(p.id, productLabel(p), '')).join('')}
+              <option value="">${esc(chosen.length ? t('routine.addAnother') : '—')}</option>
+              ${options}
             </select>
           </span>
         </div>`
       : (chosen.length ? '' : `<div class="picker-row">
           <span class="picker-step" style="min-width:110px">${esc(stepLabel(step))}</span>
-          <span class="grow muted">${esc(t('routine.nothingInCategory'))}</span>
+          <span class="grow muted">${esc(t('routine.nothingLeft'))}</span>
         </div>`);
 
     return rows + adder;
@@ -6365,8 +6386,10 @@ async function routine(root) {
     root.querySelectorAll('.step-add').forEach(sel => {
       sel.onchange = () => {
         if (!sel.value) return;
-        const [period, stepKey] = sel.dataset.add.split('|');
-        draft[period].push({ step: stepKey, productId: sel.value, days: [...EVERY_DAY] });
+        const [period] = sel.dataset.add.split('|');
+        // The option carries its own step, so the offer can span every step.
+        const [stepKey, productId] = sel.value.split('|');
+        draft[period].push({ step: stepKey, productId, days: [...EVERY_DAY] });
         touched();
         draw();
       };

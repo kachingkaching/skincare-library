@@ -92,6 +92,13 @@ server, one hard reload (Cmd+Shift+R) is needed to break out.
   and off the routine entirely when it was its last. The old every-step builder
   is intact underneath, collapsed as "Complete routine", and still holds the
   per-entry day toggles and the reorder.
+  **Any product can go in any step, and any step takes as many as you like.**
+  `offerFor()` in views.js lists a step's own categories first, then everything
+  else after a rule. Before this, five categories — Mask, Spot treatment, Lip
+  care, Body, Other — matched no step in the canonical order and could not be
+  recorded in a routine at all, and 14 of the 16 steps accepted a single
+  product. `multiple` in rules.js is still read by the assessment engine when it
+  *suggests* a routine; it no longer restricts what you may record yourself.
   Both sections end in their own Save; edits are held in a draft until then, and
   the note beside Save says "Unsaved changes." until they are written.
   Underneath, entries still carry `days: [0-6]` (Monday first), and **conflicts
@@ -152,6 +159,13 @@ paragraph is gone; the add form's field order and the two removed fields;
 Previous/Next sit above the carousel track; details fold and unfold; and
 `pickUrl()` turns a `javascript:` URL, a malformed one and a missing one into a
 search link. All six routes render in the flattened share build.
+
+**Verified for the open routine picker:** every step offers every product with
+its own categories first and a disabled rule before the rest; two moisturisers
+sit in the Moisturise step; a Mask and a Spot treatment — neither of which had
+any step before — are recorded under Serum; application order still follows
+STEPS; the complete builder lost the same restriction; and it saves and reads
+back. In all three languages and in the share build.
 
 **Verified for the multi-product read** (against a mocked reply, with a
 synthetic three-panel photograph): three products come back as three editable

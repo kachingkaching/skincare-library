@@ -314,6 +314,53 @@ export async function copyProductToProfile(productId, targetProfileId) {
 
 /* ---------- images ---------- */
 
+/* Cut one product out of a group photograph.
+
+   The model reports where each product sits as [ymin, xmin, ymax, xmax] on a
+   0–1000 grid, which is Gemini's convention. The box is padded slightly and
+   clamped to the image, because a box drawn exactly to the edges of a bottle
+   crops the cap off; a box that has come back nonsensical falls through to the
+   whole picture rather than producing a sliver. */
+export function cropImage(file, box, maxEdge = 1200, quality = 0.85) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+
+      const sane = Array.isArray(box) && box.length === 4 && box.every(n => Number.isFinite(n));
+      let [y0, x0, y1, x1] = sane ? box : [0, 0, 1000, 1000];
+      if (y1 - y0 < 20 || x1 - x0 < 20) [y0, x0, y1, x1] = [0, 0, 1000, 1000];
+
+      const pad = 0.04;
+      const left = Math.max(0, (x0 / 1000 - pad)) * img.width;
+      const top = Math.max(0, (y0 / 1000 - pad)) * img.height;
+      const right = Math.min(1, (x1 / 1000 + pad)) * img.width;
+      const bottom = Math.min(1, (y1 / 1000 + pad)) * img.height;
+      const sw = Math.max(1, right - left);
+      const sh = Math.max(1, bottom - top);
+
+      const scale = Math.min(1, maxEdge / Math.max(sw, sh));
+      const w = Math.max(1, Math.round(sw * scale));
+      const h = Math.max(1, Math.round(sh * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      canvas.getContext('2d').drawImage(img, left, top, sw, sh, 0, 0, w, h);
+      canvas.toBlob(
+        blob => (blob ? resolve(blob) : reject(new Error('Could not encode image.'))),
+        'image/jpeg',
+        quality
+      );
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('That file could not be read as an image.'));
+    };
+    img.src = url;
+  });
+}
+
 export async function putImage(blob) {
   const id = uid();
   await put('images', { id, blob });

@@ -57,6 +57,17 @@ server, one hard reload (Cmd+Shift+R) is needed to break out.
   dates → notes. Period-after-opening and rating were removed from the form and
   from the dossier; `saveProduct` still carries both through untouched so editing
   an older record does not discard what it held.
+- **One photograph, several products** — `readProducts()` in ai.js always
+  returns an array, and the prompt decides: one pack close up gives one entry
+  with its ingredients transcribed; a shelf of bottles gives one entry each and
+  no ingredients, because that print is never legible at that distance. Each
+  entry carries `box` — [ymin, xmin, ymax, xmax] on a 0–1000 grid, Gemini's own
+  convention — and `cropImage()` in store.js cuts each product out of the group
+  shot so every new entry gets its own picture. Finding more than one opens a
+  review list on the Add page: every row editable, droppable, and defaulting to
+  *add to the count* when it matches something already on the shelf. Nothing is
+  written until the list is approved. A missing or nonsensical box falls back to
+  the whole photograph rather than a sliver.
 - **Inventory** — every product carries a `quantity`. The shelf shows a tally
   over the corner of the photograph above one, a running "N on hand" in the
   filter bar, and a − / ＋ stepper under each card that writes straight to
@@ -141,6 +152,17 @@ paragraph is gone; the add form's field order and the two removed fields;
 Previous/Next sit above the carousel track; details fold and unfold; and
 `pickUrl()` turns a `javascript:` URL, a malformed one and a missing one into a
 search link. All six routes render in the flattened share build.
+
+**Verified for the multi-product read** (against a mocked reply, with a
+synthetic three-panel photograph): three products come back as three editable
+rows; unticking one dims it and retitles the button; editing a name is what
+gets saved; each entry's crop centres on the right part of the picture, checked
+by sampling the pixel at the middle of each; a null box falls back to the whole
+photograph; a row matching the shelf says so and merges (2 + 2 = 4) instead of
+making a second card; the shelf reports "2 products added, and 1 added to what
+you already had"; and a single-product photograph still fills the form in place
+with its ingredients, review list untouched. Renders in all three languages and
+in the flattened share build.
 
 **Verified for the inventory:** a record written without `quantity` reads back
 as 1; the stepper writes through to IndexedDB and updates the card in place;
@@ -290,19 +312,24 @@ artifact remains for anyone who should not have to.
    download path works.
 4. `index.html` carries `?v=2` on the app script to break a cache entry poisoned
    before `serve.py` existed. Harmless; removable once nobody has that stale copy.
-5. Copying a product to another profile resets its count to 1 on purpose — the
+5. The bounding boxes have only ever been exercised against a mocked reply.
+   Whether Gemini's boxes are tight enough on a real shelf photograph is
+   unknown — `cropImage()` pads them by 4% to compensate, which is a guess.
+   If crops come back badly framed, the padding and the prompt's "enclosing the
+   whole container including its cap" are the two things to adjust.
+6. Copying a product to another profile resets its count to 1 on purpose — the
    same bottle on two shelves is still one bottle. If two people genuinely each
    own one, that is what you want; if it is a shared stash, the count is now
    wrong on one of the shelves.
-6. The Chinese has not been proofread by a native speaker, and the Simplified
+7. The Chinese has not been proofread by a native speaker, and the Simplified
    half is OpenCC-converted from the Traditional for the ingredient
    descriptions (the interface strings are authored separately in both, because
    the vocabulary differs — 設定/设置, 洗面/洁面 — not only the characters).
-7. The carousel's scrolling has never run in a real viewport — see above. The
+8. The carousel's scrolling has never run in a real viewport — see above. The
    same session that built the day-first routine lost its viewport partway
    through, so that work was verified by reading the DOM rather than by
    screenshot from the point the pane collapsed.
-8. Republishing the artifact only keeps its URL from the conversation that created
+9. Republishing the artifact only keeps its URL from the conversation that created
    it. From a new session, pass the URL as the Artifact tool's `url` parameter, or
    a second artifact is minted and the shared link quietly stops updating.
 

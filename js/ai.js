@@ -83,49 +83,94 @@ const CARE = `You are helping someone with cosmetic skincare. Hold to these rule
 - Recommend only from the products given to you, by their id. Do not invent products.
 - Be specific about ingredients and concise in prose.`;
 
-/* ---------- 1. read a product label ---------- */
+/* ---------- 1. read a photograph of packaging ----------
 
-export async function readLabel(blob) {
+   One photograph may hold one product or a whole shelf of them, and the caller
+   should not have to decide in advance which it is. So this always returns an
+   array, and the prompt does the deciding: photograph one pack close up and you
+   get one entry with its ingredient list transcribed; photograph six bottles on
+   a windowsill and you get six entries with no ingredients, because that print
+   is never legible at that distance.
+
+   Each entry carries `box`, where the product sits in the picture as
+   [ymin, xmin, ymax, xmax] on a 0–1000 grid — Gemini's own convention. The
+   caller crops each product out of the group shot with it, so every new entry
+   gets its own picture from the one photograph. */
+
+const PRODUCT_SCHEMA = {
+  type: 'object',
+  properties: {
+    products: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          brand: { type: 'string' },
+          name: { type: 'string' },
+          size: { type: 'string' },
+          category: { type: 'string', enum: CATEGORIES },
+          ingredients: { type: 'array', items: { type: 'string' } },
+          count: { type: 'integer' },
+          box: { type: 'array', items: { type: 'integer' } }
+        },
+        required: ['brand', 'name', 'size', 'category', 'ingredients', 'count', 'box']
+      }
+    }
+  },
+  required: ['products']
+};
+
+const READ_PROMPT =
+  'Read this photograph of skincare packaging and list every distinct product you can see.\n\n'
+  + 'For each product give: brand, product name, size, the best-fitting category, how many identical units of it are visible, and where it sits in the picture.\n\n'
+  + '"count" is the number of separate units of that same product: two identical bottles side by side is 2. A box and the bottle that came out of it are one unit, not two. If you can see only one, or cannot tell, answer 1.\n\n'
+  + '"box" is that product\'s position as [ymin, xmin, ymax, xmax] on a 0–1000 grid, top-left origin, enclosing the whole container including its cap. Where several identical units share the box, enclose them together.\n\n'
+  + '"ingredients": if this photograph shows a single product close enough that the small print is legible, transcribe the full list in printed order, however small the type — it is usually on the back or side and often begins with Aqua or Water. If several products are in shot, or the print is not legible, return an empty list. Never recall a list from memory: an empty list is the correct answer when you cannot read one.\n\n'
+  + 'List every distinct product, but only products — do not invent one, and do not list a product you cannot actually name.';
+
+export async function readProducts(blob) {
   const { provider, apiKey, model } = await aiSettings();
   if (!apiKey) throw new Error('No API key is configured.');
 
-  if (provider === 'anthropic') return anthropicReadLabel(blob, apiKey);
-
-  const schema = {
-    type: 'object',
-    properties: {
-      brand: { type: 'string' },
-      name: { type: 'string' },
-      size: { type: 'string' },
-      category: { type: 'string', enum: CATEGORIES },
-      ingredients: { type: 'array', items: { type: 'string' } },
-      count: { type: 'integer' }
-    },
-    required: ['brand', 'name', 'size', 'category', 'ingredients', 'count']
-  };
+  // The legacy Anthropic reader handles one product only.
+  if (provider === 'anthropic') return [await anthropicReadLabel(blob, apiKey)];
 
   const { text } = await gemini.generate({
     apiKey,
     model,
-    system: 'Transcribe skincare packaging exactly as printed. Never invent an ingredient that is not visible. Leave any field you cannot read as an empty string or empty list.',
+    system: 'Transcribe skincare packaging exactly as printed. Never invent a product or an ingredient that is not visible. Leave any field you cannot read as an empty string or empty list.',
     turns: [gemini.userTurn(
-      'Read this photograph of skincare packaging: brand, product name, size, best-fitting category, the full ingredient list, and how many units are in the picture.\n\n'
-      + 'The ingredient list is usually the block of small print on the back or side, often beginning with Aqua or Water. Read it carefully, in printed order, transcribing every entry even where the type is very small. If no ingredient list is visible in this photograph, return an empty list rather than recalling one for this product from memory.\n\n'
-      + 'For "count": how many separate units of this same product are visible — two identical bottles standing side by side is 2. Count only units that are plainly the same product; a box and the bottle that came out of it are one unit, not two, and a different product alongside it does not count. If you can see only one, or cannot tell, answer 1.',
+      READ_PROMPT,
       { base64: await gemini.blobToBase64(blob), mimeType: 'image/jpeg' }
     )],
-    schema
+    schema: PRODUCT_SCHEMA
   });
 
   const parsed = gemini.parseJson(text);
-  return {
-    brand: parsed.brand || '',
-    name: parsed.name || '',
-    size: parsed.size || '',
-    category: parsed.category || '',
-    ingredients: Array.isArray(parsed.ingredients) ? parsed.ingredients.filter(Boolean) : [],
-    count: Math.min(99, Math.max(1, Math.round(Number(parsed.count) || 1)))
-  };
+  const list = Array.isArray(parsed.products) ? parsed.products : [];
+
+  return list
+    .map(item => ({
+      brand: item.brand || '',
+      name: item.name || '',
+      size: item.size || '',
+      category: item.category || '',
+      ingredients: Array.isArray(item.ingredients) ? item.ingredients.filter(Boolean) : [],
+      count: Math.min(99, Math.max(1, Math.round(Number(item.count) || 1))),
+      box: Array.isArray(item.box) && item.box.length === 4
+        ? item.box.map(n => Math.min(1000, Math.max(0, Math.round(Number(n) || 0))))
+        : null
+    }))
+    // A product with no name at all cannot be filed, and is usually the model
+    // describing something that is not a product.
+    .filter(item => item.name.trim() || item.brand.trim());
+}
+
+/* The single-product path, kept for callers that only ever want one. */
+export async function readLabel(blob) {
+  const [first] = await readProducts(blob);
+  if (!first) throw new Error('No product could be read in that photograph.');
+  return first;
 }
 
 /* ---------- 1b. look the ingredients up when the pack does not show them ----

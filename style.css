@@ -1223,3 +1223,69 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
   .chat-panel { left: var(--gutter); right: var(--gutter); width: auto; height: 70vh; }
   .chat-launch { right: 12px; bottom: 12px; width: 112px; height: 90px; }
 }
+
+/* ---------- several products found in one photograph ----------
+
+   A list to approve before anything is written. Each row is editable, because
+   a misread name is quicker to correct here than to fix on the shelf later. */
+
+.found {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid var(--rule);
+}
+
+.found-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.found-keep {
+  margin: 4px 0 0;
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+  accent-color: var(--ink);
+  cursor: pointer;
+}
+
+/* Unticked rows stay legible but plainly out of the running. */
+.found-row:has(.found-keep:not(:checked)) .found-fields { opacity: 0.4; }
+
+.found-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 0.9fr) 62px;
+  gap: 10px 14px;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  transition: opacity var(--ease);
+}
+
+.found-fields input[type="text"],
+.found-fields input[type="number"] {
+  width: 100%;
+  min-width: 0;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--rule);
+  border-radius: 0;
+  padding: 4px 0;
+  transition: border-color var(--ease);
+}
+
+.found-fields input:focus,
+.found-fields select:focus { outline: none; border-bottom-color: var(--ink); }
+
+.found-note {
+  grid-column: 1 / -1;
+  font-size: 12px;
+  color: var(--amber);
+}
+
+@media (max-width: 720px) {
+  .found-fields { grid-template-columns: minmax(0, 1fr) 62px; }
+}

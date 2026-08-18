@@ -16,7 +16,7 @@ import {
   tagLabel, statusLabel, severityLabel, categoryLabel, stepLabel, dayLabel,
   ingredientText
 } from './i18n.js';
-import { readLabel, lookupIngredients } from './ai.js';
+import { readProducts, lookupIngredients } from './ai.js';
 import { copyBriefing, downloadBriefing } from './briefing.js';
 import { aiSettings, PROVIDERS, discover } from './ai.js';
 
@@ -167,6 +167,9 @@ const shelfFilters = { category: '', status: '', active: '' };
    click brings them back, and the bar says how many are being kept back — a
    product that silently vanishes when you count the last one out is alarming. */
 let showEmptied = false;
+/* Set when several products are added at once, shown once on the shelf they
+   were added to, then cleared — the work happened on another page. */
+let shelfNotice = '';
 
 export async function shelf(root) {
   const products = (await store.getProducts()).sort(byShelfOrder);
@@ -234,6 +237,7 @@ export async function shelf(root) {
         · ${esc(t('shelf.onHand', { n: onHand }))}</span>
     </div>
 
+    ${shelfNotice ? `<div class="notice">${esc(shelfNotice)}</div>` : ''}
     ${emptiedHidden ? `<p class="field-hint" style="margin:-32px 0 32px">
       ${esc(t('shelf.emptiedHidden', { n: emptiedHidden }))}
       <button class="link-btn" id="show-emptied">${esc(t('shelf.showEmptied'))}</button></p>` : ''}
@@ -242,6 +246,8 @@ export async function shelf(root) {
 
     <div class="shelf" id="shelf-grid"></div>
     ${visible.length ? '' : `<p class="muted">${esc(t('shelf.noMatch'))}</p>`}`;
+
+  shelfNotice = '';        // said once, on arrival
 
   const grid = root.querySelector('#shelf-grid');
   for (const p of visible) {
@@ -471,6 +477,7 @@ export async function form(root, { id } = {}) {
         </div>
         <p class="field-hint" id="photo-hint">${esc(AI_FEATURES && settings.apiKey
           ? t('form.readLabelHint') : t('form.photoHint'))}</p>
+        <div id="found" hidden></div>
       </div>
 
       <div>
@@ -687,6 +694,136 @@ export async function form(root, { id } = {}) {
     };
   }
 
+  /* ---------- several products in one photograph ----------
+
+     Everything found is listed for approval before anything is written: the
+     model can misread a name, and a wrong entry is more annoying to clear up
+     than a missing one. Each row can be dropped, renamed, recategorised and
+     recounted. A row whose brand and name already match something on the shelf
+     defaults to adding to that product's count rather than making a second
+     card — the same rule the single-product path follows. */
+  const foundBox = root.querySelector('#found');
+
+  async function reviewFound(found, sourceBlob) {
+    // Which of these do we already own? Asked once, up front.
+    const existing = await Promise.all(
+      found.map(item => store.findProductLike(item.brand, item.name))
+    );
+
+    foundBox.hidden = false;
+    foundBox.innerHTML = `
+      <div class="found">
+        <h2 class="section-title">${esc(t('form.foundHeading', { n: found.length }))}</h2>
+        ${found.map((item, i) => `
+          <div class="found-row" data-row="${i}">
+            <input type="checkbox" class="found-keep" id="keep-${i}" checked
+                   aria-label="${esc(t('form.keepThis'))}">
+            <div class="found-fields">
+              <input type="text" class="found-brand" value="${esc(item.brand)}"
+                     placeholder="${esc(t('form.brand'))}" aria-label="${esc(t('form.brand'))}">
+              <input type="text" class="found-name" value="${esc(item.name)}"
+                     placeholder="${esc(t('form.name'))}" aria-label="${esc(t('form.name'))}">
+              <select class="found-category inline-select" aria-label="${esc(t('product.category'))}">
+                ${CATEGORIES.map(c => option(c, categoryLabel(c),
+                    CATEGORIES.includes(item.category) ? item.category : 'Other')).join('')}
+              </select>
+              <input type="number" class="found-count" min="1" max="99" value="${esc(String(item.count))}"
+                     aria-label="${esc(t('product.quantity'))}">
+              ${existing[i] ? `<span class="found-note">${esc(t('form.willAddTo', {
+                n: existing[i].quantity })) }</span>` : ''}
+            </div>
+          </div>`).join('')}
+        <div class="btn-row" style="margin-top:24px">
+          <button type="button" class="btn btn-lg" id="add-found"></button>
+          <button type="button" class="link-btn" id="discard-found">${esc(t('form.discardFound'))}</button>
+          <span class="field-hint" style="margin:0" id="found-note"></span>
+        </div>
+      </div>`;
+
+    const rows = () => [...foundBox.querySelectorAll('.found-row')];
+    const kept = () => rows().filter(r => r.querySelector('.found-keep').checked);
+    const label = () => {
+      const n = kept().length;
+      const button = foundBox.querySelector('#add-found');
+      button.textContent = t('form.addFound', { n });
+      button.disabled = n === 0;
+    };
+    rows().forEach(r => { r.querySelector('.found-keep').onchange = label; });
+    label();
+
+    foundBox.querySelector('#discard-found').onclick = () => {
+      foundBox.hidden = true;
+      foundBox.innerHTML = '';
+      hint.textContent = '';
+    };
+
+    foundBox.querySelector('#add-found').onclick = async () => {
+      const button = foundBox.querySelector('#add-found');
+      const restore = waiting(button, t('common.saving'));
+      const note = foundBox.querySelector('#found-note');
+      let added = 0;
+      let merged = 0;
+
+      try {
+        for (const row of kept()) {
+          const i = Number(row.dataset.row);
+          const brand = row.querySelector('.found-brand').value.trim();
+          const name = row.querySelector('.found-name').value.trim();
+          if (!name && !brand) continue;
+          const quantity = Math.max(1, Math.round(Number(row.querySelector('.found-count').value) || 1));
+
+          // Re-check rather than trust what we looked up before editing — the
+          // name in the field may have been corrected since.
+          const already = await store.findProductLike(brand, name);
+          if (already) {
+            await store.setQuantity(already.id, already.quantity + quantity);
+            merged += 1;
+            continue;
+          }
+
+          // Each product gets its own picture, cut out of the group shot.
+          let imageId = null;
+          try {
+            const crop = await store.cropImage(sourceBlob, found[i].box);
+            imageId = await store.putImage(crop);
+          } catch {
+            imageId = null;      // a photograph is not worth failing the save for
+          }
+
+          await store.saveProduct({
+            id: store.uid(),
+            brand,
+            name: name || brand,
+            category: row.querySelector('.found-category').value,
+            status: 'active',
+            size: found[i].size || '',
+            price: '',
+            purchasedAt: '',
+            openedAt: '',
+            quantity,
+            notes: '',
+            ingredients: found[i].ingredients || [],
+            imageId,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          });
+          added += 1;
+        }
+      } catch (err) {
+        restore();
+        note.textContent = err.message;
+        return;
+      }
+
+      if (!added && !merged) { restore(); note.textContent = t('form.nothingKept'); return; }
+      // Say what happened on the shelf, where the results now are.
+      shelfNotice = merged
+        ? t('form.addedAndMerged', { added, merged })
+        : t('form.addedSeveral', { n: added });
+      location.hash = '#/';
+    };
+  }
+
   /* optional label reading */
   const autofillBtn = root.querySelector('#autofill');
   if (autofillBtn) {
@@ -702,7 +839,18 @@ export async function form(root, { id } = {}) {
       hint.innerHTML = `${esc(t('form.readingPhoto'))}${dots()}`;
 
       try {
-        const read = await readLabel(blob);
+        const found = await readProducts(blob);
+
+        /* A shelf of bottles in one shot becomes a list to look over, not a
+           form — there is only one form, and six products will not fit in it. */
+        if (found.length > 1) {
+          hint.textContent = t('form.foundSeveral', { n: found.length });
+          await reviewFound(found, blob);
+          return;
+        }
+
+        const read = found[0];
+        if (!read) { hint.textContent = t('form.nothingRead'); return; }
 
         // Merge rather than overwrite, so you can read the front for the name,
         // then swap in the back-of-pack photograph for the ingredients.

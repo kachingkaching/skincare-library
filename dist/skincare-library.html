@@ -2102,7 +2102,7 @@ const en = {
   'routine.complete': 'Complete routine',
   'routine.completeHint': 'Every step, and which days each product is used',
   'routine.nothingLeft': 'Everything on the shelf is already here',
-  'routine.otherProducts': '── anything else on the shelf ──',
+  'routine.uncategorised': 'Uncategorised',
   'routine.moveUp': 'Move up',
   'routine.done': 'Done',
   'routine.everyDay': 'Every day',
@@ -2242,6 +2242,8 @@ const en = {
   'step.pm-moisturise': 'Moisturise',
   'step.pm-oil': 'Seal',
   'step.am-protect': 'Protect',
+  'step.am-extra': 'Extras',
+  'step.pm-extra': 'Extras',
 
   /* concerns */
   'concern.dehydration': 'Dehydration',
@@ -2526,7 +2528,7 @@ const zhHant = {
   'routine.complete': '完整流程',
   'routine.completeHint': '所有步驟，以及每件產品在星期幾使用',
   'routine.nothingLeft': '架上的產品都已經加進來了',
-  'routine.otherProducts': '── 架上其他產品 ──',
+  'routine.uncategorised': '未分類',
   'routine.moveUp': '往前移',
   'routine.done': '完成',
   'routine.everyDay': '每天',
@@ -2660,6 +2662,8 @@ const zhHant = {
   'step.pm-moisturise': '保濕',
   'step.pm-oil': '鎖水',
   'step.am-protect': '防曬',
+  'step.am-extra': '其他',
+  'step.pm-extra': '其他',
 
   'concern.dehydration': '缺水',
   'concern.dryness': '乾燥',
@@ -2938,7 +2942,7 @@ const zhHans = {
   'routine.complete': '完整流程',
   'routine.completeHint': '所有步骤，以及每件产品在星期几使用',
   'routine.nothingLeft': '架上的产品都已经加进来了',
-  'routine.otherProducts': '── 架上其他产品 ──',
+  'routine.uncategorised': '未分类',
   'routine.moveUp': '往前移',
   'routine.done': '完成',
   'routine.everyDay': '每天',
@@ -3072,6 +3076,8 @@ const zhHans = {
   'step.pm-moisturise': '保湿',
   'step.pm-oil': '锁水',
   'step.am-protect': '防晒',
+  'step.am-extra': '其他',
+  'step.pm-extra': '其他',
 
   'concern.dehydration': '缺水',
   'concern.dryness': '干燥',
@@ -3652,6 +3658,9 @@ const STATUS_LABEL = {
   retired: 'Set aside'
 };
 
+/* Categories that no ordered step claims — they go to the Extras step. */
+const EXTRA_CATEGORIES = ['Mask', 'Spot treatment', 'Lip care', 'Body', 'Other'];
+
 /* Canonical order of application. `essential` steps produce a gap when unmet;
    `multiple` steps hold more than one product, in the order they go on. */
 const STEPS = [
@@ -3670,7 +3679,14 @@ const STEPS = [
   { key: 'am-moisturise',  period: 'am', label: 'Moisturise',    categories: ['Moisturiser'], essential: true },
   { key: 'pm-moisturise',  period: 'pm', label: 'Moisturise',    categories: ['Moisturiser'], essential: true },
   { key: 'pm-oil',         period: 'pm', label: 'Seal',          categories: ['Face oil'], essential: false },
-  { key: 'am-protect',     period: 'am', label: 'Protect',       categories: ['Sunscreen'], essential: true }
+  { key: 'am-protect',     period: 'am', label: 'Protect',       categories: ['Sunscreen'], essential: true },
+  /* Everything the canonical order has no place for. A mask, a spot treatment,
+     a lip balm or a body cream is a real part of a routine and belonged
+     nowhere before this. `manualOnly` keeps it out of the routines the
+     assessment engine suggests — it is a place to record what you do, not
+     something to recommend. */
+  { key: 'am-extra',       period: 'am', label: 'Extras', categories: EXTRA_CATEGORIES, essential: false, multiple: true, manualOnly: true },
+  { key: 'pm-extra',       period: 'pm', label: 'Extras', categories: EXTRA_CATEGORIES, essential: false, multiple: true, manualOnly: true }
 ];
 
 const stepsFor = period => STEPS.filter(s => s.period === period);
@@ -3813,6 +3829,15 @@ function conflictsFor(products, period) {
     notes.push({ severity: 'low', text: t('clash.fragrance') });
   }
   return notes;
+}
+
+/* Where a product goes when it is added by name rather than by step: the first
+   step of that period whose categories claim it, and Extras when none does. */
+function stepForCategory(period, category) {
+  const steps = stepsFor(period);
+  return steps.find(s => !s.manualOnly && s.categories.includes(category))
+      || steps.find(s => s.manualOnly)
+      || steps[steps.length - 1];
 }
 
 
@@ -4530,7 +4555,7 @@ const AM_UNSUITABLE = ['retinoid', 'aha', 'bha'];
 const EXFOLIATION_CONCERNS = ['texture', 'dullness', 'blemishes', 'pores', 'pigmentation'];
 
 function buildPeriod(period, products, concerns) {
-  const steps = STEPS.filter(s => s.period === period);
+  const steps = STEPS.filter(s => s.period === period && !s.manualOnly);
   const barrierFirst = concerns.some(c => c.key === 'barrier' && c.severity === 'marked');
   const wantsExfoliation =
     !barrierFirst && concerns.some(c => EXFOLIATION_CONCERNS.includes(c.key));
@@ -6121,44 +6146,45 @@ async function routine(root) {
     else draft[period].splice(i, 1);
   };
 
-  /* What a step will take.
+  /* What a step will take: the products it is for. Any number of them — two
+     moisturisers is a real routine — but not the whole shelf, which is what
+     listing everything under every step amounted to. */
+  const offerFor = (step, taken) => products
+    .filter(p => !taken.has(p.id) && step.categories.includes(p.category))
+    .map(p => `<option value="${esc(p.id)}">${esc(productLabel(p))}</option>`)
+    .join('');
 
-     Its own categories come first, because that is what you almost always
-     want. Everything else follows after a rule, because a routine is yours:
-     a mask, a spot treatment or a body cream matches no step in the canonical
-     order and would otherwise be impossible to record at all, and there is no
-     good reason the app should refuse a second moisturiser. Nothing here is
-     forbidden — the natural answer is merely the easiest to reach. */
-  const offerFor = (period, step, taken) => {
-    const free = products.filter(p => !taken.has(p.id));
-    const natural = free.filter(p => step.categories.includes(p.category));
-    const rest = free.filter(p => !step.categories.includes(p.category));
-    const opt = p => `<option value="${esc(step.key)}|${esc(p.id)}">${esc(productLabel(p))}</option>`;
-    if (!free.length) return '';
-    return natural.map(opt).join('')
-      + (rest.length
-        ? `<option disabled>${esc(t('routine.otherProducts'))}</option>${rest.map(opt).join('')}`
-        : '');
-  };
-
-  /* One select for the whole period, grouped by step — eight separate menus
-     for eight steps would bury the two you actually use. */
+  /* One list of the shelf, grouped the way the shelf is grouped, each product
+     appearing once. Which step it lands in follows from its category, so
+     there is nothing to choose but the product. */
   const dayAdder = (period, day) => {
-    const groups = stepsFor(period).map(step => {
-      const taken = new Set(draft[period]
-        .filter(e => e.step === step.key && daysOf(e).includes(day))
-        .map(e => e.productId));
-      const options = offerFor(period, step, taken);
-      if (!options) return '';
-      return `<optgroup label="${esc(stepLabel(step))}">${options}</optgroup>`;
-    }).join('');
+    const onThisDay = new Set(draft[period]
+      .filter(e => daysOf(e).includes(day))
+      .map(e => e.productId));
+    const free = products.filter(p => !onThisDay.has(p.id));
 
-    if (!groups) return '';
+    const groups = CATEGORIES
+      .map(category => {
+        const inCategory = free.filter(p => p.category === category);
+        if (!inCategory.length) return '';
+        return `<optgroup label="${esc(categoryLabel(category))}">${inCategory.map(p =>
+          `<option value="${esc(p.id)}">${esc(productLabel(p))}</option>`).join('')}</optgroup>`;
+      })
+      .join('');
+
+    // Anything with no category at all still deserves to be reachable.
+    const uncategorised = free.filter(p => !CATEGORIES.includes(p.category));
+    const loose = uncategorised.length
+      ? `<optgroup label="${esc(t('routine.uncategorised'))}">${uncategorised.map(p =>
+          `<option value="${esc(p.id)}">${esc(productLabel(p))}</option>`).join('')}</optgroup>`
+      : '';
+
+    if (!groups && !loose) return '';
     return `<div class="picker-row">
       <span class="picker-step" style="min-width:110px"></span>
       <span class="grow">
         <select class="inline-select" data-dayadd="${esc(period)}|${day}">
-          <option value="">${esc(t('routine.addProduct'))}</option>${groups}
+          <option value="">${esc(t('routine.addProduct'))}</option>${groups}${loose}
         </select>
       </span>
     </div>`;
@@ -6248,7 +6274,7 @@ async function routine(root) {
   const stepRows = (period, step) => {
     const chosen = inStep(period, step.key);
     const taken = new Set(chosen.map(e => e.productId));
-    const options = offerFor(period, step, taken);
+    const options = offerFor(step, taken);
 
     const rows = chosen.map((entry, i) => {
       const p = byId[entry.productId];
@@ -6367,8 +6393,10 @@ async function routine(root) {
       sel.onchange = () => {
         if (!sel.value) return;
         const [period, dayText] = sel.dataset.dayadd.split('|');
-        const [stepKey, productId] = sel.value.split('|');
-        addOnDay(period, stepKey, productId, Number(dayText));
+        const product = byId[sel.value];
+        if (!product) return;
+        const step = stepForCategory(period, product.category);
+        addOnDay(period, step.key, product.id, Number(dayText));
         touched();
         draw();
       };
@@ -6386,10 +6414,8 @@ async function routine(root) {
     root.querySelectorAll('.step-add').forEach(sel => {
       sel.onchange = () => {
         if (!sel.value) return;
-        const [period] = sel.dataset.add.split('|');
-        // The option carries its own step, so the offer can span every step.
-        const [stepKey, productId] = sel.value.split('|');
-        draft[period].push({ step: stepKey, productId, days: [...EVERY_DAY] });
+        const [period, stepKey] = sel.dataset.add.split('|');
+        draft[period].push({ step: stepKey, productId: sel.value, days: [...EVERY_DAY] });
         touched();
         draw();
       };

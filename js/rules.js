@@ -19,6 +19,9 @@ export const STATUS_LABEL = {
   retired: 'Set aside'
 };
 
+/* Categories that no ordered step claims — they go to the Extras step. */
+export const EXTRA_CATEGORIES = ['Mask', 'Spot treatment', 'Lip care', 'Body', 'Other'];
+
 /* Canonical order of application. `essential` steps produce a gap when unmet;
    `multiple` steps hold more than one product, in the order they go on. */
 export const STEPS = [
@@ -37,7 +40,14 @@ export const STEPS = [
   { key: 'am-moisturise',  period: 'am', label: 'Moisturise',    categories: ['Moisturiser'], essential: true },
   { key: 'pm-moisturise',  period: 'pm', label: 'Moisturise',    categories: ['Moisturiser'], essential: true },
   { key: 'pm-oil',         period: 'pm', label: 'Seal',          categories: ['Face oil'], essential: false },
-  { key: 'am-protect',     period: 'am', label: 'Protect',       categories: ['Sunscreen'], essential: true }
+  { key: 'am-protect',     period: 'am', label: 'Protect',       categories: ['Sunscreen'], essential: true },
+  /* Everything the canonical order has no place for. A mask, a spot treatment,
+     a lip balm or a body cream is a real part of a routine and belonged
+     nowhere before this. `manualOnly` keeps it out of the routines the
+     assessment engine suggests — it is a place to record what you do, not
+     something to recommend. */
+  { key: 'am-extra',       period: 'am', label: 'Extras', categories: EXTRA_CATEGORIES, essential: false, multiple: true, manualOnly: true },
+  { key: 'pm-extra',       period: 'pm', label: 'Extras', categories: EXTRA_CATEGORIES, essential: false, multiple: true, manualOnly: true }
 ];
 
 export const stepsFor = period => STEPS.filter(s => s.period === period);
@@ -180,4 +190,13 @@ export function conflictsFor(products, period) {
     notes.push({ severity: 'low', text: t('clash.fragrance') });
   }
   return notes;
+}
+
+/* Where a product goes when it is added by name rather than by step: the first
+   step of that period whose categories claim it, and Extras when none does. */
+export function stepForCategory(period, category) {
+  const steps = stepsFor(period);
+  return steps.find(s => !s.manualOnly && s.categories.includes(category))
+      || steps.find(s => s.manualOnly)
+      || steps[steps.length - 1];
 }

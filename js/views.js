@@ -7,7 +7,7 @@ import {
   lookup, parseIngredients, tagsFor
 } from './ingredients.js';
 import {
-  CATEGORIES, STATUSES, stepsFor, conflictsFor,
+  CATEGORIES, STATUSES, stepsFor, conflictsFor, stepForCategory,
   days, EVERY_DAY, daysOf, isEveryDay, describeDays
 } from './rules.js';
 import { questions, assessSkin } from './analysis.js';
@@ -1296,44 +1296,45 @@ export async function routine(root) {
     else draft[period].splice(i, 1);
   };
 
-  /* What a step will take.
+  /* What a step will take: the products it is for. Any number of them — two
+     moisturisers is a real routine — but not the whole shelf, which is what
+     listing everything under every step amounted to. */
+  const offerFor = (step, taken) => products
+    .filter(p => !taken.has(p.id) && step.categories.includes(p.category))
+    .map(p => `<option value="${esc(p.id)}">${esc(productLabel(p))}</option>`)
+    .join('');
 
-     Its own categories come first, because that is what you almost always
-     want. Everything else follows after a rule, because a routine is yours:
-     a mask, a spot treatment or a body cream matches no step in the canonical
-     order and would otherwise be impossible to record at all, and there is no
-     good reason the app should refuse a second moisturiser. Nothing here is
-     forbidden — the natural answer is merely the easiest to reach. */
-  const offerFor = (period, step, taken) => {
-    const free = products.filter(p => !taken.has(p.id));
-    const natural = free.filter(p => step.categories.includes(p.category));
-    const rest = free.filter(p => !step.categories.includes(p.category));
-    const opt = p => `<option value="${esc(step.key)}|${esc(p.id)}">${esc(productLabel(p))}</option>`;
-    if (!free.length) return '';
-    return natural.map(opt).join('')
-      + (rest.length
-        ? `<option disabled>${esc(t('routine.otherProducts'))}</option>${rest.map(opt).join('')}`
-        : '');
-  };
-
-  /* One select for the whole period, grouped by step — eight separate menus
-     for eight steps would bury the two you actually use. */
+  /* One list of the shelf, grouped the way the shelf is grouped, each product
+     appearing once. Which step it lands in follows from its category, so
+     there is nothing to choose but the product. */
   const dayAdder = (period, day) => {
-    const groups = stepsFor(period).map(step => {
-      const taken = new Set(draft[period]
-        .filter(e => e.step === step.key && daysOf(e).includes(day))
-        .map(e => e.productId));
-      const options = offerFor(period, step, taken);
-      if (!options) return '';
-      return `<optgroup label="${esc(stepLabel(step))}">${options}</optgroup>`;
-    }).join('');
+    const onThisDay = new Set(draft[period]
+      .filter(e => daysOf(e).includes(day))
+      .map(e => e.productId));
+    const free = products.filter(p => !onThisDay.has(p.id));
 
-    if (!groups) return '';
+    const groups = CATEGORIES
+      .map(category => {
+        const inCategory = free.filter(p => p.category === category);
+        if (!inCategory.length) return '';
+        return `<optgroup label="${esc(categoryLabel(category))}">${inCategory.map(p =>
+          `<option value="${esc(p.id)}">${esc(productLabel(p))}</option>`).join('')}</optgroup>`;
+      })
+      .join('');
+
+    // Anything with no category at all still deserves to be reachable.
+    const uncategorised = free.filter(p => !CATEGORIES.includes(p.category));
+    const loose = uncategorised.length
+      ? `<optgroup label="${esc(t('routine.uncategorised'))}">${uncategorised.map(p =>
+          `<option value="${esc(p.id)}">${esc(productLabel(p))}</option>`).join('')}</optgroup>`
+      : '';
+
+    if (!groups && !loose) return '';
     return `<div class="picker-row">
       <span class="picker-step" style="min-width:110px"></span>
       <span class="grow">
         <select class="inline-select" data-dayadd="${esc(period)}|${day}">
-          <option value="">${esc(t('routine.addProduct'))}</option>${groups}
+          <option value="">${esc(t('routine.addProduct'))}</option>${groups}${loose}
         </select>
       </span>
     </div>`;
@@ -1423,7 +1424,7 @@ export async function routine(root) {
   const stepRows = (period, step) => {
     const chosen = inStep(period, step.key);
     const taken = new Set(chosen.map(e => e.productId));
-    const options = offerFor(period, step, taken);
+    const options = offerFor(step, taken);
 
     const rows = chosen.map((entry, i) => {
       const p = byId[entry.productId];
@@ -1542,8 +1543,10 @@ export async function routine(root) {
       sel.onchange = () => {
         if (!sel.value) return;
         const [period, dayText] = sel.dataset.dayadd.split('|');
-        const [stepKey, productId] = sel.value.split('|');
-        addOnDay(period, stepKey, productId, Number(dayText));
+        const product = byId[sel.value];
+        if (!product) return;
+        const step = stepForCategory(period, product.category);
+        addOnDay(period, step.key, product.id, Number(dayText));
         touched();
         draw();
       };
@@ -1561,10 +1564,8 @@ export async function routine(root) {
     root.querySelectorAll('.step-add').forEach(sel => {
       sel.onchange = () => {
         if (!sel.value) return;
-        const [period] = sel.dataset.add.split('|');
-        // The option carries its own step, so the offer can span every step.
-        const [stepKey, productId] = sel.value.split('|');
-        draft[period].push({ step: stepKey, productId, days: [...EVERY_DAY] });
+        const [period, stepKey] = sel.dataset.add.split('|');
+        draft[period].push({ step: stepKey, productId: sel.value, days: [...EVERY_DAY] });
         touched();
         draw();
       };

@@ -135,7 +135,7 @@ const AM_UNSUITABLE = ['retinoid', 'aha', 'bha'];
 const EXFOLIATION_CONCERNS = ['texture', 'dullness', 'blemishes', 'pores', 'pigmentation'];
 
 function buildPeriod(period, products, concerns) {
-  const steps = STEPS.filter(s => s.period === period);
+  const steps = STEPS.filter(s => s.period === period && !s.manualOnly);
   const barrierFirst = concerns.some(c => c.key === 'barrier' && c.severity === 'marked');
   const wantsExfoliation =
     !barrierFirst && concerns.some(c => EXFOLIATION_CONCERNS.includes(c.key));

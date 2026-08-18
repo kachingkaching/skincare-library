@@ -284,7 +284,7 @@ const en = {
   'routine.complete': 'Complete routine',
   'routine.completeHint': 'Every step, and which days each product is used',
   'routine.nothingLeft': 'Everything on the shelf is already here',
-  'routine.otherProducts': '── anything else on the shelf ──',
+  'routine.uncategorised': 'Uncategorised',
   'routine.moveUp': 'Move up',
   'routine.done': 'Done',
   'routine.everyDay': 'Every day',
@@ -424,6 +424,8 @@ const en = {
   'step.pm-moisturise': 'Moisturise',
   'step.pm-oil': 'Seal',
   'step.am-protect': 'Protect',
+  'step.am-extra': 'Extras',
+  'step.pm-extra': 'Extras',
 
   /* concerns */
   'concern.dehydration': 'Dehydration',
@@ -708,7 +710,7 @@ const zhHant = {
   'routine.complete': '完整流程',
   'routine.completeHint': '所有步驟，以及每件產品在星期幾使用',
   'routine.nothingLeft': '架上的產品都已經加進來了',
-  'routine.otherProducts': '── 架上其他產品 ──',
+  'routine.uncategorised': '未分類',
   'routine.moveUp': '往前移',
   'routine.done': '完成',
   'routine.everyDay': '每天',
@@ -842,6 +844,8 @@ const zhHant = {
   'step.pm-moisturise': '保濕',
   'step.pm-oil': '鎖水',
   'step.am-protect': '防曬',
+  'step.am-extra': '其他',
+  'step.pm-extra': '其他',
 
   'concern.dehydration': '缺水',
   'concern.dryness': '乾燥',
@@ -1120,7 +1124,7 @@ const zhHans = {
   'routine.complete': '完整流程',
   'routine.completeHint': '所有步骤，以及每件产品在星期几使用',
   'routine.nothingLeft': '架上的产品都已经加进来了',
-  'routine.otherProducts': '── 架上其他产品 ──',
+  'routine.uncategorised': '未分类',
   'routine.moveUp': '往前移',
   'routine.done': '完成',
   'routine.everyDay': '每天',
@@ -1254,6 +1258,8 @@ const zhHans = {
   'step.pm-moisturise': '保湿',
   'step.pm-oil': '锁水',
   'step.am-protect': '防晒',
+  'step.am-extra': '其他',
+  'step.pm-extra': '其他',
 
   'concern.dehydration': '缺水',
   'concern.dryness': '干燥',

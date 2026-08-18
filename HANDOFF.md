@@ -92,13 +92,19 @@ server, one hard reload (Cmd+Shift+R) is needed to break out.
   and off the routine entirely when it was its last. The old every-step builder
   is intact underneath, collapsed as "Complete routine", and still holds the
   per-entry day toggles and the reorder.
-  **Any product can go in any step, and any step takes as many as you like.**
-  `offerFor()` in views.js lists a step's own categories first, then everything
-  else after a rule. Before this, five categories — Mask, Spot treatment, Lip
-  care, Body, Other — matched no step in the canonical order and could not be
-  recorded in a routine at all, and 14 of the 16 steps accepted a single
-  product. `multiple` in rules.js is still read by the assessment engine when it
-  *suggests* a routine; it no longer restricts what you may record yourself.
+  **The day picker is the shelf, once.** One select grouped by product
+  category, every product appearing exactly once; the step follows from the
+  category via `stepForCategory()` in rules.js, so there is nothing to choose
+  but the product. An earlier attempt listed the whole shelf under every step —
+  eight steps times the shelf — which was unusable; if you are tempted to widen
+  the offer again, widen the steps instead.
+  **Any step takes as many products as you like**, so two moisturisers are
+  fine; 14 of the 16 steps used to accept one. The five categories the
+  canonical order never claimed — Mask, Spot treatment, Lip care, Body, Other —
+  now land in an **Extras** step at the end of each period, and could not be
+  recorded at all before it existed. Extras carries `manualOnly`, which
+  analysis.js filters out, so the assessment engine never *suggests* a lip balm
+  — it is a place to record what you do, not something to recommend.
   Both sections end in their own Save; edits are held in a draft until then, and
   the note beside Save says "Unsaved changes." until they are written.
   Underneath, entries still carry `days: [0-6]` (Monday first), and **conflicts
@@ -160,12 +166,14 @@ Previous/Next sit above the carousel track; details fold and unfold; and
 `pickUrl()` turns a `javascript:` URL, a malformed one and a missing one into a
 search link. All six routes render in the flattened share build.
 
-**Verified for the open routine picker:** every step offers every product with
-its own categories first and a disabled rule before the rest; two moisturisers
-sit in the Moisturise step; a Mask and a Spot treatment — neither of which had
-any step before — are recorded under Serum; application order still follows
-STEPS; the complete builder lost the same restriction; and it saves and reads
-back. In all three languages and in the share build.
+**Verified for the routine picker:** the day list shows eight products as eight
+options grouped by category, each exactly once, and a product already on that
+day drops out of it; a cleanser lands in Cleanse, a toner in Tone, two
+moisturisers both in Moisturise, and a mask, a pimple patch and a lip mask in
+Extras; the complete builder's per-step selects offer only that step's own
+categories, with Extras collecting the rest; the assessment engine suggests no
+Extras entry; and it saves and reads back. In all three languages and in the
+share build.
 
 **Verified for the multi-product read** (against a mocked reply, with a
 synthetic three-panel photograph): three products come back as three editable

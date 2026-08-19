@@ -664,6 +664,19 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
   align-items: start;
 }
 
+/* Tighter rows than the rest of the app's forms, on purpose: this is the one
+   form where the goal is getting to Add to the library quickly, not lingering
+   over fields. */
+.form-grid .field { margin-bottom: 16px; }
+.form-grid .field-pair { gap: 24px; }
+
+/* The submit button is the point of the page — bigger, and closer to the
+   fields above it now that they take less room. */
+.form-grid .btn-row .btn[type="submit"] {
+  padding: 17px 36px;
+  font-size: 12px;
+}
+
 /* ---------- assessment ---------- */
 
 .assess-grid {
@@ -907,6 +920,16 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
 .day-save { margin-top: 36px; padding-top: 24px; border-top: 1px solid var(--rule); }
 
 .btn-lg { padding: 15px 34px; font-size: 12px; }
+
+/* The assessment form's one real decision — filled rather than outlined, so
+   it reads as the primary action on the page rather than one option among
+   several. */
+.assess-submit {
+  background: var(--ink);
+  color: var(--bone);
+}
+
+.assess-submit:hover { opacity: 0.85; background: var(--ink); color: var(--bone); }
 
 /* Selects that sit in a row of text rather than in a labelled field. */
 .inline-select {
@@ -1297,6 +1320,43 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
 @media (max-width: 720px) {
   .found-fields { grid-template-columns: minmax(0, 1fr) 62px; }
 }
+
+/* ---------- busy overlay ----------
+
+   A modal announcement for work that blocks the whole page: reading a
+   photograph, running an assessment. Centred and dimmed behind, so a slow
+   reply never reads as nothing having happened. */
+
+.busy-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(27, 26, 23, 0.42);
+  animation: busy-fade 150ms ease;
+}
+
+@keyframes busy-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.busy-card {
+  background: var(--bone);
+  border: 1px solid var(--rule);
+  padding: 28px 40px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  box-shadow: 0 12px 40px rgba(27, 26, 23, 0.18);
+}
+
+.busy-label { white-space: nowrap; }
 
 </style>
 </head>
@@ -2013,7 +2073,8 @@ const en = {
   'form.addTitle': 'Add a product',
   'form.editTitle': 'Edit product',
   'form.dropPhoto': 'Drop a photograph, or select one',
-  'form.readLabel': 'Read the label',
+  'form.readLabel': 'Let AI fill it out',
+  'form.extracting': 'Extracting information',
   'form.readLabelHint': 'Reads brand, name and ingredients off a photograph of the packaging. Photograph several products together and it lists them all for you to add at once. If the ingredient print is not legible, it searches the web for the published list instead.',
   'form.photoHint': 'Photographs are resized and kept in this browser.',
   'form.selectedPhoto': 'Selected photograph',
@@ -2054,11 +2115,9 @@ const en = {
 
   /* assessment */
   'assess.title': 'Assessment',
-  'assess.copyBriefing': 'Copy briefing for another assistant',
-  'assess.photoPrompt': 'A photograph of your skin',
-  'assess.photoHint': 'Even daylight, no makeup, the same angle each time. Kept in this browser so you can compare one month against the next.',
-  'assess.letModelLook': 'Let the model look at it',
-  'assess.submit': 'Read my skin',
+  'assess.photoPrompt': 'Upload a photo of your skin (keep a similar angle each time for better comparison).',
+  'assess.submit': 'Analyze my skin',
+  'assess.analysing': 'Analysing your skin',
   'assess.staysHere': 'Answers and photograph stay on this machine.',
   'assess.previous': 'Previous readings — {n}',
   'assess.nothingMarked': 'Nothing marked',
@@ -2069,8 +2128,6 @@ const en = {
   'assess.adopt': 'Adopt this as my routine',
   'assess.adopted': 'Saved. It is now under Routine.',
   'assess.archived': 'Kept in your archive as of today.',
-  'assess.briefingCopied': 'Copied. Paste it alongside your photograph.',
-  'assess.briefingFailed': 'Could not reach the clipboard — try Settings.',
   'assess.skinPhotoAlt': 'Skin photograph',
   'assess.degraded': '<strong>Read offline</strong> — the model could not be reached ({why}), so this is the rules-based reading from your answers.',
   'assess.photoHard': '<strong>The photograph is hard to judge</strong> — {note}',
@@ -2272,14 +2329,6 @@ const en = {
   'q.state.settled': 'Settled',
   'q.state.unsettled': 'Unsettled',
   'q.state.irritated': 'Irritated or stinging',
-  'q.texture': 'How does the surface feel to the hand?',
-  'q.texture.smooth': 'Smooth',
-  'q.texture.slight': 'Slightly uneven',
-  'q.texture.rough': 'Rough or bumpy',
-  'q.sun': 'How much daylight do you take on?',
-  'q.sun.minimal': 'Little',
-  'q.sun.moderate': 'Moderate',
-  'q.sun.high': 'A great deal',
   'q.concerns': 'What would you most like to change?',
 
   /* rules-engine sentences */
@@ -2291,9 +2340,6 @@ const en = {
   'ev.redness': 'Skin reacts often to new products.',
   'ev.barrierMarked': 'Skin is currently irritated — the barrier comes first.',
   'ev.barrierMild': 'Skin is unsettled at present.',
-  'ev.textureRough': 'The surface feels rough to the hand.',
-  'ev.textureSlight': 'The surface feels slightly uneven.',
-  'ev.sun': 'Considerable daylight exposure.',
   'gap.gentle': 'Nothing on this shelf fills the {step} step gently enough for skin in this state.',
   'gap.step': 'Nothing on this shelf covers the {step} step.',
   'gap.concern': 'Nothing on this shelf carries the ingredients that usually address this — look for {tags}.',
@@ -2441,7 +2487,8 @@ const zhHant = {
   'form.addTitle': '新增產品',
   'form.editTitle': '編輯產品',
   'form.dropPhoto': '把照片拖進來，或選一張',
-  'form.readLabel': '讀取標籤',
+  'form.readLabel': '讓 AI 幫你填寫',
+  'form.extracting': '正在擷取資訊',
   'form.readLabelHint': '從包裝照片讀出品牌、名稱與成分。一次拍下多件產品，它會全部列出來讓你一起新增。如果成分字太小看不清楚，會改為上網搜尋公布的成分表。',
   'form.photoHint': '照片會縮小後存在這部瀏覽器裡。',
   'form.selectedPhoto': '已選擇的照片',
@@ -2481,11 +2528,9 @@ const zhHant = {
   'form.foundFromMemory': '找到 {n} 項成分，但<strong>當時無法使用網路搜尋</strong>，這些來自模型的記憶而非實際來源。配方會改版 — 請仔細對照包裝後再採信。',
 
   'assess.title': '膚況評估',
-  'assess.copyBriefing': '複製摘要給其他助理',
-  'assess.photoPrompt': '一張你皮膚的照片',
-  'assess.photoHint': '自然光、素顏、每次同一個角度。照片存在這部瀏覽器裡，方便你逐月比較。',
-  'assess.letModelLook': '讓模型看這張照片',
-  'assess.submit': '判讀我的膚況',
+  'assess.photoPrompt': '上傳一張你皮膚的照片（每次拍攝角度盡量一致，方便比較）。',
+  'assess.submit': '分析我的膚況',
+  'assess.analysing': '正在分析你的膚況',
   'assess.staysHere': '你的回答與照片都留在這部機器上。',
   'assess.previous': '過往判讀 — 共 {n} 次',
   'assess.nothingMarked': '沒有特別標記',
@@ -2496,8 +2541,6 @@ const zhHant = {
   'assess.adopt': '採用這套流程',
   'assess.adopted': '已儲存，現在可在「保養流程」看到。',
   'assess.archived': '已存入你的記錄，日期為今天。',
-  'assess.briefingCopied': '已複製。連同你的照片一起貼上即可。',
-  'assess.briefingFailed': '無法存取剪貼簿 — 請到「設定」試試。',
   'assess.skinPhotoAlt': '皮膚照片',
   'assess.degraded': '<strong>離線判讀</strong> — 無法連上模型（{why}），因此這是依你的回答所做的規則判讀。',
   'assess.photoHard': '<strong>這張照片不容易判斷</strong> — {note}',
@@ -2690,14 +2733,6 @@ const zhHant = {
   'q.state.settled': '穩定',
   'q.state.unsettled': '不太穩定',
   'q.state.irritated': '刺痛或發炎',
-  'q.texture': '用手摸起來的觸感如何？',
-  'q.texture.smooth': '平滑',
-  'q.texture.slight': '略為不勻',
-  'q.texture.rough': '粗糙或有顆粒',
-  'q.sun': '你每天曬到多少日光？',
-  'q.sun.minimal': '很少',
-  'q.sun.moderate': '中等',
-  'q.sun.high': '相當多',
   'q.concerns': '你最想改善哪些問題？',
 
   'ev.named': '你自己指明了這一項。',
@@ -2708,9 +2743,6 @@ const zhHant = {
   'ev.redness': '換新產品時皮膚經常有反應。',
   'ev.barrierMarked': '皮膚目前處於發炎狀態 — 先修護屏障。',
   'ev.barrierMild': '皮膚目前不太穩定。',
-  'ev.textureRough': '表面摸起來粗糙。',
-  'ev.textureSlight': '表面摸起來略為不勻。',
-  'ev.sun': '日光曝曬量相當多。',
   'gap.gentle': '以目前的膚況而言，架上沒有夠溫和的產品可以擔任「{step}」這一步。',
   'gap.step': '架上沒有產品可以擔任「{step}」這一步。',
   'gap.concern': '架上沒有通常用來處理這個問題的成分 — 可以留意 {tags}。',
@@ -2855,7 +2887,8 @@ const zhHans = {
   'form.addTitle': '新增产品',
   'form.editTitle': '编辑产品',
   'form.dropPhoto': '把照片拖进来，或选一张',
-  'form.readLabel': '读取标签',
+  'form.readLabel': '让 AI 帮你填写',
+  'form.extracting': '正在提取信息',
   'form.readLabelHint': '从包装照片读出品牌、名称与成分。一次拍下多件产品，它会全部列出来让你一起新增。如果成分字太小看不清楚，会改为上网搜索公布的成分表。',
   'form.photoHint': '照片会缩小后存在这个浏览器里。',
   'form.selectedPhoto': '已选择的照片',
@@ -2895,11 +2928,9 @@ const zhHans = {
   'form.foundFromMemory': '找到 {n} 项成分，但<strong>当时无法使用网络搜索</strong>，这些来自模型的记忆而非实际来源。配方会改版 — 请仔细对照包装后再采信。',
 
   'assess.title': '肤况评估',
-  'assess.copyBriefing': '复制摘要给其他助手',
-  'assess.photoPrompt': '一张你皮肤的照片',
-  'assess.photoHint': '自然光、素颜、每次同一个角度。照片存在这个浏览器里，方便你逐月比较。',
-  'assess.letModelLook': '让模型看这张照片',
-  'assess.submit': '判读我的肤况',
+  'assess.photoPrompt': '上传一张你皮肤的照片（每次拍摄角度尽量一致，方便比较）。',
+  'assess.submit': '分析我的肤况',
+  'assess.analysing': '正在分析你的肤况',
   'assess.staysHere': '你的回答与照片都留在这台机器上。',
   'assess.previous': '过往判读 — 共 {n} 次',
   'assess.nothingMarked': '没有特别标记',
@@ -2910,8 +2941,6 @@ const zhHans = {
   'assess.adopt': '采用这套流程',
   'assess.adopted': '已保存，现在可在「护肤流程」看到。',
   'assess.archived': '已存入你的记录，日期为今天。',
-  'assess.briefingCopied': '已复制。连同你的照片一起粘贴即可。',
-  'assess.briefingFailed': '无法访问剪贴板 — 请到「设置」试试。',
   'assess.skinPhotoAlt': '皮肤照片',
   'assess.degraded': '<strong>离线判读</strong> — 无法连上模型（{why}），因此这是依你的回答所做的规则判读。',
   'assess.photoHard': '<strong>这张照片不容易判断</strong> — {note}',
@@ -3104,14 +3133,6 @@ const zhHans = {
   'q.state.settled': '稳定',
   'q.state.unsettled': '不太稳定',
   'q.state.irritated': '刺痛或发炎',
-  'q.texture': '用手摸起来的触感如何？',
-  'q.texture.smooth': '平滑',
-  'q.texture.slight': '略为不匀',
-  'q.texture.rough': '粗糙或有颗粒',
-  'q.sun': '你每天晒到多少日光？',
-  'q.sun.minimal': '很少',
-  'q.sun.moderate': '中等',
-  'q.sun.high': '相当多',
   'q.concerns': '你最想改善哪些问题？',
 
   'ev.named': '你自己指明了这一项。',
@@ -3122,9 +3143,6 @@ const zhHans = {
   'ev.redness': '换新产品时皮肤经常有反应。',
   'ev.barrierMarked': '皮肤目前处于发炎状态 — 先修护屏障。',
   'ev.barrierMild': '皮肤目前不太稳定。',
-  'ev.textureRough': '表面摸起来粗糙。',
-  'ev.textureSlight': '表面摸起来略为不匀。',
-  'ev.sun': '日光曝晒量相当多。',
   'gap.gentle': '以目前的肤况而言，架上没有够温和的产品可以担任「{step}」这一步。',
   'gap.step': '架上没有产品可以担任「{step}」这一步。',
   'gap.concern': '架上没有通常用来处理这个问题的成分 — 可以留意 {tags}。',
@@ -4443,6 +4461,10 @@ const refreshChat = () => {};
    language re-labels the questionnaire without a reload. */
 const questions = () => [
   {
+    key: 'concerns', label: t('q.concerns'), multi: true,
+    options: CONCERNS.map(c => ({ value: c.key, label: concernLabel(c) }))
+  },
+  {
     key: 'skinType', label: t('q.skinType'), multi: false,
     options: ['dry', 'normal', 'combination', 'oily']
       .map(v => ({ value: v, label: t('q.skinType.' + v) }))
@@ -4456,20 +4478,6 @@ const questions = () => [
     key: 'state', label: t('q.state'), multi: false,
     options: ['settled', 'unsettled', 'irritated']
       .map(v => ({ value: v, label: t('q.state.' + v) }))
-  },
-  {
-    key: 'texture', label: t('q.texture'), multi: false,
-    options: ['smooth', 'slight', 'rough']
-      .map(v => ({ value: v, label: t('q.texture.' + v) }))
-  },
-  {
-    key: 'sun', label: t('q.sun'), multi: false,
-    options: ['minimal', 'moderate', 'high']
-      .map(v => ({ value: v, label: t('q.sun.' + v) }))
-  },
-  {
-    key: 'concerns', label: t('q.concerns'), multi: true,
-    options: CONCERNS.map(c => ({ value: c.key, label: concernLabel(c) }))
   }
 ];
 
@@ -4506,16 +4514,6 @@ function readConcerns(answers) {
   } else if (answers.state === 'unsettled') {
     note('barrier', 'mild', t('ev.barrierMild'));
   }
-  if (answers.texture === 'rough') {
-    note('texture', 'moderate', t('ev.textureRough'));
-  } else if (answers.texture === 'slight') {
-    note('texture', 'mild', t('ev.textureSlight'));
-  }
-  if (answers.sun === 'high') {
-    note('pigmentation', 'mild', t('ev.sun'));
-    note('lines', 'mild', t('ev.sun'));
-  }
-
   return [...found.values()]
     .map(c => ({ ...c, label: concernLabel(c.key) }))
     .sort((a, b) => WEIGHT[b.severity] - WEIGHT[a.severity]);
@@ -4980,6 +4978,22 @@ function waiting(button, label) {
   return () => { button.innerHTML = was; button.disabled = wasDisabled; };
 }
 
+/* A modal announcement for work that blocks the whole page rather than one
+   control — reading a photograph, running an assessment. Centred, dimmed
+   behind it, and gone only when the caller says so: the point is that the
+   result is not shown until this has been dismissed, so a slow reply never
+   looks like nothing happened. Appended to <body> rather than the view root,
+   because the view root is exactly what gets replaced while this is up. */
+function showBusy(label) {
+  const el = document.createElement('div');
+  el.className = 'busy-overlay';
+  el.setAttribute('role', 'status');
+  el.setAttribute('aria-live', 'polite');
+  el.innerHTML = `<div class="busy-card"><span class="busy-label">${esc(label)}</span>${dots()}</div>`;
+  document.body.appendChild(el);
+  return () => el.remove();
+}
+
 const tagChip = (tag, flag) =>
   `<span class="chip ${flag ? 'chip-flag' : 'chip-active'}">${esc(tagLabel(tag))}</span>`;
 
@@ -5311,6 +5325,9 @@ async function form(root, { id } = {}) {
   // The original is kept only for label reading — ingredient print is tiny, and
   // the copy we store for the shelf is downscaled too far to read it.
   let originalFile = null;
+  // Size has no field on this form any more, but a value read off a label —
+  // or already on an edited record — is still worth keeping.
+  let capturedSize = p?.size || '';
   const pendingPhoto = () => (photoJob ? photoJob : Promise.resolve(null));
 
   root.innerHTML = `
@@ -5372,28 +5389,6 @@ async function form(root, { id } = {}) {
           </div>
           <div class="field-hint" id="parse-summary"></div>
           <div class="chips" id="parse-chips" style="margin-top:12px"></div>
-        </div>
-
-        <div class="field-pair">
-          <div class="field">
-            <label for="size">${esc(t('product.size'))}</label>
-            <input type="text" id="size" placeholder="50 ml" value="${esc(p?.size)}">
-          </div>
-          <div class="field">
-            <label for="price">${esc(t('product.price'))}</label>
-            <input type="text" id="price" placeholder="£38" value="${esc(p?.price)}">
-          </div>
-        </div>
-
-        <div class="field-pair">
-          <div class="field">
-            <label for="purchasedAt">${esc(t('product.purchased'))}</label>
-            <input type="date" id="purchasedAt" value="${esc(p?.purchasedAt)}">
-          </div>
-          <div class="field">
-            <label for="openedAt">${esc(t('product.opened'))}</label>
-            <input type="date" id="openedAt" value="${esc(p?.openedAt)}">
-          </div>
         </div>
 
         <div class="field">
@@ -5687,6 +5682,7 @@ async function form(root, { id } = {}) {
 
       const restore = waiting(autofillBtn, t('common.reading'));
       hint.innerHTML = `${esc(t('form.readingPhoto'))}${dots()}`;
+      const hideBusy = showBusy(t('form.extracting'));
 
       try {
         const found = await readProducts(blob);
@@ -5710,7 +5706,7 @@ async function form(root, { id } = {}) {
         };
         fill('#brand', read.brand);
         fill('#name', read.name);
-        fill('#size', read.size);
+        if (read.size && !capturedSize) capturedSize = read.size;
         // Two identical bottles in one photograph are two bottles.
         if (read.count > 1) root.querySelector('#quantity').value = String(read.count);
         await checkDuplicate();
@@ -5729,6 +5725,7 @@ async function form(root, { id } = {}) {
       } catch (err) {
         hint.textContent = err.message;
       } finally {
+        hideBusy();
         restore();
       }
     };
@@ -5753,13 +5750,13 @@ async function form(root, { id } = {}) {
       name: val('#name'),
       category: val('#category'),
       status: val('#status'),
-      size: val('#size'),
-      price: val('#price'),
-      purchasedAt: val('#purchasedAt'),
-      openedAt: val('#openedAt'),
+      size: capturedSize,
+      // Price, purchase and open dates have no fields on this form; carried
+      // through untouched so editing an older record does not discard them.
+      price: p?.price || '',
+      purchasedAt: p?.purchasedAt || '',
+      openedAt: p?.openedAt || '',
       quantity: Math.max(0, Math.round(Number(val('#quantity')) || 0)),
-      // No longer editable, but carried through so editing an older record
-      // does not quietly discard what it already held.
       paoMonths: p?.paoMonths || '',
       rating: p?.rating || '',
       notes: root.querySelector('#notes').value.trim(),
@@ -5878,9 +5875,6 @@ async function assess(root, { id } = {}) {
   const products = await store.getProducts();
   const productsById = Object.fromEntries(products.map(p => [p.id, p]));
   const history = (await store.getAssessments()).sort((a, b) => b.date.localeCompare(a.date));
-  const settings = await aiSettings();
-  const keyConfigured = AI_FEATURES && Boolean(settings.apiKey);
-  const sendPhotoDefault = settings.sendPhoto;
 
   /* Viewing one from the archive. */
   if (id) {
@@ -5933,21 +5927,10 @@ async function assess(root, { id } = {}) {
     <div class="view-head">
       ${headerArt('assess')}
       <h1 class="page-title">${esc(t('assess.title'))}</h1>
-      <div class="btn-row">
-        <button class="btn btn-quiet" id="brief-here">${esc(t('assess.copyBriefing'))}</button>
-        <span class="field-hint" style="margin:0" id="brief-here-note"></span>
-      </div>
     </div>
     <div class="assess-grid">
       <div>
         ${dropzoneMarkup('skin-photo', t('assess.photoPrompt'))}
-        <p class="field-hint">${esc(t('assess.photoHint'))}</p>
-        ${AI_FEATURES && keyConfigured ? `
-          <div class="choices" style="margin-top:20px">
-            <input type="checkbox" id="send-photo" ${sendPhotoDefault ? 'checked' : ''}>
-            <label for="send-photo">${esc(t('assess.letModelLook'))}</label>
-          </div>`
-        : ''}
       </div>
       <div>
         <form id="assess-form">
@@ -5962,7 +5945,7 @@ async function assess(root, { id } = {}) {
               </div>
             </div>`).join('')}
           <div class="btn-row">
-            <button type="submit" class="btn">${esc(t('assess.submit'))}</button>
+            <button type="submit" class="btn btn-lg assess-submit">${esc(t('assess.submit'))}</button>
             <span class="field-hint" style="margin:0">${esc(t('assess.staysHere'))}</span>
           </div>
         </form>
@@ -6023,16 +6006,6 @@ async function assess(root, { id } = {}) {
     };
   });
 
-  root.querySelector('#brief-here').onclick = async () => {
-    const briefNote = root.querySelector('#brief-here-note');
-    try {
-      const { copied } = await copyBriefing();
-      briefNote.textContent = copied ? t('assess.briefingCopied') : t('assess.briefingFailed');
-    } catch (err) {
-      briefNote.textContent = err.message;
-    }
-  };
-
   root.querySelector('#assess-form').onsubmit = async ev => {
     ev.preventDefault();
     const fd = new FormData(ev.target);
@@ -6042,47 +6015,52 @@ async function assess(root, { id } = {}) {
     }
 
     const photoBlob = photoJob ? await photoJob : null;
-    const sendPhoto = Boolean(root.querySelector('#send-photo')?.checked);
+    // No checkbox any more: a photograph you have gone to the trouble of
+    // uploading is one you want looked at.
+    const sendPhoto = Boolean(photoBlob);
     const submit = ev.target.querySelector('button[type="submit"]');
     const restore = submit ? waiting(submit, t('common.reading')) : () => {};
+    // Stays up through the whole round trip, including the render below —
+    // dismissed only once there is something on screen to look at.
+    const hideBusy = showBusy(t('assess.analysing'));
 
-    let result;
     try {
-      result = await assessSkin({
+      const result = await assessSkin({
         imageBlob: photoBlob,
         answers,
         library: products,
         routine: await store.getRoutine(),
         sendPhoto
       });
+
+      const record = {
+        id: store.uid(),
+        date: new Date().toISOString(),
+        photoId: photoBlob ? await store.putImage(photoBlob) : null,
+        answers,
+        result
+      };
+      await store.saveAssessment(record);
+
+      const out = root.querySelector('#assess-result');
+      out.innerHTML = `<div class="block">${renderResult(result, productsById)}
+        <div class="btn-row">
+          <button class="btn" id="adopt">${esc(t('assess.adopt'))}</button>
+          <span class="field-hint" style="margin:0" id="adopt-note">${esc(t('assess.archived'))}</span>
+        </div></div>`;
+      out.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+      out.querySelector('#adopt').onclick = async () => {
+        const entries = period => (result.routine[period] || [])
+          .filter(s => s.productId)
+          .map(s => ({ step: s.stepKey || null, productId: s.productId }));
+        await store.setRoutine({ am: entries('am'), pm: entries('pm') });
+        out.querySelector('#adopt-note').textContent = t('assess.adopted');
+      };
     } finally {
+      hideBusy();
       restore();
     }
-
-    const record = {
-      id: store.uid(),
-      date: new Date().toISOString(),
-      photoId: photoBlob ? await store.putImage(photoBlob) : null,
-      answers,
-      result
-    };
-    await store.saveAssessment(record);
-
-    const out = root.querySelector('#assess-result');
-    out.innerHTML = `<div class="block">${renderResult(result, productsById)}
-      <div class="btn-row">
-        <button class="btn" id="adopt">${esc(t('assess.adopt'))}</button>
-        <span class="field-hint" style="margin:0" id="adopt-note">${esc(t('assess.archived'))}</span>
-      </div></div>`;
-    out.scrollIntoView({ behavior: 'smooth', block: 'start' });
-
-    out.querySelector('#adopt').onclick = async () => {
-      const entries = period => (result.routine[period] || [])
-        .filter(s => s.productId)
-        .map(s => ({ step: s.stepKey || null, productId: s.productId }));
-      await store.setRoutine({ am: entries('am'), pm: entries('pm') });
-      out.querySelector('#adopt-note').textContent = t('assess.adopted');
-    };
   };
 }
 
@@ -6962,7 +6940,7 @@ async function settings(root) {
 }
 
 
-const views = { esc, releaseUrls, onRerender, profileBar, headerArt, dots, waiting, shelf, product, form, assess, routine, discoveries, settings };
+const views = { esc, releaseUrls, onRerender, profileBar, headerArt, dots, waiting, showBusy, shelf, product, form, assess, routine, discoveries, settings };
 
 /* ===== js/app.js ===== */
 /* Hash router and boot. */

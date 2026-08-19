@@ -656,6 +656,19 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
   align-items: start;
 }
 
+/* Tighter rows than the rest of the app's forms, on purpose: this is the one
+   form where the goal is getting to Add to the library quickly, not lingering
+   over fields. */
+.form-grid .field { margin-bottom: 16px; }
+.form-grid .field-pair { gap: 24px; }
+
+/* The submit button is the point of the page — bigger, and closer to the
+   fields above it now that they take less room. */
+.form-grid .btn-row .btn[type="submit"] {
+  padding: 17px 36px;
+  font-size: 12px;
+}
+
 /* ---------- assessment ---------- */
 
 .assess-grid {
@@ -899,6 +912,16 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
 .day-save { margin-top: 36px; padding-top: 24px; border-top: 1px solid var(--rule); }
 
 .btn-lg { padding: 15px 34px; font-size: 12px; }
+
+/* The assessment form's one real decision — filled rather than outlined, so
+   it reads as the primary action on the page rather than one option among
+   several. */
+.assess-submit {
+  background: var(--ink);
+  color: var(--bone);
+}
+
+.assess-submit:hover { opacity: 0.85; background: var(--ink); color: var(--bone); }
 
 /* Selects that sit in a row of text rather than in a labelled field. */
 .inline-select {
@@ -1289,3 +1312,40 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
 @media (max-width: 720px) {
   .found-fields { grid-template-columns: minmax(0, 1fr) 62px; }
 }
+
+/* ---------- busy overlay ----------
+
+   A modal announcement for work that blocks the whole page: reading a
+   photograph, running an assessment. Centred and dimmed behind, so a slow
+   reply never reads as nothing having happened. */
+
+.busy-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(27, 26, 23, 0.42);
+  animation: busy-fade 150ms ease;
+}
+
+@keyframes busy-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.busy-card {
+  background: var(--bone);
+  border: 1px solid var(--rule);
+  padding: 28px 40px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  box-shadow: 0 12px 40px rgba(27, 26, 23, 0.18);
+}
+
+.busy-label { white-space: nowrap; }

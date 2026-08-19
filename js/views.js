@@ -130,6 +130,22 @@ export function waiting(button, label) {
   return () => { button.innerHTML = was; button.disabled = wasDisabled; };
 }
 
+/* A modal announcement for work that blocks the whole page rather than one
+   control — reading a photograph, running an assessment. Centred, dimmed
+   behind it, and gone only when the caller says so: the point is that the
+   result is not shown until this has been dismissed, so a slow reply never
+   looks like nothing happened. Appended to <body> rather than the view root,
+   because the view root is exactly what gets replaced while this is up. */
+export function showBusy(label) {
+  const el = document.createElement('div');
+  el.className = 'busy-overlay';
+  el.setAttribute('role', 'status');
+  el.setAttribute('aria-live', 'polite');
+  el.innerHTML = `<div class="busy-card"><span class="busy-label">${esc(label)}</span>${dots()}</div>`;
+  document.body.appendChild(el);
+  return () => el.remove();
+}
+
 const tagChip = (tag, flag) =>
   `<span class="chip ${flag ? 'chip-flag' : 'chip-active'}">${esc(tagLabel(tag))}</span>`;
 
@@ -461,6 +477,9 @@ export async function form(root, { id } = {}) {
   // The original is kept only for label reading — ingredient print is tiny, and
   // the copy we store for the shelf is downscaled too far to read it.
   let originalFile = null;
+  // Size has no field on this form any more, but a value read off a label —
+  // or already on an edited record — is still worth keeping.
+  let capturedSize = p?.size || '';
   const pendingPhoto = () => (photoJob ? photoJob : Promise.resolve(null));
 
   root.innerHTML = `
@@ -522,28 +541,6 @@ export async function form(root, { id } = {}) {
           </div>
           <div class="field-hint" id="parse-summary"></div>
           <div class="chips" id="parse-chips" style="margin-top:12px"></div>
-        </div>
-
-        <div class="field-pair">
-          <div class="field">
-            <label for="size">${esc(t('product.size'))}</label>
-            <input type="text" id="size" placeholder="50 ml" value="${esc(p?.size)}">
-          </div>
-          <div class="field">
-            <label for="price">${esc(t('product.price'))}</label>
-            <input type="text" id="price" placeholder="£38" value="${esc(p?.price)}">
-          </div>
-        </div>
-
-        <div class="field-pair">
-          <div class="field">
-            <label for="purchasedAt">${esc(t('product.purchased'))}</label>
-            <input type="date" id="purchasedAt" value="${esc(p?.purchasedAt)}">
-          </div>
-          <div class="field">
-            <label for="openedAt">${esc(t('product.opened'))}</label>
-            <input type="date" id="openedAt" value="${esc(p?.openedAt)}">
-          </div>
         </div>
 
         <div class="field">
@@ -837,6 +834,7 @@ export async function form(root, { id } = {}) {
 
       const restore = waiting(autofillBtn, t('common.reading'));
       hint.innerHTML = `${esc(t('form.readingPhoto'))}${dots()}`;
+      const hideBusy = showBusy(t('form.extracting'));
 
       try {
         const found = await readProducts(blob);
@@ -860,7 +858,7 @@ export async function form(root, { id } = {}) {
         };
         fill('#brand', read.brand);
         fill('#name', read.name);
-        fill('#size', read.size);
+        if (read.size && !capturedSize) capturedSize = read.size;
         // Two identical bottles in one photograph are two bottles.
         if (read.count > 1) root.querySelector('#quantity').value = String(read.count);
         await checkDuplicate();
@@ -879,6 +877,7 @@ export async function form(root, { id } = {}) {
       } catch (err) {
         hint.textContent = err.message;
       } finally {
+        hideBusy();
         restore();
       }
     };
@@ -903,13 +902,13 @@ export async function form(root, { id } = {}) {
       name: val('#name'),
       category: val('#category'),
       status: val('#status'),
-      size: val('#size'),
-      price: val('#price'),
-      purchasedAt: val('#purchasedAt'),
-      openedAt: val('#openedAt'),
+      size: capturedSize,
+      // Price, purchase and open dates have no fields on this form; carried
+      // through untouched so editing an older record does not discard them.
+      price: p?.price || '',
+      purchasedAt: p?.purchasedAt || '',
+      openedAt: p?.openedAt || '',
       quantity: Math.max(0, Math.round(Number(val('#quantity')) || 0)),
-      // No longer editable, but carried through so editing an older record
-      // does not quietly discard what it already held.
       paoMonths: p?.paoMonths || '',
       rating: p?.rating || '',
       notes: root.querySelector('#notes').value.trim(),
@@ -1028,9 +1027,6 @@ export async function assess(root, { id } = {}) {
   const products = await store.getProducts();
   const productsById = Object.fromEntries(products.map(p => [p.id, p]));
   const history = (await store.getAssessments()).sort((a, b) => b.date.localeCompare(a.date));
-  const settings = await aiSettings();
-  const keyConfigured = AI_FEATURES && Boolean(settings.apiKey);
-  const sendPhotoDefault = settings.sendPhoto;
 
   /* Viewing one from the archive. */
   if (id) {
@@ -1083,21 +1079,10 @@ export async function assess(root, { id } = {}) {
     <div class="view-head">
       ${headerArt('assess')}
       <h1 class="page-title">${esc(t('assess.title'))}</h1>
-      <div class="btn-row">
-        <button class="btn btn-quiet" id="brief-here">${esc(t('assess.copyBriefing'))}</button>
-        <span class="field-hint" style="margin:0" id="brief-here-note"></span>
-      </div>
     </div>
     <div class="assess-grid">
       <div>
         ${dropzoneMarkup('skin-photo', t('assess.photoPrompt'))}
-        <p class="field-hint">${esc(t('assess.photoHint'))}</p>
-        ${AI_FEATURES && keyConfigured ? `
-          <div class="choices" style="margin-top:20px">
-            <input type="checkbox" id="send-photo" ${sendPhotoDefault ? 'checked' : ''}>
-            <label for="send-photo">${esc(t('assess.letModelLook'))}</label>
-          </div>`
-        : ''}
       </div>
       <div>
         <form id="assess-form">
@@ -1112,7 +1097,7 @@ export async function assess(root, { id } = {}) {
               </div>
             </div>`).join('')}
           <div class="btn-row">
-            <button type="submit" class="btn">${esc(t('assess.submit'))}</button>
+            <button type="submit" class="btn btn-lg assess-submit">${esc(t('assess.submit'))}</button>
             <span class="field-hint" style="margin:0">${esc(t('assess.staysHere'))}</span>
           </div>
         </form>
@@ -1173,16 +1158,6 @@ export async function assess(root, { id } = {}) {
     };
   });
 
-  root.querySelector('#brief-here').onclick = async () => {
-    const briefNote = root.querySelector('#brief-here-note');
-    try {
-      const { copied } = await copyBriefing();
-      briefNote.textContent = copied ? t('assess.briefingCopied') : t('assess.briefingFailed');
-    } catch (err) {
-      briefNote.textContent = err.message;
-    }
-  };
-
   root.querySelector('#assess-form').onsubmit = async ev => {
     ev.preventDefault();
     const fd = new FormData(ev.target);
@@ -1192,47 +1167,52 @@ export async function assess(root, { id } = {}) {
     }
 
     const photoBlob = photoJob ? await photoJob : null;
-    const sendPhoto = Boolean(root.querySelector('#send-photo')?.checked);
+    // No checkbox any more: a photograph you have gone to the trouble of
+    // uploading is one you want looked at.
+    const sendPhoto = Boolean(photoBlob);
     const submit = ev.target.querySelector('button[type="submit"]');
     const restore = submit ? waiting(submit, t('common.reading')) : () => {};
+    // Stays up through the whole round trip, including the render below —
+    // dismissed only once there is something on screen to look at.
+    const hideBusy = showBusy(t('assess.analysing'));
 
-    let result;
     try {
-      result = await assessSkin({
+      const result = await assessSkin({
         imageBlob: photoBlob,
         answers,
         library: products,
         routine: await store.getRoutine(),
         sendPhoto
       });
+
+      const record = {
+        id: store.uid(),
+        date: new Date().toISOString(),
+        photoId: photoBlob ? await store.putImage(photoBlob) : null,
+        answers,
+        result
+      };
+      await store.saveAssessment(record);
+
+      const out = root.querySelector('#assess-result');
+      out.innerHTML = `<div class="block">${renderResult(result, productsById)}
+        <div class="btn-row">
+          <button class="btn" id="adopt">${esc(t('assess.adopt'))}</button>
+          <span class="field-hint" style="margin:0" id="adopt-note">${esc(t('assess.archived'))}</span>
+        </div></div>`;
+      out.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+      out.querySelector('#adopt').onclick = async () => {
+        const entries = period => (result.routine[period] || [])
+          .filter(s => s.productId)
+          .map(s => ({ step: s.stepKey || null, productId: s.productId }));
+        await store.setRoutine({ am: entries('am'), pm: entries('pm') });
+        out.querySelector('#adopt-note').textContent = t('assess.adopted');
+      };
     } finally {
+      hideBusy();
       restore();
     }
-
-    const record = {
-      id: store.uid(),
-      date: new Date().toISOString(),
-      photoId: photoBlob ? await store.putImage(photoBlob) : null,
-      answers,
-      result
-    };
-    await store.saveAssessment(record);
-
-    const out = root.querySelector('#assess-result');
-    out.innerHTML = `<div class="block">${renderResult(result, productsById)}
-      <div class="btn-row">
-        <button class="btn" id="adopt">${esc(t('assess.adopt'))}</button>
-        <span class="field-hint" style="margin:0" id="adopt-note">${esc(t('assess.archived'))}</span>
-      </div></div>`;
-    out.scrollIntoView({ behavior: 'smooth', block: 'start' });
-
-    out.querySelector('#adopt').onclick = async () => {
-      const entries = period => (result.routine[period] || [])
-        .filter(s => s.productId)
-        .map(s => ({ step: s.stepKey || null, productId: s.productId }));
-      await store.setRoutine({ am: entries('am'), pm: entries('pm') });
-      out.querySelector('#adopt-note').textContent = t('assess.adopted');
-    };
   };
 }
 

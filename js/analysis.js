@@ -23,6 +23,10 @@ import { t, concernLabel, categoryLabel, stepLabel, tagLabel, listSep } from './
    language re-labels the questionnaire without a reload. */
 export const questions = () => [
   {
+    key: 'concerns', label: t('q.concerns'), multi: true,
+    options: CONCERNS.map(c => ({ value: c.key, label: concernLabel(c) }))
+  },
+  {
     key: 'skinType', label: t('q.skinType'), multi: false,
     options: ['dry', 'normal', 'combination', 'oily']
       .map(v => ({ value: v, label: t('q.skinType.' + v) }))
@@ -36,20 +40,6 @@ export const questions = () => [
     key: 'state', label: t('q.state'), multi: false,
     options: ['settled', 'unsettled', 'irritated']
       .map(v => ({ value: v, label: t('q.state.' + v) }))
-  },
-  {
-    key: 'texture', label: t('q.texture'), multi: false,
-    options: ['smooth', 'slight', 'rough']
-      .map(v => ({ value: v, label: t('q.texture.' + v) }))
-  },
-  {
-    key: 'sun', label: t('q.sun'), multi: false,
-    options: ['minimal', 'moderate', 'high']
-      .map(v => ({ value: v, label: t('q.sun.' + v) }))
-  },
-  {
-    key: 'concerns', label: t('q.concerns'), multi: true,
-    options: CONCERNS.map(c => ({ value: c.key, label: concernLabel(c) }))
   }
 ];
 
@@ -86,16 +76,6 @@ function readConcerns(answers) {
   } else if (answers.state === 'unsettled') {
     note('barrier', 'mild', t('ev.barrierMild'));
   }
-  if (answers.texture === 'rough') {
-    note('texture', 'moderate', t('ev.textureRough'));
-  } else if (answers.texture === 'slight') {
-    note('texture', 'mild', t('ev.textureSlight'));
-  }
-  if (answers.sun === 'high') {
-    note('pigmentation', 'mild', t('ev.sun'));
-    note('lines', 'mild', t('ev.sun'));
-  }
-
   return [...found.values()]
     .map(c => ({ ...c, label: concernLabel(c.key) }))
     .sort((a, b) => WEIGHT[b.severity] - WEIGHT[a.severity]);

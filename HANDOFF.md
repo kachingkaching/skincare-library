@@ -53,10 +53,18 @@ server, one hard reload (Cmd+Shift+R) is needed to break out.
 ## What is built
 
 - **Shelf, product dossiers, add/edit** with live ingredient parsing and annotation.
-  The add form runs brand/name → category/status → **ingredients** → size/price →
-  dates → notes. Period-after-opening and rating were removed from the form and
-  from the dossier; `saveProduct` still carries both through untouched so editing
-  an older record does not discard what it held.
+  The add form runs brand/name → category/status → quantity → **ingredients** →
+  notes — size, price, purchased and opened dates have no fields here any more,
+  the second thing to be trimmed off it. `saveProduct` still carries all four
+  through untouched (`p?.size || ''` etc.) so editing an older record, or one
+  from `readProducts()`, does not discard what it held; the product detail page
+  still shows them in its spec list when present. "Read the label" is now
+  labelled **"Let AI fill it out."** Extracting a label, or several, blocks
+  behind a centred **`showBusy()`** overlay (views.js) rather than just the
+  button's own waiting state — appended to `<body>`, not the view root, because
+  the view root is exactly what a redraw replaces while it is up. The submit
+  button is deliberately tighter to reach: `.form-grid .field` dropped from
+  28px to 16px margin, and the button itself grew to match.
 - **One photograph, several products** — `readProducts()` in ai.js always
   returns an array, and the prompt decides: one pack close up gives one entry
   with its ingredients transcribed; a shelf of bottles gives one entry each and
@@ -112,8 +120,21 @@ server, one hard reload (Cmd+Shift+R) is needed to break out.
   longer warn, because they never meet. `daysOf()` / `describeDays()` in rules.js
   are the accessors; missing `days` means every day.
 - **Assessment** — rules engine always; with a key, Gemini reads the photograph
-  (opt-in tickbox, **off by default**) and adds observations / what's working /
-  what to change
+  and adds observations / what's working / what to change. **The opt-in tickbox
+  is gone** — a photograph you have uploaded is now sent whenever a key is
+  configured (`sendPhoto = Boolean(photoBlob)`), which reverses the
+  privacy-conscious default recorded earlier in this file. The four questions
+  are down to **concerns, skin type, sensitivity, state** — "surface feel" and
+  "daylight exposure" were removed along with the two rules-engine branches
+  that read them — and **concerns now asks first**, not last. The submit
+  button reads "Analyze my skin" (the user's own spelling, kept as asked, in an
+  otherwise British-English interface) and is filled rather than outlined
+  (`.assess-submit`) to read as the page's one real decision. It shares the
+  same `showBusy()` overlay as the Add page; the overlay is dismissed only in
+  the `finally` of a block that also does the rendering, not right after the
+  network call, so it never drops before there is something on screen to look
+  at. "Copy briefing for another assistant" is gone from this page — it is
+  still in Settings.
 - **Chat** — floating panel, streamed, carries shelf + routine + latest reading.
   The launcher is a large drawn speech cloud. Its body and tail are two
   overlapping filled shapes, not one path: a single outline leaves a visible nick
@@ -165,6 +186,22 @@ paragraph is gone; the add form's field order and the two removed fields;
 Previous/Next sit above the carousel track; details fold and unfold; and
 `pickUrl()` turns a `javascript:` URL, a malformed one and a missing one into a
 search link. All six routes render in the flattened share build.
+
+**Verified for the trimmed Add and Assessment pages (mocked replies):** the
+Add form has no size/price/purchased/opened fields and the submit button reads
+"Add to the library" with less space above it; a real label-read fills the form
+only after `showBusy()` has been visible and removed, checked by gating the
+mocked `fetch` behind an unresolved promise and polling for the overlay before
+releasing it — the same check for the multi-product review list, which stays
+hidden until the overlay is gone; the Assessment page asks concerns first, has
+no "surface feel" or "daylight" question, no checkbox, no text under the photo,
+no "Copy briefing" button, and "Analyze my skin" is filled rather than
+outlined; submitting with no key still renders a result with the overlay
+correctly shown and cleared; submitting with a key held the overlay up through
+the whole round trip, including the render — checked by asserting the result
+panel was still empty while the overlay was up, and only had content once it
+was gone. `missingKeys()` returns empty for both Chinese tables throughout, and
+the flattened share build carries every change with no API hostname in it.
 
 **Verified for the routine picker:** the day list shows eight products as eight
 options grouped by category, each exactly once, and a product already on that
@@ -325,7 +362,9 @@ artifact remains for anyone who should not have to.
 
 ## Open items
 
-1. Confirm the photo assessment works with a real key and the tickbox on.
+1. Confirm the photo assessment works with a real key. There is no tickbox
+   any more (see below) — a real key plus an uploaded photo is now the whole
+   test.
 2. Discoveries is ungrounded on the free tier — grounding quota is separate from
    ordinary requests and appears to be exhausted. Retry another day, or use the
    briefing with the Gemini consumer app, which has search and no API quota.
@@ -354,10 +393,21 @@ artifact remains for anyone who should not have to.
 9. Republishing the artifact only keeps its URL from the conversation that created
    it. From a new session, pass the URL as the Artifact tool's `url` parameter, or
    a second artifact is minted and the shared link quietly stops updating.
+10. **The Assessment page now sends an uploaded skin photograph to the model by
+    default whenever a key is configured — there is no opt-in tickbox any more.**
+    This was requested explicitly ("remove ... Let the model look at it"), but it
+    reverses the privacy-conscious default this file used to describe. If a future
+    request wants the choice back, `sendPhoto = Boolean(photoBlob)` in the
+    assessment form's submit handler (views.js) is the one line to change, and the
+    settings.sendPhoto plumbing in ai.js/store.js is still there, just unused.
 
 ## Working with this person
 
-Prefers concise answers and low token spend. Privacy-conscious — the photo
-tickbox defaults off for that reason, and they should never be asked to paste an
-API key anywhere. They dismiss option-questions they do not want to answer;
-recommend and proceed rather than re-asking.
+Prefers concise answers and low token spend. Generally privacy-conscious, and
+should never be asked to paste an API key anywhere — but on 17 August explicitly
+asked for the Assessment page's opt-in photo tickbox to be removed, which now
+means an uploaded photo is sent automatically whenever a key is configured. Do
+not assume that preference generalises to other opt-in/consent UI without
+checking; it reads as a deliberate trade for convenience on this one screen,
+not a change of general stance. They dismiss option-questions they do not want
+to answer; recommend and proceed rather than re-asking.

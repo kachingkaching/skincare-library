@@ -8,13 +8,13 @@ import {
 } from './ingredients.js';
 import {
   CATEGORIES, STATUSES, stepsFor, conflictsFor, stepForCategory,
-  days, EVERY_DAY, daysOf, isEveryDay, describeDays
+  days, EVERY_DAY, daysOf, isEveryDay, describeDays, CONCERNS
 } from './rules.js';
 import { questions, assessSkin } from './analysis.js';
 import {
   LANGS, t, plural, applyLang, lang,
   tagLabel, statusLabel, severityLabel, categoryLabel, stepLabel, dayLabel,
-  ingredientText
+  concernLabel, ingredientText
 } from './i18n.js';
 import { readProducts, lookupIngredients } from './ai.js';
 import { copyBriefing, downloadBriefing } from './briefing.js';
@@ -114,6 +114,23 @@ export function headerArt(name) {
   return `<svg class="header-art" viewBox="0 0 88 52" aria-hidden="true" focusable="false">${marks}</svg>`;
 }
 
+/* What to say when a control needs a model and there is none connected.
+
+   These buttons used to be `hidden`, which meant the most persuasive thing the
+   app does — photograph a shelf, get the products filed — was invisible to
+   anyone who had not already been to Settings. Showing the control and
+   explaining the gap is the difference between a locked door and a blank wall. */
+export function keyPrompt(bodyKey) {
+  return `<div class="notice key-prompt">
+    <strong>${esc(t('key.needed'))}</strong>
+    ${esc(t(bodyKey))}
+    <div class="btn-row" style="margin-top:12px">
+      <a class="btn btn-quiet" href="#/settings">${esc(t('key.connect'))}</a>
+      <span class="field-hint" style="margin:0">${esc(t('key.free'))}</span>
+    </div>
+  </div>`;
+}
+
 /* How a layering note is introduced, by how much it matters. */
 const severityWord = sev =>
   (sev === 'high' ? t('common.takeCare') : sev === 'medium' ? t('common.consider') : t('common.note'));
@@ -174,11 +191,151 @@ const dropzoneMarkup = (id, caption) => `
     <input type="file" accept="image/*">
   </div>`;
 
+/* A drawn stand-in for a product with no photograph.
+
+   Reuses the idea behind `pickArt()` for discoveries: a silhouette derived from
+   the product's own name, so it is stable, and shaped by its category. A grid
+   of "NO PHOTOGRAPH" placeholders gives the eye nothing to recognise, which is
+   the opposite of what a shelf is for. */
+const SHELF_SHAPES = {
+  dropper: ['Serum', 'Essence', 'Face oil', 'Treatment'],
+  jar: ['Moisturiser', 'Eye cream', 'Mask', 'Lip care', 'Body'],
+  tube: ['Cleanser', 'Oil cleanser', 'Exfoliant', 'Spot treatment'],
+  bottle: ['Toner', 'Sunscreen', 'Mist', 'Other']
+};
+
+function productArt(product) {
+  const seed = [...`${product.brand || ''}${product.name || ''}`]
+    .reduce((n, c) => (n * 31 + c.charCodeAt(0)) >>> 0, 7) || 1;
+
+  const shape = Object.keys(SHELF_SHAPES)
+    .find(k => SHELF_SHAPES[k].includes(product.category)) || 'bottle';
+
+  const tints = ['#E3E0D6', '#DCE2E4', '#E6DED3', '#DDE3DC', '#E4DCE0', '#DFE0E6'];
+  const tint = tints[seed % tints.length];
+  const band = 26 + (seed >> 3) % 16;
+  const body = {
+    dropper: 'M30 34h20v40a6 6 0 0 1-6 6h-8a6 6 0 0 1-6-6z',
+    jar:     'M24 44h32v30a6 6 0 0 1-6 6H30a6 6 0 0 1-6-6z',
+    tube:    'M31 30h18l3 46a5 5 0 0 1-5 5H33a5 5 0 0 1-5-5z',
+    bottle:  'M28 38h24v36a6 6 0 0 1-6 6H34a6 6 0 0 1-6-6z'
+  }[shape];
+  const cap = {
+    dropper: '<rect x="35" y="14" width="10" height="20" rx="1"/>',
+    jar:     '<rect x="27" y="34" width="26" height="10" rx="1"/>',
+    tube:    '<rect x="34" y="20" width="12" height="10" rx="1"/>',
+    bottle:  '<rect x="34" y="22" width="12" height="16" rx="1"/><path d="M31 22h18"/>'
+  }[shape];
+
+  return `<svg class="shelf-art" viewBox="0 0 80 92" preserveAspectRatio="xMidYMid slice"
+               role="img" aria-label="${esc(t('shelf.noPhoto'))}">
+    <rect x="0" y="0" width="80" height="92" fill="${tint}"/>
+    <g fill="none" stroke="#1B1A17" stroke-width="1.1" stroke-linejoin="round">
+      <path d="${body}"/>
+      ${cap}
+      <path d="M28 ${band}h24" opacity="0.3"/>
+      <path d="M28 ${band + 6}h15" opacity="0.3"/>
+    </g>
+  </svg>`;
+}
+
+/* ============================================================
+   Ingredient sheet
+
+   229 annotated entries were reachable only by owning a product and scrolling
+   its page — no route lists them, and for an audience defined by wanting to
+   understand what they buy, that is the best thing in the app with no front
+   door. Any ingredient name, anywhere, now opens this: what it is, what it is
+   for, which of your products contain it, and what it does not sit well with.
+   ============================================================ */
+
+let sheetReturnFocus = null;
+
+export function closeIngredient() {
+  const sheet = document.getElementById('ing-sheet');
+  if (!sheet || sheet.hidden) return;
+  sheet.hidden = true;
+  document.getElementById('ing-scrim').hidden = true;
+  if (sheetReturnFocus) { sheetReturnFocus.focus(); sheetReturnFocus = null; }
+}
+
+export async function openIngredient(rawName, opener) {
+  const sheet = document.getElementById('ing-sheet');
+  if (!sheet) return;
+  sheetReturnFocus = opener || null;
+
+  const entry = lookup(rawName);
+  const products = await store.getProducts();
+
+  // Everything of hers that contains it, matched the same way the parser does.
+  const mine = products.filter(p =>
+    (p.ingredients || []).some(i => (lookup(i)?.k || i.toLowerCase()) === (entry?.k || rawName.toLowerCase())));
+
+  const tags = entry ? entry.t : [];
+  const helps = CONCERNS.filter(c => c.helps.some(h => tags.includes(h)));
+  const wary = CONCERNS.filter(c => c.avoids.some(a => tags.includes(a)));
+
+  document.getElementById('ing-sheet-body').innerHTML = `
+    <div class="ing-sheet-head">
+      <div>
+        <div class="ing-sheet-name">${esc(entry ? entry.n : rawName)}</div>
+        ${entry && entry.n.toLowerCase() !== rawName.toLowerCase()
+          ? `<div class="ing-sheet-alias">${esc(rawName)}</div>` : ''}
+      </div>
+      <button class="link-btn" id="ing-close">${esc(t('common.close'))}</button>
+    </div>
+
+    ${tags.length ? `<div class="chips" style="margin-bottom:20px">${tags.map(tag =>
+      `<span class="chip ${FLAG_TAGS.includes(tag) ? 'chip-flag' : 'chip-active'}">${esc(tagLabel(tag))}</span>`).join('')}</div>` : ''}
+
+    <p class="ing-sheet-text">${esc(entry ? ingredientText(entry) : t('product.notInReference'))}</p>
+
+    ${helps.length ? `<div class="ing-sheet-block">
+      <h3 class="section-title">${esc(t('ing.helpsWith'))}</h3>
+      <div class="chips">${helps.map(c =>
+        `<span class="chip">${esc(concernLabel(c))}</span>`).join('')}</div>
+    </div>` : ''}
+
+    ${wary.length ? `<div class="ing-sheet-block">
+      <h3 class="section-title">${esc(t('ing.wearyWith'))}</h3>
+      <div class="chips">${wary.map(c =>
+        `<span class="chip chip-flag">${esc(concernLabel(c))}</span>`).join('')}</div>
+    </div>` : ''}
+
+    <div class="ing-sheet-block">
+      <h3 class="section-title">${esc(t('ing.onYourShelf'))}</h3>
+      ${mine.length ? `<div class="ing-sheet-mine">${mine.map(p =>
+        `<a href="#/product/${esc(p.id)}" data-goto>
+           <span>${esc(p.brand ? p.brand + ' · ' : '')}${esc(p.name)}</span>
+           <span class="muted">${esc(p.category ? categoryLabel(p.category) : '')}</span>
+         </a>`).join('')}</div>`
+        : `<p class="muted" style="margin:0">${esc(t('ing.notOnShelf'))}</p>`}
+    </div>`;
+
+  document.getElementById('ing-scrim').hidden = false;
+  sheet.hidden = false;
+  document.getElementById('ing-close').onclick = closeIngredient;
+  document.getElementById('ing-close').focus();
+  document.querySelectorAll('#ing-sheet [data-goto]').forEach(a => { a.onclick = closeIngredient; });
+}
+
+/* Anything with data-ing on it opens the sheet. Called after each render. */
+export function wireIngredients(root) {
+  root.querySelectorAll('[data-ing]').forEach(el => {
+    el.onclick = ev => { ev.preventDefault(); openIngredient(el.dataset.ing, el); };
+  });
+}
+
 /* ============================================================
    Shelf
    ============================================================ */
 
-const shelfFilters = { category: '', status: '', active: '' };
+const shelfFilters = { category: '', status: '', active: '', query: '' };
+/* Recency first: the products she is most likely to be looking for are the
+   ones she just bought, and A–Z by brand buried them alphabetically. */
+let shelfSort = 'recent';
+/* Kept across redraws so changing a filter does not fold the panel away. */
+let filtersOpen = false;
 /* Emptied products stay in the library but drop out of the default view. One
    click brings them back, and the bar says how many are being kept back — a
    product that silently vanishes when you count the last one out is alarming. */
@@ -206,10 +363,21 @@ export async function shelf(root) {
     if (ACTIVE_TAGS.includes(tag)) activesPresent.add(tag);
   }));
 
+  /* "Do I already own this?" is the question this shelf exists to answer, and
+     until now the only way to ask it was to scroll. Matches brand, name and
+     ingredient, so searching "niacinamide" finds everything containing it. */
+  const query = shelfFilters.query.trim().toLowerCase();
+  const hits = p => {
+    if (!query) return true;
+    if (`${p.brand || ''} ${p.name || ''}`.toLowerCase().includes(query)) return true;
+    return (p.ingredients || []).some(i => i.toLowerCase().includes(query));
+  };
+
   const matches = products.filter(p =>
     (!shelfFilters.category || p.category === shelfFilters.category) &&
     (!shelfFilters.status || p.status === shelfFilters.status) &&
-    (!shelfFilters.active || tagsFor(p.ingredients || []).has(shelfFilters.active))
+    (!shelfFilters.active || tagsFor(p.ingredients || []).has(shelfFilters.active)) &&
+    hits(p)
   );
   // Asking for Finished explicitly means you want to see them.
   const keepEmptied = showEmptied || shelfFilters.status === 'finished';
@@ -218,16 +386,40 @@ export async function shelf(root) {
 
   const onHand = products.reduce((n, p) => n + p.quantity, 0);
 
+  if (shelfSort === 'recent') {
+    visible.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '') || byShelfOrder(a, b));
+  }
+
   const categoriesPresent = [...new Set(products.map(p => p.category).filter(Boolean))].sort();
 
   root.innerHTML = `
     <div class="view-head">
       ${headerArt('shelf')}
       <h1 class="page-title">${esc(t('shelf.title'))}</h1>
-      <div class="btn-row"><a class="btn" href="#/add">${esc(t('shelf.add'))}</a></div>
+      <div class="btn-row hide-on-phone"><a class="btn" href="#/add">${esc(t('shelf.add'))}</a></div>
     </div>
 
-    <div class="filter-bar">
+    <div class="shelf-search">
+      <input type="search" id="f-query" value="${esc(shelfFilters.query)}"
+             placeholder="${esc(t('shelf.searchPlaceholder'))}"
+             aria-label="${esc(t('shelf.searchLabel'))}" autocomplete="off">
+    </div>
+
+    <div class="shelf-tools">
+      <button type="button" class="link-btn" id="toggle-filters"
+              aria-expanded="false" aria-controls="filter-bar">${esc(t('shelf.filterAndSort'))}</button>
+      <span class="filter-count">${esc(t('shelf.count', { shown: visible.length, total: products.length }))}
+        · ${esc(t('shelf.onHand', { n: onHand }))}</span>
+    </div>
+
+    <div class="filter-bar" id="filter-bar">
+      <div class="filter">
+        <label for="f-sort">${esc(t('shelf.sortBy'))}</label>
+        <select id="f-sort">
+          ${option('recent', t('shelf.sortRecent'), shelfSort)}
+          ${option('brand', t('shelf.sortBrand'), shelfSort)}
+        </select>
+      </div>
       <div class="filter">
         <label for="f-cat">${esc(t('shelf.filterCategory'))}</label>
         <select id="f-cat">
@@ -249,8 +441,6 @@ export async function shelf(root) {
           ${[...activesPresent].map(x => option(x, tagLabel(x), shelfFilters.active)).join('')}
         </select>
       </div>
-      <span class="filter-count">${esc(t('shelf.count', { shown: visible.length, total: products.length }))}
-        · ${esc(t('shelf.onHand', { n: onHand }))}</span>
     </div>
 
     ${shelfNotice ? `<div class="notice">${esc(shelfNotice)}</div>` : ''}
@@ -261,7 +451,7 @@ export async function shelf(root) {
       <button class="link-btn" id="hide-emptied">${esc(t('shelf.hideEmptied'))}</button></p>` : ''}
 
     <div class="shelf" id="shelf-grid"></div>
-    ${visible.length ? '' : `<p class="muted">${esc(t('shelf.noMatch'))}</p>`}`;
+    ${visible.length ? '' : `<p class="muted">${esc(query ? t('shelf.noSearchMatch', { q: query }) : t('shelf.noMatch'))}</p>`}`;
 
   shelfNotice = '';        // said once, on arrival
 
@@ -273,7 +463,7 @@ export async function shelf(root) {
     item.innerHTML = `
       <a class="shelf-link" href="#/product/${esc(p.id)}">
         <div class="shelf-frame">
-          ${blob ? `<img src="${imgUrl(blob)}" alt="${esc(p.name)}">` : `<span class="no-image">${esc(t('shelf.noPhoto'))}</span>`}
+          ${blob ? `<img src="${imgUrl(blob)}" alt="${esc(p.name)}">` : productArt(p)}
           ${p.quantity > 1 ? `<span class="shelf-tally">${esc(String(p.quantity))}</span>` : ''}
         </div>
         <div class="shelf-brand">${esc(p.brand || '—')}</div>
@@ -326,6 +516,29 @@ export async function shelf(root) {
   const hideBtn = root.querySelector('#hide-emptied');
   if (hideBtn) hideBtn.onclick = () => { showEmptied = false; shelf(root); };
 
+  /* On a phone the four controls cost 180px above the first product, which is
+     most of the reason the shelf was unusable standing up. They fold away. */
+  const toggle = root.querySelector('#toggle-filters');
+  const bar = root.querySelector('#filter-bar');
+  if (filtersOpen) bar.classList.add('is-open');
+  toggle.setAttribute('aria-expanded', String(filtersOpen));
+  toggle.onclick = () => {
+    filtersOpen = !filtersOpen;
+    bar.classList.toggle('is-open', filtersOpen);
+    toggle.setAttribute('aria-expanded', String(filtersOpen));
+  };
+
+  const search = root.querySelector('#f-query');
+  search.oninput = () => {
+    shelfFilters.query = search.value;
+    shelf(root).then(() => {
+      // Redrawing replaces the field, so put the cursor back where it was.
+      const again = root.querySelector('#f-query');
+      if (again) { again.focus(); again.setSelectionRange(again.value.length, again.value.length); }
+    });
+  };
+
+  root.querySelector('#f-sort').onchange = e => { shelfSort = e.target.value; shelf(root); };
   root.querySelector('#f-cat').onchange = e => { shelfFilters.category = e.target.value; shelf(root); };
   root.querySelector('#f-status').onchange = e => { shelfFilters.status = e.target.value; shelf(root); };
   root.querySelector('#f-active').onchange = e => { shelfFilters.active = e.target.value; shelf(root); };
@@ -402,7 +615,8 @@ export async function product(root, { id }) {
             return `<div class="ing ${entry ? '' : 'ing-unknown'} ${flagged ? 'ing-flagged' : ''}">
               <div class="ing-index">${i + 1}</div>
               <div>
-                <div class="ing-name">${esc(entry ? entry.n : name)}</div>
+                <button class="ing-name ing-open" data-ing="${esc(name)}"
+                        aria-haspopup="dialog">${esc(entry ? entry.n : name)}</button>
                 ${entry && entry.n.toLowerCase() !== name.toLowerCase()
                   ? `<div class="tag" style="border:none;margin-top:2px">${esc(name)}</div>` : ''}
                 ${entry ? `<div class="ing-tags">${entry.t.map(tag =>
@@ -432,6 +646,8 @@ export async function product(root, { id }) {
         </div>
       </div>
     </div>`;
+
+  wireIngredients(root);
 
   const copyBtn = root.querySelector('#copy-across');
   if (copyBtn) {
@@ -492,10 +708,11 @@ export async function form(root, { id } = {}) {
       <div>
         ${dropzoneMarkup('photo')}
         <div class="btn-row" style="margin-top:16px">
-          <button type="button" class="btn btn-quiet" id="autofill" ${AI_FEATURES && settings.apiKey ? '' : 'hidden'}>${esc(t('form.readLabel'))}</button>
+          <button type="button" class="btn btn-quiet" id="autofill" ${AI_FEATURES ? '' : 'hidden'}>${esc(t('form.readLabel'))}</button>
         </div>
-        <p class="field-hint" id="photo-hint">${esc(AI_FEATURES && settings.apiKey
+        <p class="field-hint" id="photo-hint">${esc(AI_FEATURES
           ? t('form.readLabelHint') : t('form.photoHint'))}</p>
+        <div id="key-note" hidden></div>
         <div id="found" hidden></div>
       </div>
 
@@ -537,7 +754,7 @@ export async function form(root, { id } = {}) {
           <label for="ingredients">${esc(t('product.ingredients'))}</label>
           <textarea id="ingredients" placeholder="${esc(t('form.ingredientsPlaceholder'))}">${esc((p?.ingredients || []).join(', '))}</textarea>
           <div class="btn-row" style="margin-top:12px">
-            <button type="button" class="btn btn-quiet" id="lookup" ${AI_FEATURES && settings.apiKey ? '' : 'hidden'}>${esc(t('form.lookUp'))}</button>
+            <button type="button" class="btn btn-quiet" id="lookup" ${AI_FEATURES ? '' : 'hidden'}>${esc(t('form.lookUp'))}</button>
           </div>
           <div class="field-hint" id="parse-summary"></div>
           <div class="chips" id="parse-chips" style="margin-top:12px"></div>
@@ -675,10 +892,20 @@ export async function form(root, { id } = {}) {
     return found;
   };
 
+  const keyNote = root.querySelector('#key-note');
+  const explainKey = bodyKey => {
+    keyNote.hidden = false;
+    keyNote.innerHTML = keyPrompt(bodyKey);
+    keyNote.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  };
+  const hasKey = () => Boolean(settings.apiKey);
+
   /* Look up on demand, without needing a photograph at all. */
   const lookupBtn = root.querySelector('#lookup');
   if (lookupBtn) {
     lookupBtn.onclick = async () => {
+      if (!hasKey()) { explainKey('key.forLookup'); return; }
+      keyNote.hidden = true;
       const restore = waiting(lookupBtn, t('common.lookingUp'));
       try {
         const done = await lookupInto(hint);
@@ -825,6 +1052,8 @@ export async function form(root, { id } = {}) {
   const autofillBtn = root.querySelector('#autofill');
   if (autofillBtn) {
     autofillBtn.onclick = async () => {
+      if (!hasKey()) { explainKey('key.forLabel'); return; }
+      keyNote.hidden = true;
       // Read from the sharpest copy available. The shelf photo is downscaled
       // to 1600px, which is fine to look at and hopeless for 5pt INCI print.
       const blob = originalFile
@@ -1224,6 +1453,7 @@ export async function routine(root) {
   const products = (await store.getProducts()).sort(byShelfOrder);
   const saved = await store.getRoutine();
   const byId = Object.fromEntries(products.map(p => [p.id, p]));
+  let done = await store.getDone();
 
   if (!products.length) {
     root.innerHTML = `<div class="view-head">${headerArt('routine')}<h1 class="page-title">${esc(t('routine.title'))}</h1></div>
@@ -1244,6 +1474,23 @@ export async function routine(root) {
   let dirty = false;
   let message = '';
   const saveNote = () => (dirty ? t('routine.unsaved') : message);
+
+  /* This page was a builder standing where a companion should be: every row of
+     tonight's routine carried a Remove button in the reading path, and there was
+     nothing to tick off. Reading is now the default and editing is a mode you
+     ask for. Before noon it opens on the morning; after, on the evening. */
+  let editing = false;
+  let period = new Date().getHours() < 12 ? 'am' : 'pm';
+
+  const isToday = () => openDay === todayIndex;
+  const isDone = (per, productId) => (done[per] || []).includes(productId);
+
+  const toggleDone = async (per, productId) => {
+    const list = new Set(done[per] || []);
+    list.has(productId) ? list.delete(productId) : list.add(productId);
+    done = { ...done, [per]: [...list] };
+    await store.setDone(done);
+  };
 
   /* ---------- the week, one day at a time ----------
 
@@ -1355,21 +1602,78 @@ export async function routine(root) {
     const chosen = openDay === day;
     const count = onDay('am', day).length + onDay('pm', day).length;
 
+    const todayDone = day === todayIndex
+      ? (done.am || []).length + (done.pm || []).length : 0;
+
     return `<button class="day-card${chosen ? ' is-on' : ''}${clashes.length ? ' has-clash' : ''}"
               data-openday="${day}" aria-pressed="${chosen}" aria-controls="day-detail">
       <span class="day-card-name">${esc(label)}</span>
       <span class="day-card-foot">
         ${day === todayIndex ? `<span class="day-card-today">${esc(t('common.today'))}</span>` : ''}
-        <span class="day-card-count">${esc(count ? plural(count, 'routine.stepsOne', 'routine.stepsMany') : t('routine.nothingYet'))}</span>
+        <span class="day-card-count">${esc(day === todayIndex && count
+          ? t('routine.doneOf', { done: Math.min(todayDone, count), total: count })
+          : count ? plural(count, 'routine.stepsOne', 'routine.stepsMany') : t('routine.nothingYet'))}</span>
         ${clashes.length ? `<span class="day-card-clash">${esc(t('common.takeCare'))}</span>` : ''}
       </span>
     </button>`;
   };
 
-  /* The chosen day, opened out under the row of cards. */
-  const dayDetail = day => {
+  /* Reading: what to put on, in order, with somewhere to tick it off. */
+  const dayReading = day => {
+    const used = entriesOn(period, day);
+    const notes = conflictsFor(onDay(period, day), period);
+    const today = isToday();
+    const doneCount = used.filter(({ entry }) => isDone(period, entry.productId)).length;
+
+    const rows = used.map(({ entry, step }) => {
+      const p = byId[entry.productId];
+      const ticked = today && isDone(period, entry.productId);
+      return `<li class="do-row${ticked ? ' is-done' : ''}">
+        ${today
+          ? `<button class="do-tick" data-tick="${esc(period)}|${esc(entry.productId)}"
+                     role="checkbox" aria-checked="${ticked}"
+                     aria-label="${esc(p.name)}"><span aria-hidden="true">${ticked ? '✓' : ''}</span></button>`
+          : '<span class="do-bullet" aria-hidden="true"></span>'}
+        <span class="do-step">${esc(stepLabel(step))}</span>
+        <a class="do-name" href="#/product/${esc(p.id)}">${esc(productLabel(p))}</a>
+        ${isEveryDay(entry) ? '' : `<span class="do-when">${esc(describeDays(entry))}</span>`}
+      </li>`;
+    }).join('');
+
+    return `<div class="day-body" id="day-detail">
+      <div class="do-head">
+        <div class="segmented" role="tablist" aria-label="${esc(t('routine.whichHalf'))}">
+          <button role="tab" aria-selected="${period === 'am'}" data-period="am"
+                  class="${period === 'am' ? 'is-on' : ''}">${esc(t('common.morning'))}</button>
+          <button role="tab" aria-selected="${period === 'pm'}" data-period="pm"
+                  class="${period === 'pm' ? 'is-on' : ''}">${esc(t('common.evening'))}</button>
+        </div>
+        <div class="do-head-right">
+          ${today && used.length
+            ? `<span class="do-progress">${esc(t('routine.doneOf', { done: doneCount, total: used.length }))}</span>`
+            : ''}
+          <button class="link-btn" id="edit-day">${esc(t('routine.edit'))}</button>
+        </div>
+      </div>
+
+      ${used.length
+        ? `<ol class="do-list">${rows}</ol>`
+        : `<p class="muted" style="margin:20px 0 0">${esc(t('routine.nothingOnDay'))}</p>`}
+
+      ${notes.map(n => `<div class="notice" style="margin-top:24px">
+          <strong>${esc(severityWord(n.severity))}</strong>
+          ${esc(n.text)}</div>`).join('')}
+    </div>`;
+  };
+
+  /* Editing: the picker and the removals, asked for rather than always present. */
+  const dayEditor = day => {
     const notes = [...conflictsFor(onDay('am', day), 'am'), ...conflictsFor(onDay('pm', day), 'pm')];
     return `<div class="day-body" id="day-detail">
+      <div class="do-head">
+        <span class="week-day">${esc(t('routine.editingDay', { day: dayLabel(day) }))}</span>
+        <button class="link-btn" id="done-editing">${esc(t('routine.doneEditing'))}</button>
+      </div>
       <div class="routine-cols">
         ${dayColumn('am', t('common.morning'), day)}
         ${dayColumn('pm', t('common.evening'), day)}
@@ -1383,6 +1687,8 @@ export async function routine(root) {
       </div>
     </div>`;
   };
+
+  const dayDetail = day => (editing ? dayEditor(day) : dayReading(day));
 
   /* ---------- the whole thing at once, for when a day at a time is too slow ---------- */
 
@@ -1510,9 +1816,29 @@ export async function routine(root) {
         const day = Number(btn.dataset.openday);
         if (day === openDay) return;
         openDay = day;
+        // Editing one day and jumping to another would be a quiet trap.
+        editing = false;
         draw();
       };
     });
+
+    root.querySelectorAll('[data-period]').forEach(btn => {
+      btn.onclick = () => { period = btn.dataset.period; draw(); };
+    });
+
+    root.querySelectorAll('[data-tick]').forEach(btn => {
+      btn.onclick = async () => {
+        const [per, productId] = btn.dataset.tick.split('|');
+        await toggleDone(per, productId);
+        draw();
+      };
+    });
+
+    const editBtn = root.querySelector('#edit-day');
+    if (editBtn) editBtn.onclick = () => { editing = true; draw(); };
+
+    const doneBtn = root.querySelector('#done-editing');
+    if (doneBtn) doneBtn.onclick = () => { editing = false; draw(); };
 
     root.querySelector('#open-complete').onclick = () => {
       openComplete = !openComplete;
@@ -1693,8 +2019,7 @@ export async function discoveries(root) {
       <div class="empty">
         <p>${esc(t('disc.intro'))}</p>
         ${AI_FEATURES
-          ? `<p>${esc(t('disc.needsModel'))}</p>
-             <a class="btn" href="#/settings">${esc(t('disc.connectOne'))}</a>`
+          ? keyPrompt('key.forDiscover')
           : `<p>${esc(t('disc.noModelHere'))}</p>
              <a class="btn" href="#/settings">${esc(t('disc.copyBriefing'))}</a>`}
       </div>`;

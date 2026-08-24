@@ -1,6 +1,6 @@
 # Handoff — Skincare Library
 
-State of the work as of 17 August 2026 (second pass). `README.md` covers how to *use* the app;
+State of the work as of 24 August 2026 (third pass — after a UX audit). `README.md` covers how to *use* the app;
 this covers how the code got here, what is proven, and what will bite you.
 
 ## What it is
@@ -46,12 +46,39 @@ server, one hard reload (Cmd+Shift+R) is needed to break out.
 | `js/briefing.js` | Markdown export for pasting into any assistant — no key needed |
 | `js/chat.js` | Floating chat panel |
 | `js/views.js` | All rendering. Holds the `AI_FEATURES` build switch |
-| `js/app.js` | Hash router |
+| `js/app.js` | Hash router, phone tab bar, More drawer, language menu |
 | `build_share.py` | Flattens everything into one self-contained file |
 | `serve.py` | Dev server with no-store |
 
+## The audience it is for
+
+Written down because a UX audit on 22 August found the app had been built for
+its author and described for someone else. The person it is for: a woman who
+loves exploring skincare, wants to understand what she is buying, and keeps
+forgetting what is already in the cupboard. She is often **on a phone, in a
+shop, one-handed**. Every layout decision should be checked against that, not
+against a desk. Where the two conflict, the phone wins — that is what the
+24 August pass acted on.
+
 ## What is built
 
+- **Search, and recency first** — one field over the shelf matching brand,
+  product name *and* ingredient, so "niacinamide" finds everything containing
+  it. "Do I already own this?" had no direct answer before it. Sort defaults to
+  recently added rather than A–Z by brand: the products she is looking for are
+  usually the ones she just bought. `createdAt` was already stored and unused.
+- **A phone shelf, not a phone-shaped desktop shelf** — below 720px the 4:5
+  photo grid becomes 80px rows (thumbnail, brand, name, stepper), the filters
+  fold behind "Filter & sort", and the Add button goes because the tab bar has
+  one. Measured before and after on a 375×812 screen: first product 498px →
+  255px, product names above the fold 0 → 7, whole shelf 8.7 screens → 1.7.
+- **Phone navigation** — six flat top-nav items wrapped to two rows and cost
+  131px. Below 720px they are replaced by a fixed bar of the four daily
+  destinations (Shelf, Routine, Add, Discover) with My skin and Settings in a
+  More drawer; the masthead drops to one row. `TABS` and `MORE` in app.js.
+- **Reachable controls** — `@media (pointer: coarse)` expands every small
+  control to a 44px hit area with an `::after` overlay rather than by making
+  anything look bigger. All five sampled controls failed before; all pass now.
 - **Shelf, product dossiers, add/edit** with live ingredient parsing and annotation.
   The add form runs brand/name → category/status → quantity → **ingredients** →
   notes — size, price, purchased and opened dates have no fields here any more,
@@ -91,6 +118,15 @@ server, one hard reload (Cmd+Shift+R) is needed to break out.
   read back as 1 — `withQuantity()` in store.js normalises on the way out
   rather than by a migration pass, so old backups still import.
 - **Profiles** — per-person shelf, assessments, routine; switcher in the masthead
+- **Routine reads before it edits.** The default is a companion, not a builder:
+  a Morning/Evening segmented control defaulting to whichever half of the day it
+  is, then the day's steps as an ordered, tickable list. Every row used to carry
+  a Remove button in the reading path with the same weight as the product name.
+  Ticking is only offered for **today** — a routine you did or did not follow on
+  Thursday is not something this app should be keeping — and `getDone()` /
+  `setDone()` in store.js hold one date, discarded when the date rolls over.
+  Editing is behind an Edit affordance, and leaving the day exits it so you are
+  never quietly left in a mode.
 - **Routine** — **the week is the interface.** Seven cards standing across the
   page (`.week-strip`), scrolling sideways below tablet width. One is always
   chosen — today to begin with — and its morning and evening open out directly
@@ -119,6 +155,13 @@ server, one hard reload (Cmd+Shift+R) is needed to break out.
   are judged per day** — a retinoid on Mon/Wed/Fri and an acid on Tue/Thu no
   longer warn, because they never meet. `daysOf()` / `describeDays()` in rules.js
   are the accessors; missing `days` means every day.
+- **The ingredient dictionary has a front door** — every ingredient name is a
+  button (`data-ing`, wired by `wireIngredients()`), opening a sheet with the
+  description, its tags, the concerns it usually helps with, the concerns to be
+  careful of, and **which of your own products contain it**. 229 annotated
+  entries were previously reachable only by owning something and scrolling its
+  page, which for an audience defined by wanting to learn was the best thing in
+  the app with no way in.
 - **Assessment** — rules engine always; with a key, Gemini reads the photograph
   and adds observations / what's working / what to change. **The opt-in tickbox
   is gone** — a photograph you have uploaded is now sent whenever a key is
@@ -139,6 +182,13 @@ server, one hard reload (Cmd+Shift+R) is needed to break out.
   The launcher is a large drawn speech cloud. Its body and tail are two
   overlapping filled shapes, not one path: a single outline leaves a visible nick
   where the tail meets the curve at that size.
+- **AI features are shown, not hidden.** They used to be removed from the DOM
+  without a key, so the most persuasive thing the app does — photograph a shelf,
+  get the products filed — was invisible to anyone who had not already been to
+  Settings. `keyPrompt()` in views.js renders a short explanation of what the
+  control would do, a Connect a model button and "Free, and about two minutes."
+  **The share build is the exception**: with `AI_FEATURES = false` the controls
+  stay hidden, because that copy genuinely cannot do it and should not advertise.
 - **Discoveries** — monthly J/K-beauty picks via Google Search grounding, shown
   as a scroll-snap carousel with Previous/Next **above** the images. Each pick
   gets a silhouette drawn deterministically from its name and kind (`pickArt()`
@@ -202,6 +252,22 @@ the whole round trip, including the render — checked by asserting the result
 panel was still empty while the overlay was up, and only had content once it
 was gone. `missingKeys()` returns empty for both Chinese tables throughout, and
 the flattened share build carries every change with no API hostname in it.
+
+**Verified for the 24 August UX pass**, measured in the running app on a
+375×812 phone and a 1280×800 desktop, all three languages, before and after:
+first product 498px → 255px from the top (61% → 31% of screen); product names
+above the fold 0 → 7 on phone and 0 → 4 on desktop; whole shelf 8.7 → 1.7
+screens; masthead 131px → 51px with the nav no longer wrapping; all five
+sampled touch targets went from failing 44×44 to passing; muted text 4.87:1 →
+7.26:1 and amber 5.70 → 6.91. Search matches brand, product and ingredient and
+holds focus while typing; a no-match says which term failed. Ticking a routine
+step persists to IndexedDB under today's date, updates both the row count and
+the day card, and morning ticks do not leak into evening; Edit swaps the
+picker in and Done swaps it back; changing day leaves edit mode. The ingredient
+sheet opens from any ingredient name with description, tags, concerns and the
+products of hers that contain it. With no key the Add page shows both AI
+buttons and explains them rather than hiding them, while the flattened share
+build still hides them and carries no API hostname.
 
 **Verified for the routine picker:** the day list shows eight products as eight
 options grouped by category, each exactly once, and a product already on that
@@ -393,7 +459,12 @@ artifact remains for anyone who should not have to.
 9. Republishing the artifact only keeps its URL from the conversation that created
    it. From a new session, pass the URL as the Artifact tool's `url` parameter, or
    a second artifact is minted and the shared link quietly stops updating.
-10. **The Assessment page now sends an uploaded skin photograph to the model by
+10. The UX audit that drove the 24 August pass is published as an artifact,
+    **Patch Test**: https://claude.ai/code/artifact/ae2d2d52-97ae-452b-bdd3-287f05b9c805
+    Every finding in it is now addressed except the two noted in it as trades
+    rather than bugs. If you reopen this work, read it first — it carries the
+    measured before-figures that the after-figures above are compared against.
+11. **The Assessment page now sends an uploaded skin photograph to the model by
     default whenever a key is configured — there is no opt-in tickbox any more.**
     This was requested explicitly ("remove ... Let the model look at it"), but it
     reverses the privacy-conscious default this file used to describe. If a future
@@ -402,6 +473,12 @@ artifact remains for anyone who should not have to.
     settings.sendPhoto plumbing in ai.js/store.js is still there, just unused.
 
 ## Working with this person
+
+Agreed to the whole of the 22 August UX critique in one go ("agreed with these
+changes, run them all"), including the parts framed as trades against the
+app's restraint — the darker muted ink, the square shelf frame, the phone list
+replacing the photo grid. Read that as a settled preference for reach over
+purity on this app, not as indifference to the look.
 
 Prefers concise answers and low token spend. Generally privacy-conscious, and
 should never be asked to paste an API key anywhere — but on 17 August explicitly

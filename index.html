@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Skincare Library</title>
 <link rel="stylesheet" href="style.css">
 <link rel="icon" href="data:,">
@@ -36,6 +36,27 @@
   <span id="colophon-note"></span>
   <span id="colophon-count"></span>
 </footer>
+
+<!-- Phone navigation. Four daily destinations and a drawer for the rest; the
+     six flat items above are what forced a two-row wrap on a 375px screen. -->
+<nav class="tabbar" id="tabbar" aria-label="Sections">
+  <a href="#/" data-route="shelf" data-tab="shelf"></a>
+  <a href="#/routine" data-route="routine" data-tab="routine"></a>
+  <a href="#/add" data-route="add" data-tab="add"></a>
+  <a href="#/discoveries" data-route="discoveries" data-tab="discoveries"></a>
+  <button type="button" id="more-btn" aria-haspopup="true" aria-expanded="false"></button>
+</nav>
+
+<!-- The ingredient dictionary's front door: opened from any ingredient name. -->
+<div class="sheet-scrim" id="ing-scrim" hidden></div>
+<aside class="ing-sheet" id="ing-sheet" role="dialog" aria-modal="true" hidden>
+  <div class="ing-sheet-body" id="ing-sheet-body"></div>
+</aside>
+
+<div class="sheet-scrim" id="more-scrim" hidden></div>
+<div class="sheet" id="more-sheet" role="dialog" aria-modal="true" hidden>
+  <div class="sheet-inner" id="more-inner"></div>
+</div>
 
 <script type="module" src="js/app.js?v=2"></script>
 </body>

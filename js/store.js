@@ -189,6 +189,7 @@ export async function deleteProfile(id) {
   await del('meta', routineKey(id));
   await del('meta', 'chat:' + id);
   await del('meta', 'picks:' + id);
+  await del('meta', 'done:' + id);
   await del('profiles', id);
 
   if (await getActiveProfileId() === id) {
@@ -427,6 +428,21 @@ export const setChat = async v => setMeta('chat:' + (await getActiveProfileId())
 
 export const getPicks = async () => getMeta('picks:' + (await getActiveProfileId()), null);
 export const setPicks = async v => setMeta('picks:' + (await getActiveProfileId()), v);
+
+/* What has actually been done today.
+
+   Ticking a step off is only meaningful for the day you are living, so this
+   holds one date and is discarded when the date rolls over — no history, no
+   accumulating record of a routine you did or did not follow. */
+export async function getDone() {
+  const today = new Date().toLocaleDateString('en-CA');   // YYYY-MM-DD, local
+  const rec = await getMeta('done:' + (await getActiveProfileId()), null);
+  return rec && rec.date === today ? rec : { date: today, am: [], pm: [] };
+}
+
+export async function setDone(rec) {
+  return setMeta('done:' + (await getActiveProfileId()), rec);
+}
 
 /* ---------- settings (shared across profiles) ---------- */
 

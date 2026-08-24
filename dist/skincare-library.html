@@ -16,9 +16,12 @@
   --bone-deep:  #EDE8DF;
   --bone-sink:  #E5DFD3;
   --ink:        #1B1A17;
-  --ink-muted:  #6E6A60;
+  /* Was #6E6A60 — 4.87:1, a bare AA pass carrying the entire secondary text
+     system at 13px and below. Darkened to clear 7:1, which the Aesop restraint
+     survives and a bathroom mirror requires. */
+  --ink-muted:  #545046;
   --rule:       #DFD8CB;
-  --amber:      #7A5A2E;
+  --amber:      #6B4E27;
 
   --sans: "Suisse Int'l", "Helvetica Neue", Helvetica, Arial, sans-serif;
 
@@ -308,7 +311,7 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
 
 .field textarea { resize: vertical; min-height: 120px; line-height: 1.7; }
 
-.field-hint { color: var(--ink-muted); font-size: 13px; margin-top: 8px; }
+.field-hint { color: var(--ink-muted); font-size: 14px; margin-top: 8px; }
 
 .field-pair {
   display: grid;
@@ -385,7 +388,7 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
 .shelf {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 56px 32px;
+  gap: 40px 32px;
 }
 
 .shelf-item { display: block; }
@@ -446,7 +449,10 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
 
 .shelf-frame {
   background: var(--bone-deep);
-  aspect-ratio: 4 / 5;
+  /* Was 4/5. A portrait frame gave 73% of each card to the image and pushed
+     every product name below the fold on a laptop; square keeps the grid
+     handsome and lets the names sit where they can be read. */
+  aspect-ratio: 1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1358,6 +1364,517 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
 
 .busy-label { white-space: nowrap; }
 
+/* ============================================================
+   Touch targets
+
+   Every control here was drawn for a mouse: 26px steppers, 18px text links.
+   The visual weight is right for the page and wrong for a thumb, so the hit
+   area is expanded with a pseudo-element rather than by making anything
+   bigger. Nothing looks different; everything is reachable.
+   ============================================================ */
+
+@media (pointer: coarse) {
+  .step-btn,
+  .link-btn,
+  .lang-btn,
+  .carousel-dot,
+  .day,
+  .history-mark {
+    position: relative;
+  }
+
+  .step-btn::after,
+  .link-btn::after,
+  .lang-btn::after,
+  .carousel-dot::after,
+  .day::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
+  }
+
+  /* Nav links sit in a row; padding is safer than an overlay that would
+     swallow its neighbour. */
+  .nav a { padding-block: 13px; }
+
+  .filter select,
+  .inline-select,
+  .found-keep { min-height: 44px; }
+
+  .found-keep { width: 22px; height: 22px; }
+}
+
+/* ============================================================
+   Phone navigation
+
+   The top nav is a desktop device: six flat items plus a language control
+   wrapped to two rows and ate 131px before any content appeared. Below tablet
+   width it is replaced by a fixed bar of the four daily destinations, with the
+   occasional ones in a drawer.
+   ============================================================ */
+
+.tabbar { display: none; }
+.sheet, .sheet-scrim { display: none; }
+
+@media (max-width: 720px) {
+  /* The masthead keeps the wordmark, the profile and the language button —
+     one row instead of three. */
+  .nav a[data-route] { display: none; }
+  .nav { gap: 0; }
+
+  .masthead-inner {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px var(--gutter);
+  }
+
+  .mast-left { align-items: center; gap: 12px; flex: 1; min-width: 0; }
+  .wordmark { font-size: 10px; letter-spacing: 0.18em; }
+
+  .tabbar {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 45;
+    background: var(--bone);
+    border-top: 1px solid var(--rule);
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+
+  .tabbar a,
+  .tabbar button {
+    background: none;
+    border: none;
+    border-radius: 0;
+    cursor: pointer;
+    min-height: 52px;
+    padding: 8px 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    text-align: center;
+    line-height: 1.2;
+    transition: color var(--ease);
+  }
+
+  .tabbar a.is-active { color: var(--ink); box-shadow: inset 0 2px 0 var(--ink); }
+  .tabbar a:focus-visible,
+  .tabbar button:focus-visible { outline: 1px solid var(--amber); outline-offset: -3px; }
+
+  /* Room for the bar, and for the chat cloud to sit above it. */
+  .view { padding-bottom: 96px; }
+  .colophon { padding-bottom: 88px; }
+  .chat-launch { bottom: 68px; }
+  .chat-panel { bottom: 68px; height: 62vh; }
+
+  .sheet-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 46;
+    background: rgba(27, 26, 23, 0.4);
+  }
+
+  .sheet {
+    display: block;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 47;
+    background: var(--bone);
+    border-top: 1px solid var(--rule);
+    padding-bottom: env(safe-area-inset-bottom, 0);
+    animation: sheet-rise 180ms ease;
+  }
+
+  .sheet-inner { padding: 8px 0 12px; }
+
+  .sheet-link {
+    display: block;
+    width: 100%;
+    background: none;
+    border: none;
+    border-bottom: 1px solid var(--rule);
+    border-radius: 0;
+    text-align: left;
+    padding: 17px var(--gutter);
+    font-size: 15px;
+    color: var(--ink);
+    cursor: pointer;
+  }
+
+  .sheet-link:last-child { border-bottom: none; }
+  .sheet-link.is-active { color: var(--amber); }
+}
+
+@keyframes sheet-rise {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet { animation: none; }
+}
+
+/* ============================================================
+   Shelf: search, drawn stand-ins, and a phone list
+   ============================================================ */
+
+.shelf-search { margin-bottom: 20px; }
+
+.shelf-search input {
+  width: 100%;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--rule);
+  border-radius: 0;
+  padding: 12px 0;
+  font-size: 17px;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: border-color var(--ease);
+}
+
+.shelf-search input::placeholder { color: var(--ink-muted); opacity: 1; }
+.shelf-search input:focus { outline: none; border-bottom-color: var(--ink); }
+.shelf-search input::-webkit-search-cancel-button { cursor: pointer; }
+
+/* The drawn stand-in fills the frame exactly as a photograph would. */
+.shelf-art { width: 100%; height: 100%; display: block; }
+
+@media (max-width: 720px) {
+  /* A grid of 4:5 photographs is a desktop luxury: on a phone it put the first
+     product name 145px below the fold and turned eleven products into nearly
+     nine screens. Rows instead — thumbnail, name, count — so the shelf can be
+     scanned standing up, one-handed, in a shop. */
+  .shelf { display: flex; flex-direction: column; gap: 0; }
+
+  .shelf-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 14px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .shelf-item:first-child { border-top: 1px solid var(--rule); }
+
+  /* A two-column card inside the link: thumbnail, then brand over name.
+     `display: contents` would be tidier and drops the link out of the
+     accessibility tree in some browsers, which is not a trade worth making. */
+  .shelf-link {
+    display: grid;
+    grid-template-columns: 56px minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    column-gap: 14px;
+    align-items: center;
+    min-width: 0;
+  }
+
+  .shelf-frame {
+    grid-column: 1;
+    grid-row: 1 / 3;
+    aspect-ratio: 1;
+    margin-bottom: 0;
+  }
+
+  .shelf-brand {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: end;
+    margin-bottom: 2px;
+    font-size: 10px;
+  }
+
+  .shelf-name {
+    grid-column: 2;
+    grid-row: 2;
+    align-self: start;
+    font-size: 15px;
+    line-height: 1.3;
+  }
+
+  /* Category and status are noise at this size — the name is what she scans. */
+  .shelf-meta { display: none; }
+
+  .shelf-tally { min-width: 22px; padding: 2px 5px; font-size: 10px; }
+
+  .stepper { margin-top: 0; gap: 6px; }
+}
+
+/* The explanation shown where an AI control would otherwise have been hidden. */
+.key-prompt {
+  border-left-width: 2px;
+  margin-top: 16px;
+  max-width: 46ch;
+}
+
+.key-prompt strong { display: block; margin-bottom: 4px; }
+
+/* ============================================================
+   Ingredient sheet
+   ============================================================ */
+
+/* An ingredient name is now a control, but it should still read as a name. */
+.ing-open {
+  background: none;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-bottom: 1px solid var(--rule);
+  transition: border-color var(--ease);
+}
+
+.ing-open:hover { border-bottom-color: var(--ink); }
+.ing-open:focus-visible { outline: 1px solid var(--amber); outline-offset: 3px; }
+.ing-flagged .ing-open { color: var(--amber); }
+
+.ing-sheet {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 47;
+  width: 460px;
+  max-width: 100vw;
+  background: var(--bone);
+  border-left: 1px solid var(--rule);
+  overflow-y: auto;
+  animation: sheet-slide 200ms ease;
+}
+
+@keyframes sheet-slide {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+
+.ing-sheet-body { padding: 28px var(--gutter) 48px; }
+
+.ing-sheet-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.ing-sheet-name { font-size: 24px; line-height: 1.2; }
+
+.ing-sheet-alias {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  margin-top: 6px;
+}
+
+.ing-sheet-text { font-size: 15px; line-height: 1.65; margin: 0; }
+
+.ing-sheet-block { margin-top: 32px; }
+
+.ing-sheet-mine { border-top: 1px solid var(--rule); }
+
+.ing-sheet-mine a {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--rule);
+  font-size: 15px;
+  transition: opacity var(--ease);
+}
+
+.ing-sheet-mine a:hover { opacity: 0.6; }
+.ing-sheet-mine .muted { font-size: 12px; white-space: nowrap; }
+
+@media (max-width: 720px) {
+  /* A phone gets it as a bottom sheet, above the tab bar. */
+  .ing-sheet {
+    top: auto;
+    left: 0;
+    width: auto;
+    max-height: 82vh;
+    border-left: none;
+    border-top: 1px solid var(--rule);
+    padding-bottom: env(safe-area-inset-bottom, 0);
+    animation: sheet-rise 180ms ease;
+  }
+  .ing-sheet-body { padding: 22px var(--gutter) 36px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ing-sheet { animation: none; }
+}
+
+/* The filter row folds away on a phone; on a desktop it is simply always open. */
+.shelf-tools {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 20px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--rule);
+  margin-bottom: 0;
+}
+
+.shelf-tools .filter-count { margin-left: 0; }
+#toggle-filters { display: none; }
+
+@media (max-width: 720px) {
+  #toggle-filters { display: inline-block; }
+  .filter-bar { display: none; border-top: none; margin-bottom: 0; }
+  .filter-bar.is-open { display: flex; margin-bottom: 24px; }
+  .hide-on-phone { display: none; }
+  .view-head { margin-bottom: 24px; }
+}
+
+/* ============================================================
+   Routine: doing it, rather than building it
+
+   The reading view is the default. Editing controls are absent until asked
+   for, so tonight's routine reads as a list to follow rather than a form.
+   ============================================================ */
+
+.do-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.do-head-right { display: flex; align-items: center; gap: 18px; }
+
+.do-progress {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Morning / evening, defaulting to whichever half of the day it is. */
+.segmented { display: inline-flex; border: 1px solid var(--rule); }
+
+.segmented button {
+  background: none;
+  border: none;
+  border-radius: 0;
+  padding: 10px 18px;
+  min-height: 44px;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  cursor: pointer;
+  transition: background var(--ease), color var(--ease);
+}
+
+.segmented button + button { border-left: 1px solid var(--rule); }
+.segmented button.is-on { background: var(--ink); color: var(--bone); }
+.segmented button:focus-visible { outline: 1px solid var(--amber); outline-offset: -3px; }
+
+.do-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--rule);
+}
+
+.do-row {
+  display: grid;
+  grid-template-columns: 28px 104px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.do-tick {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid var(--rule);
+  background: none;
+  border-radius: 0;
+  cursor: pointer;
+  color: var(--bone);
+  font-size: 14px;
+  line-height: 1;
+  transition: background var(--ease), border-color var(--ease);
+}
+
+.do-tick:hover { border-color: var(--ink); }
+.do-tick:focus-visible { outline: 1px solid var(--amber); outline-offset: 2px; }
+.is-done .do-tick { background: var(--ink); border-color: var(--ink); }
+
+.do-bullet {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--rule);
+  justify-self: center;
+}
+
+.do-step {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.do-name { font-size: 16px; line-height: 1.4; }
+.do-name:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+.is-done .do-name { color: var(--ink-muted); text-decoration: line-through; }
+
+.do-when {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  /* Step label above the name, so a long product name gets the full width
+     instead of wrapping to four lines in a squeezed middle column. */
+  .do-row {
+    grid-template-columns: 28px minmax(0, 1fr);
+    row-gap: 2px;
+    padding: 12px 0;
+  }
+  .do-tick, .do-bullet { grid-row: 1 / 3; }
+  .do-step { grid-column: 2; }
+  .do-name { grid-column: 2; }
+  .do-when { grid-column: 2; }
+  .do-head { margin-bottom: 14px; }
+  .segmented { flex: 1; }
+  .segmented button { flex: 1; }
+}
+
 </style>
 </head>
 <body>
@@ -1389,6 +1906,27 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
   <span id="colophon-note"></span>
   <span id="colophon-count"></span>
 </footer>
+
+<!-- Phone navigation. Four daily destinations and a drawer for the rest; the
+     six flat items above are what forced a two-row wrap on a 375px screen. -->
+<nav class="tabbar" id="tabbar" aria-label="Sections">
+  <a href="#/" data-route="shelf" data-tab="shelf"></a>
+  <a href="#/routine" data-route="routine" data-tab="routine"></a>
+  <a href="#/add" data-route="add" data-tab="add"></a>
+  <a href="#/discoveries" data-route="discoveries" data-tab="discoveries"></a>
+  <button type="button" id="more-btn" aria-haspopup="true" aria-expanded="false"></button>
+</nav>
+
+<!-- The ingredient dictionary's front door: opened from any ingredient name. -->
+<div class="sheet-scrim" id="ing-scrim" hidden></div>
+<aside class="ing-sheet" id="ing-sheet" role="dialog" aria-modal="true" hidden>
+  <div class="ing-sheet-body" id="ing-sheet-body"></div>
+</aside>
+
+<div class="sheet-scrim" id="more-scrim" hidden></div>
+<div class="sheet" id="more-sheet" role="dialog" aria-modal="true" hidden>
+  <div class="sheet-inner" id="more-inner"></div>
+</div>
 
 <script>
 (() => {
@@ -1987,7 +2525,9 @@ const en = {
   'app.wordmark': 'Skincare Library',
   'nav.shelf': 'Shelf',
   'nav.add': 'Add',
-  'nav.assess': 'Assessment',
+  'nav.assess': 'My skin',
+  'nav.discoverShort': 'Discover',
+  'nav.more': 'More',
   'nav.routine': 'Routine',
   'nav.discoveries': 'Discoveries',
   'nav.settings': 'Settings',
@@ -2032,6 +2572,13 @@ const en = {
   'shelf.addFirst': 'Add the first product',
   'shelf.emptyNamed': '{name}’s shelf is presently empty. Photograph a product, record what is in it, and it will be kept here.',
   'shelf.empty': 'The shelf is presently empty. Photograph a product, record what is in it, and it will be kept here.',
+  'shelf.searchPlaceholder': 'Search your shelf — brand, product or ingredient',
+  'shelf.searchLabel': 'Search your shelf',
+  'shelf.noSearchMatch': 'Nothing on your shelf matches “{q}”.',
+  'shelf.filterAndSort': 'Filter & sort',
+  'shelf.sortBy': 'Sort',
+  'shelf.sortRecent': 'Recently added',
+  'shelf.sortBrand': 'Brand A–Z',
   'shelf.filterCategory': 'Category',
   'shelf.filterStatus': 'Status',
   'shelf.filterContains': 'Contains',
@@ -2114,7 +2661,7 @@ const en = {
   'form.foundFromMemory': 'Found {n} ingredients, but <strong>web search was unavailable</strong>, so these came from the model’s memory rather than a source. Formulations change — check them against your pack carefully before trusting them. ',
 
   /* assessment */
-  'assess.title': 'Assessment',
+  'assess.title': 'My skin',
   'assess.photoPrompt': 'Upload a photo of your skin (keep a similar angle each time for better comparison).',
   'assess.submit': 'Analyze my skin',
   'assess.analysing': 'Analysing your skin',
@@ -2122,7 +2669,7 @@ const en = {
   'assess.previous': 'Previous readings — {n}',
   'assess.nothingMarked': 'Nothing marked',
   'assess.gone': 'That assessment is no longer kept.',
-  'assess.back': '← Assessment',
+  'assess.back': '← My skin',
   'assess.removeRecord': 'Remove this record',
   'assess.confirmRemove': 'Remove this assessment and its photograph?',
   'assess.adopt': 'Adopt this as my routine',
@@ -2154,6 +2701,11 @@ const en = {
   'routine.addProduct': '＋ add a product',
   'routine.addAnother': '＋ add another',
   'routine.thisDayOnly': 'This day only',
+  'routine.edit': 'Edit',
+  'routine.doneEditing': 'Done',
+  'routine.editingDay': 'Editing {day}',
+  'routine.whichHalf': 'Morning or evening',
+  'routine.doneOf': '{done} of {total} done',
   'routine.save': 'Save routine',
   'routine.unsaved': 'Unsaved changes.',
   'routine.complete': 'Complete routine',
@@ -2242,6 +2794,21 @@ const en = {
   'set.eraseAll': 'Erase everything',
   'set.confirmErase': 'Erase the entire library? Export a backup first if you want to keep it.',
   'set.confirmErase2': 'This is permanent. Erase everything?',
+
+  /* ingredient sheet */
+  'ing.helpsWith': 'Usually helps with',
+  'ing.wearyWith': 'Go carefully if you have',
+  'ing.onYourShelf': 'On your shelf',
+  'ing.notOnShelf': 'Nothing you own contains this.',
+
+  /* connecting a model */
+  'key.needed': 'This needs a model connected.',
+  'key.connect': 'Connect a model',
+  'key.free': 'Free, and about two minutes.',
+  'key.forLabel': 'Photograph a product — or a whole shelf of them — and it fills in the brand, the name and the ingredients for you, one entry per product.',
+  'key.forLookup': 'It searches for this product’s published ingredient list so you do not have to type it out.',
+  'key.forDiscover': 'It looks for Japanese and Korean products that suit your latest reading and fill a gap on your shelf.',
+  'key.forChat': 'It answers questions about your own shelf — whether two things clash, what an ingredient is for.',
 
   /* chat */
   'chat.ask': 'Ask',
@@ -2405,7 +2972,9 @@ const zhHant = {
   'app.wordmark': '護膚品圖書館',
   'nav.shelf': '產品架',
   'nav.add': '新增',
-  'nav.assess': '膚況評估',
+  'nav.assess': '我的膚況',
+  'nav.discoverShort': '探索',
+  'nav.more': '更多',
   'nav.routine': '保養流程',
   'nav.discoveries': '探索',
   'nav.settings': '設定',
@@ -2448,6 +3017,13 @@ const zhHant = {
   'shelf.addFirst': '新增第一件產品',
   'shelf.emptyNamed': '{name} 的產品架目前是空的。拍下一件產品、記下它的成分，就會保存在這裡。',
   'shelf.empty': '產品架目前是空的。拍下一件產品、記下它的成分，就會保存在這裡。',
+  'shelf.searchPlaceholder': '搜尋你的產品架 — 品牌、產品或成分',
+  'shelf.searchLabel': '搜尋你的產品架',
+  'shelf.noSearchMatch': '產品架上沒有符合「{q}」的東西。',
+  'shelf.filterAndSort': '篩選與排序',
+  'shelf.sortBy': '排序',
+  'shelf.sortRecent': '最近新增',
+  'shelf.sortBrand': '品牌 A–Z',
   'shelf.filterCategory': '類別',
   'shelf.filterStatus': '狀態',
   'shelf.filterContains': '含有',
@@ -2527,7 +3103,7 @@ const zhHant = {
   'form.foundOnline': '在網路上找到 {n} 項成分 — <strong>並非讀自你的包裝</strong>，請自行核對。',
   'form.foundFromMemory': '找到 {n} 項成分，但<strong>當時無法使用網路搜尋</strong>，這些來自模型的記憶而非實際來源。配方會改版 — 請仔細對照包裝後再採信。',
 
-  'assess.title': '膚況評估',
+  'assess.title': '我的膚況',
   'assess.photoPrompt': '上傳一張你皮膚的照片（每次拍攝角度盡量一致，方便比較）。',
   'assess.submit': '分析我的膚況',
   'assess.analysing': '正在分析你的膚況',
@@ -2535,7 +3111,7 @@ const zhHant = {
   'assess.previous': '過往判讀 — 共 {n} 次',
   'assess.nothingMarked': '沒有特別標記',
   'assess.gone': '這筆判讀已經不在了。',
-  'assess.back': '← 膚況評估',
+  'assess.back': '← 我的膚況',
   'assess.removeRecord': '刪除這筆記錄',
   'assess.confirmRemove': '要刪除這筆判讀和它的照片嗎？',
   'assess.adopt': '採用這套流程',
@@ -2566,6 +3142,11 @@ const zhHant = {
   'routine.addProduct': '＋ 加入產品',
   'routine.addAnother': '＋ 再加一件',
   'routine.thisDayOnly': '只有這天',
+  'routine.edit': '編輯',
+  'routine.doneEditing': '完成',
+  'routine.editingDay': '正在編輯星期{day}',
+  'routine.whichHalf': '早晨或晚上',
+  'routine.doneOf': '已完成 {done} / {total}',
   'routine.save': '儲存流程',
   'routine.unsaved': '有尚未儲存的變更。',
   'routine.complete': '完整流程',
@@ -2652,6 +3233,19 @@ const zhHant = {
   'set.eraseAll': '清除全部資料',
   'set.confirmErase': '要清除整個圖書館嗎？想保留的話請先匯出備份。',
   'set.confirmErase2': '此動作無法復原。確定要全部清除嗎？',
+
+  'ing.helpsWith': '通常有助於',
+  'ing.wearyWith': '有以下狀況請留意',
+  'ing.onYourShelf': '你架上有的',
+  'ing.notOnShelf': '你目前沒有含這個成分的產品。',
+
+  'key.needed': '這需要連接模型。',
+  'key.connect': '連接模型',
+  'key.free': '免費，大約兩分鐘。',
+  'key.forLabel': '拍下一件產品 — 或整個架子 — 它會替你填好品牌、名稱與成分，每件產品各自一筆。',
+  'key.forLookup': '它會搜尋這件產品公布的成分表，你就不必自己打字。',
+  'key.forDiscover': '它會尋找適合你最近膚況、又能補上產品架空缺的日韓保養品。',
+  'key.forChat': '它會回答關於你自己產品架的問題 — 兩件產品會不會衝突、某個成分是做什麼的。',
 
   'chat.ask': '提問',
   'chat.launcher': '詢問你的保養問題',
@@ -2805,7 +3399,9 @@ const zhHans = {
   'app.wordmark': '护肤品图书馆',
   'nav.shelf': '产品架',
   'nav.add': '新增',
-  'nav.assess': '肤况评估',
+  'nav.assess': '我的肤况',
+  'nav.discoverShort': '探索',
+  'nav.more': '更多',
   'nav.routine': '护肤流程',
   'nav.discoveries': '探索',
   'nav.settings': '设置',
@@ -2848,6 +3444,13 @@ const zhHans = {
   'shelf.addFirst': '新增第一件产品',
   'shelf.emptyNamed': '{name} 的产品架目前是空的。拍下一件产品、记下它的成分，就会保存在这里。',
   'shelf.empty': '产品架目前是空的。拍下一件产品、记下它的成分，就会保存在这里。',
+  'shelf.searchPlaceholder': '搜索你的产品架 — 品牌、产品或成分',
+  'shelf.searchLabel': '搜索你的产品架',
+  'shelf.noSearchMatch': '产品架上没有符合「{q}」的东西。',
+  'shelf.filterAndSort': '筛选与排序',
+  'shelf.sortBy': '排序',
+  'shelf.sortRecent': '最近新增',
+  'shelf.sortBrand': '品牌 A–Z',
   'shelf.filterCategory': '类别',
   'shelf.filterStatus': '状态',
   'shelf.filterContains': '含有',
@@ -2927,7 +3530,7 @@ const zhHans = {
   'form.foundOnline': '在网上找到 {n} 项成分 — <strong>并非读自你的包装</strong>，请自行核对。',
   'form.foundFromMemory': '找到 {n} 项成分，但<strong>当时无法使用网络搜索</strong>，这些来自模型的记忆而非实际来源。配方会改版 — 请仔细对照包装后再采信。',
 
-  'assess.title': '肤况评估',
+  'assess.title': '我的肤况',
   'assess.photoPrompt': '上传一张你皮肤的照片（每次拍摄角度尽量一致，方便比较）。',
   'assess.submit': '分析我的肤况',
   'assess.analysing': '正在分析你的肤况',
@@ -2935,7 +3538,7 @@ const zhHans = {
   'assess.previous': '过往判读 — 共 {n} 次',
   'assess.nothingMarked': '没有特别标记',
   'assess.gone': '这条判读已经不在了。',
-  'assess.back': '← 肤况评估',
+  'assess.back': '← 我的肤况',
   'assess.removeRecord': '删除这条记录',
   'assess.confirmRemove': '要删除这条判读和它的照片吗？',
   'assess.adopt': '采用这套流程',
@@ -2966,6 +3569,11 @@ const zhHans = {
   'routine.addProduct': '＋ 加入产品',
   'routine.addAnother': '＋ 再加一件',
   'routine.thisDayOnly': '只有这天',
+  'routine.edit': '编辑',
+  'routine.doneEditing': '完成',
+  'routine.editingDay': '正在编辑星期{day}',
+  'routine.whichHalf': '早晨或晚上',
+  'routine.doneOf': '已完成 {done} / {total}',
   'routine.save': '保存流程',
   'routine.unsaved': '有尚未保存的修改。',
   'routine.complete': '完整流程',
@@ -3052,6 +3660,19 @@ const zhHans = {
   'set.eraseAll': '清除全部数据',
   'set.confirmErase': '要清除整个图书馆吗？想保留的话请先导出备份。',
   'set.confirmErase2': '此操作无法撤销。确定要全部清除吗？',
+
+  'ing.helpsWith': '通常有助于',
+  'ing.wearyWith': '有以下状况请留意',
+  'ing.onYourShelf': '你架上有的',
+  'ing.notOnShelf': '你目前没有含这个成分的产品。',
+
+  'key.needed': '这需要连接模型。',
+  'key.connect': '连接模型',
+  'key.free': '免费，大约两分钟。',
+  'key.forLabel': '拍下一件产品 — 或整个架子 — 它会替你填好品牌、名称与成分，每件产品各自一条。',
+  'key.forLookup': '它会搜索这件产品公布的成分表，你就不必自己打字。',
+  'key.forDiscover': '它会寻找适合你最近肤况、又能补上产品架空缺的日韩护肤品。',
+  'key.forChat': '它会回答关于你自己产品架的问题 — 两件产品会不会冲突、某个成分是做什么的。',
 
   'chat.ask': '提问',
   'chat.launcher': '询问你的护肤问题',
@@ -4051,6 +4672,7 @@ async function deleteProfile(id) {
   await del('meta', routineKey(id));
   await del('meta', 'chat:' + id);
   await del('meta', 'picks:' + id);
+  await del('meta', 'done:' + id);
   await del('profiles', id);
 
   if (await getActiveProfileId() === id) {
@@ -4290,6 +4912,21 @@ const setChat = async v => setMeta('chat:' + (await getActiveProfileId()), v);
 const getPicks = async () => getMeta('picks:' + (await getActiveProfileId()), null);
 const setPicks = async v => setMeta('picks:' + (await getActiveProfileId()), v);
 
+/* What has actually been done today.
+
+   Ticking a step off is only meaningful for the day you are living, so this
+   holds one date and is discarded when the date rolls over — no history, no
+   accumulating record of a routine you did or did not follow. */
+async function getDone() {
+  const today = new Date().toLocaleDateString('en-CA');   // YYYY-MM-DD, local
+  const rec = await getMeta('done:' + (await getActiveProfileId()), null);
+  return rec && rec.date === today ? rec : { date: today, am: [], pm: [] };
+}
+
+async function setDone(rec) {
+  return setMeta('done:' + (await getActiveProfileId()), rec);
+}
+
 /* ---------- settings (shared across profiles) ---------- */
 
 const getSettings = () => getMeta('settings', { apiKey: '' });
@@ -4417,7 +5054,7 @@ async function wipe() {
 }
 
 
-const store = { uid, get, getAll, put, del, clear, getProfiles, getActiveProfileId, setActiveProfileId, saveProfile, getActiveProfile, createProfile, renameProfile, deleteProfile, ensureProfile, profileTallies, getProducts, findProductLike, setQuantity, getProduct, saveProduct, deleteProduct, copyProductToProfile, cropImage, putImage, getImage, resizeImage, getRoutine, setRoutine, getChat, setChat, getPicks, setPicks, getSettings, setSettings, getLangPref, setLangPref, getAssessments, saveAssessment, deleteAssessment, exportAll, importAll, wipe };
+const store = { uid, get, getAll, put, del, clear, getProfiles, getActiveProfileId, setActiveProfileId, saveProfile, getActiveProfile, createProfile, renameProfile, deleteProfile, ensureProfile, profileTallies, getProducts, findProductLike, setQuantity, getProduct, saveProduct, deleteProduct, copyProductToProfile, cropImage, putImage, getImage, resizeImage, getRoutine, setRoutine, getChat, setChat, getPicks, setPicks, getDone, setDone, getSettings, setSettings, getLangPref, setLangPref, getAssessments, saveAssessment, deleteAssessment, exportAll, importAll, wipe };
 
 /* ===== offline stubs (share build) ===== */
 /* The shared copy talks to nothing. These stand in for the modules that would,
@@ -4962,6 +5599,23 @@ function headerArt(name) {
   return `<svg class="header-art" viewBox="0 0 88 52" aria-hidden="true" focusable="false">${marks}</svg>`;
 }
 
+/* What to say when a control needs a model and there is none connected.
+
+   These buttons used to be `hidden`, which meant the most persuasive thing the
+   app does — photograph a shelf, get the products filed — was invisible to
+   anyone who had not already been to Settings. Showing the control and
+   explaining the gap is the difference between a locked door and a blank wall. */
+function keyPrompt(bodyKey) {
+  return `<div class="notice key-prompt">
+    <strong>${esc(t('key.needed'))}</strong>
+    ${esc(t(bodyKey))}
+    <div class="btn-row" style="margin-top:12px">
+      <a class="btn btn-quiet" href="#/settings">${esc(t('key.connect'))}</a>
+      <span class="field-hint" style="margin:0">${esc(t('key.free'))}</span>
+    </div>
+  </div>`;
+}
+
 /* How a layering note is introduced, by how much it matters. */
 const severityWord = sev =>
   (sev === 'high' ? t('common.takeCare') : sev === 'medium' ? t('common.consider') : t('common.note'));
@@ -5022,11 +5676,151 @@ const dropzoneMarkup = (id, caption) => `
     <input type="file" accept="image/*">
   </div>`;
 
+/* A drawn stand-in for a product with no photograph.
+
+   Reuses the idea behind `pickArt()` for discoveries: a silhouette derived from
+   the product's own name, so it is stable, and shaped by its category. A grid
+   of "NO PHOTOGRAPH" placeholders gives the eye nothing to recognise, which is
+   the opposite of what a shelf is for. */
+const SHELF_SHAPES = {
+  dropper: ['Serum', 'Essence', 'Face oil', 'Treatment'],
+  jar: ['Moisturiser', 'Eye cream', 'Mask', 'Lip care', 'Body'],
+  tube: ['Cleanser', 'Oil cleanser', 'Exfoliant', 'Spot treatment'],
+  bottle: ['Toner', 'Sunscreen', 'Mist', 'Other']
+};
+
+function productArt(product) {
+  const seed = [...`${product.brand || ''}${product.name || ''}`]
+    .reduce((n, c) => (n * 31 + c.charCodeAt(0)) >>> 0, 7) || 1;
+
+  const shape = Object.keys(SHELF_SHAPES)
+    .find(k => SHELF_SHAPES[k].includes(product.category)) || 'bottle';
+
+  const tints = ['#E3E0D6', '#DCE2E4', '#E6DED3', '#DDE3DC', '#E4DCE0', '#DFE0E6'];
+  const tint = tints[seed % tints.length];
+  const band = 26 + (seed >> 3) % 16;
+  const body = {
+    dropper: 'M30 34h20v40a6 6 0 0 1-6 6h-8a6 6 0 0 1-6-6z',
+    jar:     'M24 44h32v30a6 6 0 0 1-6 6H30a6 6 0 0 1-6-6z',
+    tube:    'M31 30h18l3 46a5 5 0 0 1-5 5H33a5 5 0 0 1-5-5z',
+    bottle:  'M28 38h24v36a6 6 0 0 1-6 6H34a6 6 0 0 1-6-6z'
+  }[shape];
+  const cap = {
+    dropper: '<rect x="35" y="14" width="10" height="20" rx="1"/>',
+    jar:     '<rect x="27" y="34" width="26" height="10" rx="1"/>',
+    tube:    '<rect x="34" y="20" width="12" height="10" rx="1"/>',
+    bottle:  '<rect x="34" y="22" width="12" height="16" rx="1"/><path d="M31 22h18"/>'
+  }[shape];
+
+  return `<svg class="shelf-art" viewBox="0 0 80 92" preserveAspectRatio="xMidYMid slice"
+               role="img" aria-label="${esc(t('shelf.noPhoto'))}">
+    <rect x="0" y="0" width="80" height="92" fill="${tint}"/>
+    <g fill="none" stroke="#1B1A17" stroke-width="1.1" stroke-linejoin="round">
+      <path d="${body}"/>
+      ${cap}
+      <path d="M28 ${band}h24" opacity="0.3"/>
+      <path d="M28 ${band + 6}h15" opacity="0.3"/>
+    </g>
+  </svg>`;
+}
+
+/* ============================================================
+   Ingredient sheet
+
+   229 annotated entries were reachable only by owning a product and scrolling
+   its page — no route lists them, and for an audience defined by wanting to
+   understand what they buy, that is the best thing in the app with no front
+   door. Any ingredient name, anywhere, now opens this: what it is, what it is
+   for, which of your products contain it, and what it does not sit well with.
+   ============================================================ */
+
+let sheetReturnFocus = null;
+
+function closeIngredient() {
+  const sheet = document.getElementById('ing-sheet');
+  if (!sheet || sheet.hidden) return;
+  sheet.hidden = true;
+  document.getElementById('ing-scrim').hidden = true;
+  if (sheetReturnFocus) { sheetReturnFocus.focus(); sheetReturnFocus = null; }
+}
+
+async function openIngredient(rawName, opener) {
+  const sheet = document.getElementById('ing-sheet');
+  if (!sheet) return;
+  sheetReturnFocus = opener || null;
+
+  const entry = lookup(rawName);
+  const products = await store.getProducts();
+
+  // Everything of hers that contains it, matched the same way the parser does.
+  const mine = products.filter(p =>
+    (p.ingredients || []).some(i => (lookup(i)?.k || i.toLowerCase()) === (entry?.k || rawName.toLowerCase())));
+
+  const tags = entry ? entry.t : [];
+  const helps = CONCERNS.filter(c => c.helps.some(h => tags.includes(h)));
+  const wary = CONCERNS.filter(c => c.avoids.some(a => tags.includes(a)));
+
+  document.getElementById('ing-sheet-body').innerHTML = `
+    <div class="ing-sheet-head">
+      <div>
+        <div class="ing-sheet-name">${esc(entry ? entry.n : rawName)}</div>
+        ${entry && entry.n.toLowerCase() !== rawName.toLowerCase()
+          ? `<div class="ing-sheet-alias">${esc(rawName)}</div>` : ''}
+      </div>
+      <button class="link-btn" id="ing-close">${esc(t('common.close'))}</button>
+    </div>
+
+    ${tags.length ? `<div class="chips" style="margin-bottom:20px">${tags.map(tag =>
+      `<span class="chip ${FLAG_TAGS.includes(tag) ? 'chip-flag' : 'chip-active'}">${esc(tagLabel(tag))}</span>`).join('')}</div>` : ''}
+
+    <p class="ing-sheet-text">${esc(entry ? ingredientText(entry) : t('product.notInReference'))}</p>
+
+    ${helps.length ? `<div class="ing-sheet-block">
+      <h3 class="section-title">${esc(t('ing.helpsWith'))}</h3>
+      <div class="chips">${helps.map(c =>
+        `<span class="chip">${esc(concernLabel(c))}</span>`).join('')}</div>
+    </div>` : ''}
+
+    ${wary.length ? `<div class="ing-sheet-block">
+      <h3 class="section-title">${esc(t('ing.wearyWith'))}</h3>
+      <div class="chips">${wary.map(c =>
+        `<span class="chip chip-flag">${esc(concernLabel(c))}</span>`).join('')}</div>
+    </div>` : ''}
+
+    <div class="ing-sheet-block">
+      <h3 class="section-title">${esc(t('ing.onYourShelf'))}</h3>
+      ${mine.length ? `<div class="ing-sheet-mine">${mine.map(p =>
+        `<a href="#/product/${esc(p.id)}" data-goto>
+           <span>${esc(p.brand ? p.brand + ' · ' : '')}${esc(p.name)}</span>
+           <span class="muted">${esc(p.category ? categoryLabel(p.category) : '')}</span>
+         </a>`).join('')}</div>`
+        : `<p class="muted" style="margin:0">${esc(t('ing.notOnShelf'))}</p>`}
+    </div>`;
+
+  document.getElementById('ing-scrim').hidden = false;
+  sheet.hidden = false;
+  document.getElementById('ing-close').onclick = closeIngredient;
+  document.getElementById('ing-close').focus();
+  document.querySelectorAll('#ing-sheet [data-goto]').forEach(a => { a.onclick = closeIngredient; });
+}
+
+/* Anything with data-ing on it opens the sheet. Called after each render. */
+function wireIngredients(root) {
+  root.querySelectorAll('[data-ing]').forEach(el => {
+    el.onclick = ev => { ev.preventDefault(); openIngredient(el.dataset.ing, el); };
+  });
+}
+
 /* ============================================================
    Shelf
    ============================================================ */
 
-const shelfFilters = { category: '', status: '', active: '' };
+const shelfFilters = { category: '', status: '', active: '', query: '' };
+/* Recency first: the products she is most likely to be looking for are the
+   ones she just bought, and A–Z by brand buried them alphabetically. */
+let shelfSort = 'recent';
+/* Kept across redraws so changing a filter does not fold the panel away. */
+let filtersOpen = false;
 /* Emptied products stay in the library but drop out of the default view. One
    click brings them back, and the bar says how many are being kept back — a
    product that silently vanishes when you count the last one out is alarming. */
@@ -5054,10 +5848,21 @@ async function shelf(root) {
     if (ACTIVE_TAGS.includes(tag)) activesPresent.add(tag);
   }));
 
+  /* "Do I already own this?" is the question this shelf exists to answer, and
+     until now the only way to ask it was to scroll. Matches brand, name and
+     ingredient, so searching "niacinamide" finds everything containing it. */
+  const query = shelfFilters.query.trim().toLowerCase();
+  const hits = p => {
+    if (!query) return true;
+    if (`${p.brand || ''} ${p.name || ''}`.toLowerCase().includes(query)) return true;
+    return (p.ingredients || []).some(i => i.toLowerCase().includes(query));
+  };
+
   const matches = products.filter(p =>
     (!shelfFilters.category || p.category === shelfFilters.category) &&
     (!shelfFilters.status || p.status === shelfFilters.status) &&
-    (!shelfFilters.active || tagsFor(p.ingredients || []).has(shelfFilters.active))
+    (!shelfFilters.active || tagsFor(p.ingredients || []).has(shelfFilters.active)) &&
+    hits(p)
   );
   // Asking for Finished explicitly means you want to see them.
   const keepEmptied = showEmptied || shelfFilters.status === 'finished';
@@ -5066,16 +5871,40 @@ async function shelf(root) {
 
   const onHand = products.reduce((n, p) => n + p.quantity, 0);
 
+  if (shelfSort === 'recent') {
+    visible.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '') || byShelfOrder(a, b));
+  }
+
   const categoriesPresent = [...new Set(products.map(p => p.category).filter(Boolean))].sort();
 
   root.innerHTML = `
     <div class="view-head">
       ${headerArt('shelf')}
       <h1 class="page-title">${esc(t('shelf.title'))}</h1>
-      <div class="btn-row"><a class="btn" href="#/add">${esc(t('shelf.add'))}</a></div>
+      <div class="btn-row hide-on-phone"><a class="btn" href="#/add">${esc(t('shelf.add'))}</a></div>
     </div>
 
-    <div class="filter-bar">
+    <div class="shelf-search">
+      <input type="search" id="f-query" value="${esc(shelfFilters.query)}"
+             placeholder="${esc(t('shelf.searchPlaceholder'))}"
+             aria-label="${esc(t('shelf.searchLabel'))}" autocomplete="off">
+    </div>
+
+    <div class="shelf-tools">
+      <button type="button" class="link-btn" id="toggle-filters"
+              aria-expanded="false" aria-controls="filter-bar">${esc(t('shelf.filterAndSort'))}</button>
+      <span class="filter-count">${esc(t('shelf.count', { shown: visible.length, total: products.length }))}
+        · ${esc(t('shelf.onHand', { n: onHand }))}</span>
+    </div>
+
+    <div class="filter-bar" id="filter-bar">
+      <div class="filter">
+        <label for="f-sort">${esc(t('shelf.sortBy'))}</label>
+        <select id="f-sort">
+          ${option('recent', t('shelf.sortRecent'), shelfSort)}
+          ${option('brand', t('shelf.sortBrand'), shelfSort)}
+        </select>
+      </div>
       <div class="filter">
         <label for="f-cat">${esc(t('shelf.filterCategory'))}</label>
         <select id="f-cat">
@@ -5097,8 +5926,6 @@ async function shelf(root) {
           ${[...activesPresent].map(x => option(x, tagLabel(x), shelfFilters.active)).join('')}
         </select>
       </div>
-      <span class="filter-count">${esc(t('shelf.count', { shown: visible.length, total: products.length }))}
-        · ${esc(t('shelf.onHand', { n: onHand }))}</span>
     </div>
 
     ${shelfNotice ? `<div class="notice">${esc(shelfNotice)}</div>` : ''}
@@ -5109,7 +5936,7 @@ async function shelf(root) {
       <button class="link-btn" id="hide-emptied">${esc(t('shelf.hideEmptied'))}</button></p>` : ''}
 
     <div class="shelf" id="shelf-grid"></div>
-    ${visible.length ? '' : `<p class="muted">${esc(t('shelf.noMatch'))}</p>`}`;
+    ${visible.length ? '' : `<p class="muted">${esc(query ? t('shelf.noSearchMatch', { q: query }) : t('shelf.noMatch'))}</p>`}`;
 
   shelfNotice = '';        // said once, on arrival
 
@@ -5121,7 +5948,7 @@ async function shelf(root) {
     item.innerHTML = `
       <a class="shelf-link" href="#/product/${esc(p.id)}">
         <div class="shelf-frame">
-          ${blob ? `<img src="${imgUrl(blob)}" alt="${esc(p.name)}">` : `<span class="no-image">${esc(t('shelf.noPhoto'))}</span>`}
+          ${blob ? `<img src="${imgUrl(blob)}" alt="${esc(p.name)}">` : productArt(p)}
           ${p.quantity > 1 ? `<span class="shelf-tally">${esc(String(p.quantity))}</span>` : ''}
         </div>
         <div class="shelf-brand">${esc(p.brand || '—')}</div>
@@ -5174,6 +6001,29 @@ async function shelf(root) {
   const hideBtn = root.querySelector('#hide-emptied');
   if (hideBtn) hideBtn.onclick = () => { showEmptied = false; shelf(root); };
 
+  /* On a phone the four controls cost 180px above the first product, which is
+     most of the reason the shelf was unusable standing up. They fold away. */
+  const toggle = root.querySelector('#toggle-filters');
+  const bar = root.querySelector('#filter-bar');
+  if (filtersOpen) bar.classList.add('is-open');
+  toggle.setAttribute('aria-expanded', String(filtersOpen));
+  toggle.onclick = () => {
+    filtersOpen = !filtersOpen;
+    bar.classList.toggle('is-open', filtersOpen);
+    toggle.setAttribute('aria-expanded', String(filtersOpen));
+  };
+
+  const search = root.querySelector('#f-query');
+  search.oninput = () => {
+    shelfFilters.query = search.value;
+    shelf(root).then(() => {
+      // Redrawing replaces the field, so put the cursor back where it was.
+      const again = root.querySelector('#f-query');
+      if (again) { again.focus(); again.setSelectionRange(again.value.length, again.value.length); }
+    });
+  };
+
+  root.querySelector('#f-sort').onchange = e => { shelfSort = e.target.value; shelf(root); };
   root.querySelector('#f-cat').onchange = e => { shelfFilters.category = e.target.value; shelf(root); };
   root.querySelector('#f-status').onchange = e => { shelfFilters.status = e.target.value; shelf(root); };
   root.querySelector('#f-active').onchange = e => { shelfFilters.active = e.target.value; shelf(root); };
@@ -5250,7 +6100,8 @@ async function product(root, { id }) {
             return `<div class="ing ${entry ? '' : 'ing-unknown'} ${flagged ? 'ing-flagged' : ''}">
               <div class="ing-index">${i + 1}</div>
               <div>
-                <div class="ing-name">${esc(entry ? entry.n : name)}</div>
+                <button class="ing-name ing-open" data-ing="${esc(name)}"
+                        aria-haspopup="dialog">${esc(entry ? entry.n : name)}</button>
                 ${entry && entry.n.toLowerCase() !== name.toLowerCase()
                   ? `<div class="tag" style="border:none;margin-top:2px">${esc(name)}</div>` : ''}
                 ${entry ? `<div class="ing-tags">${entry.t.map(tag =>
@@ -5280,6 +6131,8 @@ async function product(root, { id }) {
         </div>
       </div>
     </div>`;
+
+  wireIngredients(root);
 
   const copyBtn = root.querySelector('#copy-across');
   if (copyBtn) {
@@ -5340,10 +6193,11 @@ async function form(root, { id } = {}) {
       <div>
         ${dropzoneMarkup('photo')}
         <div class="btn-row" style="margin-top:16px">
-          <button type="button" class="btn btn-quiet" id="autofill" ${AI_FEATURES && settings.apiKey ? '' : 'hidden'}>${esc(t('form.readLabel'))}</button>
+          <button type="button" class="btn btn-quiet" id="autofill" ${AI_FEATURES ? '' : 'hidden'}>${esc(t('form.readLabel'))}</button>
         </div>
-        <p class="field-hint" id="photo-hint">${esc(AI_FEATURES && settings.apiKey
+        <p class="field-hint" id="photo-hint">${esc(AI_FEATURES
           ? t('form.readLabelHint') : t('form.photoHint'))}</p>
+        <div id="key-note" hidden></div>
         <div id="found" hidden></div>
       </div>
 
@@ -5385,7 +6239,7 @@ async function form(root, { id } = {}) {
           <label for="ingredients">${esc(t('product.ingredients'))}</label>
           <textarea id="ingredients" placeholder="${esc(t('form.ingredientsPlaceholder'))}">${esc((p?.ingredients || []).join(', '))}</textarea>
           <div class="btn-row" style="margin-top:12px">
-            <button type="button" class="btn btn-quiet" id="lookup" ${AI_FEATURES && settings.apiKey ? '' : 'hidden'}>${esc(t('form.lookUp'))}</button>
+            <button type="button" class="btn btn-quiet" id="lookup" ${AI_FEATURES ? '' : 'hidden'}>${esc(t('form.lookUp'))}</button>
           </div>
           <div class="field-hint" id="parse-summary"></div>
           <div class="chips" id="parse-chips" style="margin-top:12px"></div>
@@ -5523,10 +6377,20 @@ async function form(root, { id } = {}) {
     return found;
   };
 
+  const keyNote = root.querySelector('#key-note');
+  const explainKey = bodyKey => {
+    keyNote.hidden = false;
+    keyNote.innerHTML = keyPrompt(bodyKey);
+    keyNote.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  };
+  const hasKey = () => Boolean(settings.apiKey);
+
   /* Look up on demand, without needing a photograph at all. */
   const lookupBtn = root.querySelector('#lookup');
   if (lookupBtn) {
     lookupBtn.onclick = async () => {
+      if (!hasKey()) { explainKey('key.forLookup'); return; }
+      keyNote.hidden = true;
       const restore = waiting(lookupBtn, t('common.lookingUp'));
       try {
         const done = await lookupInto(hint);
@@ -5673,6 +6537,8 @@ async function form(root, { id } = {}) {
   const autofillBtn = root.querySelector('#autofill');
   if (autofillBtn) {
     autofillBtn.onclick = async () => {
+      if (!hasKey()) { explainKey('key.forLabel'); return; }
+      keyNote.hidden = true;
       // Read from the sharpest copy available. The shelf photo is downscaled
       // to 1600px, which is fine to look at and hopeless for 5pt INCI print.
       const blob = originalFile
@@ -6072,6 +6938,7 @@ async function routine(root) {
   const products = (await store.getProducts()).sort(byShelfOrder);
   const saved = await store.getRoutine();
   const byId = Object.fromEntries(products.map(p => [p.id, p]));
+  let done = await store.getDone();
 
   if (!products.length) {
     root.innerHTML = `<div class="view-head">${headerArt('routine')}<h1 class="page-title">${esc(t('routine.title'))}</h1></div>
@@ -6092,6 +6959,23 @@ async function routine(root) {
   let dirty = false;
   let message = '';
   const saveNote = () => (dirty ? t('routine.unsaved') : message);
+
+  /* This page was a builder standing where a companion should be: every row of
+     tonight's routine carried a Remove button in the reading path, and there was
+     nothing to tick off. Reading is now the default and editing is a mode you
+     ask for. Before noon it opens on the morning; after, on the evening. */
+  let editing = false;
+  let period = new Date().getHours() < 12 ? 'am' : 'pm';
+
+  const isToday = () => openDay === todayIndex;
+  const isDone = (per, productId) => (done[per] || []).includes(productId);
+
+  const toggleDone = async (per, productId) => {
+    const list = new Set(done[per] || []);
+    list.has(productId) ? list.delete(productId) : list.add(productId);
+    done = { ...done, [per]: [...list] };
+    await store.setDone(done);
+  };
 
   /* ---------- the week, one day at a time ----------
 
@@ -6203,21 +7087,78 @@ async function routine(root) {
     const chosen = openDay === day;
     const count = onDay('am', day).length + onDay('pm', day).length;
 
+    const todayDone = day === todayIndex
+      ? (done.am || []).length + (done.pm || []).length : 0;
+
     return `<button class="day-card${chosen ? ' is-on' : ''}${clashes.length ? ' has-clash' : ''}"
               data-openday="${day}" aria-pressed="${chosen}" aria-controls="day-detail">
       <span class="day-card-name">${esc(label)}</span>
       <span class="day-card-foot">
         ${day === todayIndex ? `<span class="day-card-today">${esc(t('common.today'))}</span>` : ''}
-        <span class="day-card-count">${esc(count ? plural(count, 'routine.stepsOne', 'routine.stepsMany') : t('routine.nothingYet'))}</span>
+        <span class="day-card-count">${esc(day === todayIndex && count
+          ? t('routine.doneOf', { done: Math.min(todayDone, count), total: count })
+          : count ? plural(count, 'routine.stepsOne', 'routine.stepsMany') : t('routine.nothingYet'))}</span>
         ${clashes.length ? `<span class="day-card-clash">${esc(t('common.takeCare'))}</span>` : ''}
       </span>
     </button>`;
   };
 
-  /* The chosen day, opened out under the row of cards. */
-  const dayDetail = day => {
+  /* Reading: what to put on, in order, with somewhere to tick it off. */
+  const dayReading = day => {
+    const used = entriesOn(period, day);
+    const notes = conflictsFor(onDay(period, day), period);
+    const today = isToday();
+    const doneCount = used.filter(({ entry }) => isDone(period, entry.productId)).length;
+
+    const rows = used.map(({ entry, step }) => {
+      const p = byId[entry.productId];
+      const ticked = today && isDone(period, entry.productId);
+      return `<li class="do-row${ticked ? ' is-done' : ''}">
+        ${today
+          ? `<button class="do-tick" data-tick="${esc(period)}|${esc(entry.productId)}"
+                     role="checkbox" aria-checked="${ticked}"
+                     aria-label="${esc(p.name)}"><span aria-hidden="true">${ticked ? '✓' : ''}</span></button>`
+          : '<span class="do-bullet" aria-hidden="true"></span>'}
+        <span class="do-step">${esc(stepLabel(step))}</span>
+        <a class="do-name" href="#/product/${esc(p.id)}">${esc(productLabel(p))}</a>
+        ${isEveryDay(entry) ? '' : `<span class="do-when">${esc(describeDays(entry))}</span>`}
+      </li>`;
+    }).join('');
+
+    return `<div class="day-body" id="day-detail">
+      <div class="do-head">
+        <div class="segmented" role="tablist" aria-label="${esc(t('routine.whichHalf'))}">
+          <button role="tab" aria-selected="${period === 'am'}" data-period="am"
+                  class="${period === 'am' ? 'is-on' : ''}">${esc(t('common.morning'))}</button>
+          <button role="tab" aria-selected="${period === 'pm'}" data-period="pm"
+                  class="${period === 'pm' ? 'is-on' : ''}">${esc(t('common.evening'))}</button>
+        </div>
+        <div class="do-head-right">
+          ${today && used.length
+            ? `<span class="do-progress">${esc(t('routine.doneOf', { done: doneCount, total: used.length }))}</span>`
+            : ''}
+          <button class="link-btn" id="edit-day">${esc(t('routine.edit'))}</button>
+        </div>
+      </div>
+
+      ${used.length
+        ? `<ol class="do-list">${rows}</ol>`
+        : `<p class="muted" style="margin:20px 0 0">${esc(t('routine.nothingOnDay'))}</p>`}
+
+      ${notes.map(n => `<div class="notice" style="margin-top:24px">
+          <strong>${esc(severityWord(n.severity))}</strong>
+          ${esc(n.text)}</div>`).join('')}
+    </div>`;
+  };
+
+  /* Editing: the picker and the removals, asked for rather than always present. */
+  const dayEditor = day => {
     const notes = [...conflictsFor(onDay('am', day), 'am'), ...conflictsFor(onDay('pm', day), 'pm')];
     return `<div class="day-body" id="day-detail">
+      <div class="do-head">
+        <span class="week-day">${esc(t('routine.editingDay', { day: dayLabel(day) }))}</span>
+        <button class="link-btn" id="done-editing">${esc(t('routine.doneEditing'))}</button>
+      </div>
       <div class="routine-cols">
         ${dayColumn('am', t('common.morning'), day)}
         ${dayColumn('pm', t('common.evening'), day)}
@@ -6231,6 +7172,8 @@ async function routine(root) {
       </div>
     </div>`;
   };
+
+  const dayDetail = day => (editing ? dayEditor(day) : dayReading(day));
 
   /* ---------- the whole thing at once, for when a day at a time is too slow ---------- */
 
@@ -6358,9 +7301,29 @@ async function routine(root) {
         const day = Number(btn.dataset.openday);
         if (day === openDay) return;
         openDay = day;
+        // Editing one day and jumping to another would be a quiet trap.
+        editing = false;
         draw();
       };
     });
+
+    root.querySelectorAll('[data-period]').forEach(btn => {
+      btn.onclick = () => { period = btn.dataset.period; draw(); };
+    });
+
+    root.querySelectorAll('[data-tick]').forEach(btn => {
+      btn.onclick = async () => {
+        const [per, productId] = btn.dataset.tick.split('|');
+        await toggleDone(per, productId);
+        draw();
+      };
+    });
+
+    const editBtn = root.querySelector('#edit-day');
+    if (editBtn) editBtn.onclick = () => { editing = true; draw(); };
+
+    const doneBtn = root.querySelector('#done-editing');
+    if (doneBtn) doneBtn.onclick = () => { editing = false; draw(); };
 
     root.querySelector('#open-complete').onclick = () => {
       openComplete = !openComplete;
@@ -6541,8 +7504,7 @@ async function discoveries(root) {
       <div class="empty">
         <p>${esc(t('disc.intro'))}</p>
         ${AI_FEATURES
-          ? `<p>${esc(t('disc.needsModel'))}</p>
-             <a class="btn" href="#/settings">${esc(t('disc.connectOne'))}</a>`
+          ? keyPrompt('key.forDiscover')
           : `<p>${esc(t('disc.noModelHere'))}</p>
              <a class="btn" href="#/settings">${esc(t('disc.copyBriefing'))}</a>`}
       </div>`;
@@ -6940,7 +7902,7 @@ async function settings(root) {
 }
 
 
-const views = { esc, releaseUrls, onRerender, profileBar, headerArt, dots, waiting, showBusy, shelf, product, form, assess, routine, discoveries, settings };
+const views = { esc, releaseUrls, onRerender, profileBar, headerArt, keyPrompt, dots, waiting, showBusy, closeIngredient, openIngredient, wireIngredients, shelf, product, form, assess, routine, discoveries, settings };
 
 /* ===== js/app.js ===== */
 /* Hash router and boot. */
@@ -6952,7 +7914,26 @@ const views = { esc, releaseUrls, onRerender, profileBar, headerArt, dots, waiti
 
 const root = document.getElementById('view');
 const nav = document.getElementById('nav');
+const tabbar = document.getElementById('tabbar');
 const count = document.getElementById('colophon-count');
+
+/* The phone bar carries the four things you reach for daily. Everything else
+   lives behind More, which is where six flat items had been costing two rows
+   of screen before any content appeared. */
+const TABS = [
+  { route: 'shelf', key: 'nav.shelf' },
+  { route: 'routine', key: 'nav.routine' },
+  { route: 'add', key: 'nav.add' },
+  { route: 'discoveries', key: 'nav.discoverShort' }
+];
+
+const MORE = [
+  { route: 'assess', href: '#/assess', key: 'nav.assess' },
+  { route: 'settings', href: '#/settings', key: 'nav.settings' }
+];
+
+/* Which section the current route belongs to, so the drawer can mark itself. */
+let currentNav = '';
 
 const ROUTES = {
   '':        { view: views.shelf,    nav: 'shelf' },
@@ -6980,7 +7961,53 @@ function chrome() {
   nav.querySelectorAll('a[data-route]').forEach(a => {
     a.textContent = t('nav.' + a.dataset.route);
   });
+
+  TABS.forEach(tab => {
+    const el = tabbar.querySelector(`[data-tab="${tab.route}"]`);
+    if (el) el.textContent = t(tab.key);
+  });
+  document.getElementById('more-btn').textContent = t('nav.more');
+
   drawLangButton();
+}
+
+/* The drawer is rebuilt each time it opens, so it picks up the language and
+   marks whichever section you are actually in. */
+function openMore(activeRoute) {
+  const inner = document.getElementById('more-inner');
+  inner.innerHTML = MORE.map(item => `
+    <a class="sheet-link${item.route === activeRoute ? ' is-active' : ''}"
+       href="${item.href}">${views.esc(t(item.key))}</a>`).join('');
+  inner.querySelectorAll('a').forEach(a => { a.onclick = closeMore; });
+
+  document.getElementById('more-sheet').hidden = false;
+  document.getElementById('more-scrim').hidden = false;
+  document.getElementById('more-btn').setAttribute('aria-expanded', 'true');
+}
+
+function closeMore() {
+  const sheet = document.getElementById('more-sheet');
+  if (!sheet || sheet.hidden) return;
+  sheet.hidden = true;
+  document.getElementById('more-scrim').hidden = true;
+  document.getElementById('more-btn').setAttribute('aria-expanded', 'false');
+}
+
+function wireTabbar() {
+  const button = document.getElementById('more-btn');
+  button.onclick = ev => {
+    ev.stopPropagation();
+    const sheet = document.getElementById('more-sheet');
+    sheet.hidden ? openMore(currentNav) : closeMore();
+  };
+  document.getElementById('more-scrim').onclick = closeMore;
+  document.addEventListener('keydown', ev => { if (ev.key === 'Escape') closeMore(); });
+
+  // The ingredient sheet floats over every view, so it is dismissed here.
+  document.getElementById('ing-scrim').onclick = views.closeIngredient;
+  document.addEventListener('keydown', ev => {
+    if (ev.key === 'Escape') views.closeIngredient();
+  });
 }
 
 /* Language lives at the right-hand end of the navigation: a button showing the
@@ -7048,8 +8075,13 @@ async function render() {
     return;
   }
 
+  currentNav = route.nav;
+  closeMore();
+  views.closeIngredient();
   nav.querySelectorAll('a').forEach(a =>
     a.classList.toggle('is-active', a.dataset.route === route.nav));
+  tabbar.querySelectorAll('a[data-tab]').forEach(a =>
+    a.classList.toggle('is-active', a.dataset.tab === route.nav));
 
   try {
     await route.view(root, { id });
@@ -7076,6 +8108,7 @@ async function refreshCount() {
 async function boot() {
   applyLang(chooseLang(await store.getLangPref()));
   wireLangMenu();
+  wireTabbar();
   views.onRerender(render);
   mountChat();
   window.addEventListener('hashchange', render);

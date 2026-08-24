@@ -8,9 +8,12 @@
   --bone-deep:  #EDE8DF;
   --bone-sink:  #E5DFD3;
   --ink:        #1B1A17;
-  --ink-muted:  #6E6A60;
+  /* Was #6E6A60 — 4.87:1, a bare AA pass carrying the entire secondary text
+     system at 13px and below. Darkened to clear 7:1, which the Aesop restraint
+     survives and a bathroom mirror requires. */
+  --ink-muted:  #545046;
   --rule:       #DFD8CB;
-  --amber:      #7A5A2E;
+  --amber:      #6B4E27;
 
   --sans: "Suisse Int'l", "Helvetica Neue", Helvetica, Arial, sans-serif;
 
@@ -300,7 +303,7 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
 
 .field textarea { resize: vertical; min-height: 120px; line-height: 1.7; }
 
-.field-hint { color: var(--ink-muted); font-size: 13px; margin-top: 8px; }
+.field-hint { color: var(--ink-muted); font-size: 14px; margin-top: 8px; }
 
 .field-pair {
   display: grid;
@@ -377,7 +380,7 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
 .shelf {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 56px 32px;
+  gap: 40px 32px;
 }
 
 .shelf-item { display: block; }
@@ -438,7 +441,10 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
 
 .shelf-frame {
   background: var(--bone-deep);
-  aspect-ratio: 4 / 5;
+  /* Was 4/5. A portrait frame gave 73% of each card to the image and pushed
+     every product name below the fold on a laptop; square keeps the grid
+     handsome and lets the names sit where they can be read. */
+  aspect-ratio: 1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1349,3 +1355,514 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
 }
 
 .busy-label { white-space: nowrap; }
+
+/* ============================================================
+   Touch targets
+
+   Every control here was drawn for a mouse: 26px steppers, 18px text links.
+   The visual weight is right for the page and wrong for a thumb, so the hit
+   area is expanded with a pseudo-element rather than by making anything
+   bigger. Nothing looks different; everything is reachable.
+   ============================================================ */
+
+@media (pointer: coarse) {
+  .step-btn,
+  .link-btn,
+  .lang-btn,
+  .carousel-dot,
+  .day,
+  .history-mark {
+    position: relative;
+  }
+
+  .step-btn::after,
+  .link-btn::after,
+  .lang-btn::after,
+  .carousel-dot::after,
+  .day::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
+  }
+
+  /* Nav links sit in a row; padding is safer than an overlay that would
+     swallow its neighbour. */
+  .nav a { padding-block: 13px; }
+
+  .filter select,
+  .inline-select,
+  .found-keep { min-height: 44px; }
+
+  .found-keep { width: 22px; height: 22px; }
+}
+
+/* ============================================================
+   Phone navigation
+
+   The top nav is a desktop device: six flat items plus a language control
+   wrapped to two rows and ate 131px before any content appeared. Below tablet
+   width it is replaced by a fixed bar of the four daily destinations, with the
+   occasional ones in a drawer.
+   ============================================================ */
+
+.tabbar { display: none; }
+.sheet, .sheet-scrim { display: none; }
+
+@media (max-width: 720px) {
+  /* The masthead keeps the wordmark, the profile and the language button —
+     one row instead of three. */
+  .nav a[data-route] { display: none; }
+  .nav { gap: 0; }
+
+  .masthead-inner {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px var(--gutter);
+  }
+
+  .mast-left { align-items: center; gap: 12px; flex: 1; min-width: 0; }
+  .wordmark { font-size: 10px; letter-spacing: 0.18em; }
+
+  .tabbar {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 45;
+    background: var(--bone);
+    border-top: 1px solid var(--rule);
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+
+  .tabbar a,
+  .tabbar button {
+    background: none;
+    border: none;
+    border-radius: 0;
+    cursor: pointer;
+    min-height: 52px;
+    padding: 8px 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    text-align: center;
+    line-height: 1.2;
+    transition: color var(--ease);
+  }
+
+  .tabbar a.is-active { color: var(--ink); box-shadow: inset 0 2px 0 var(--ink); }
+  .tabbar a:focus-visible,
+  .tabbar button:focus-visible { outline: 1px solid var(--amber); outline-offset: -3px; }
+
+  /* Room for the bar, and for the chat cloud to sit above it. */
+  .view { padding-bottom: 96px; }
+  .colophon { padding-bottom: 88px; }
+  .chat-launch { bottom: 68px; }
+  .chat-panel { bottom: 68px; height: 62vh; }
+
+  .sheet-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 46;
+    background: rgba(27, 26, 23, 0.4);
+  }
+
+  .sheet {
+    display: block;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 47;
+    background: var(--bone);
+    border-top: 1px solid var(--rule);
+    padding-bottom: env(safe-area-inset-bottom, 0);
+    animation: sheet-rise 180ms ease;
+  }
+
+  .sheet-inner { padding: 8px 0 12px; }
+
+  .sheet-link {
+    display: block;
+    width: 100%;
+    background: none;
+    border: none;
+    border-bottom: 1px solid var(--rule);
+    border-radius: 0;
+    text-align: left;
+    padding: 17px var(--gutter);
+    font-size: 15px;
+    color: var(--ink);
+    cursor: pointer;
+  }
+
+  .sheet-link:last-child { border-bottom: none; }
+  .sheet-link.is-active { color: var(--amber); }
+}
+
+@keyframes sheet-rise {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet { animation: none; }
+}
+
+/* ============================================================
+   Shelf: search, drawn stand-ins, and a phone list
+   ============================================================ */
+
+.shelf-search { margin-bottom: 20px; }
+
+.shelf-search input {
+  width: 100%;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--rule);
+  border-radius: 0;
+  padding: 12px 0;
+  font-size: 17px;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: border-color var(--ease);
+}
+
+.shelf-search input::placeholder { color: var(--ink-muted); opacity: 1; }
+.shelf-search input:focus { outline: none; border-bottom-color: var(--ink); }
+.shelf-search input::-webkit-search-cancel-button { cursor: pointer; }
+
+/* The drawn stand-in fills the frame exactly as a photograph would. */
+.shelf-art { width: 100%; height: 100%; display: block; }
+
+@media (max-width: 720px) {
+  /* A grid of 4:5 photographs is a desktop luxury: on a phone it put the first
+     product name 145px below the fold and turned eleven products into nearly
+     nine screens. Rows instead — thumbnail, name, count — so the shelf can be
+     scanned standing up, one-handed, in a shop. */
+  .shelf { display: flex; flex-direction: column; gap: 0; }
+
+  .shelf-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 14px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .shelf-item:first-child { border-top: 1px solid var(--rule); }
+
+  /* A two-column card inside the link: thumbnail, then brand over name.
+     `display: contents` would be tidier and drops the link out of the
+     accessibility tree in some browsers, which is not a trade worth making. */
+  .shelf-link {
+    display: grid;
+    grid-template-columns: 56px minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    column-gap: 14px;
+    align-items: center;
+    min-width: 0;
+  }
+
+  .shelf-frame {
+    grid-column: 1;
+    grid-row: 1 / 3;
+    aspect-ratio: 1;
+    margin-bottom: 0;
+  }
+
+  .shelf-brand {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: end;
+    margin-bottom: 2px;
+    font-size: 10px;
+  }
+
+  .shelf-name {
+    grid-column: 2;
+    grid-row: 2;
+    align-self: start;
+    font-size: 15px;
+    line-height: 1.3;
+  }
+
+  /* Category and status are noise at this size — the name is what she scans. */
+  .shelf-meta { display: none; }
+
+  .shelf-tally { min-width: 22px; padding: 2px 5px; font-size: 10px; }
+
+  .stepper { margin-top: 0; gap: 6px; }
+}
+
+/* The explanation shown where an AI control would otherwise have been hidden. */
+.key-prompt {
+  border-left-width: 2px;
+  margin-top: 16px;
+  max-width: 46ch;
+}
+
+.key-prompt strong { display: block; margin-bottom: 4px; }
+
+/* ============================================================
+   Ingredient sheet
+   ============================================================ */
+
+/* An ingredient name is now a control, but it should still read as a name. */
+.ing-open {
+  background: none;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-bottom: 1px solid var(--rule);
+  transition: border-color var(--ease);
+}
+
+.ing-open:hover { border-bottom-color: var(--ink); }
+.ing-open:focus-visible { outline: 1px solid var(--amber); outline-offset: 3px; }
+.ing-flagged .ing-open { color: var(--amber); }
+
+.ing-sheet {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 47;
+  width: 460px;
+  max-width: 100vw;
+  background: var(--bone);
+  border-left: 1px solid var(--rule);
+  overflow-y: auto;
+  animation: sheet-slide 200ms ease;
+}
+
+@keyframes sheet-slide {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+
+.ing-sheet-body { padding: 28px var(--gutter) 48px; }
+
+.ing-sheet-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.ing-sheet-name { font-size: 24px; line-height: 1.2; }
+
+.ing-sheet-alias {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  margin-top: 6px;
+}
+
+.ing-sheet-text { font-size: 15px; line-height: 1.65; margin: 0; }
+
+.ing-sheet-block { margin-top: 32px; }
+
+.ing-sheet-mine { border-top: 1px solid var(--rule); }
+
+.ing-sheet-mine a {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--rule);
+  font-size: 15px;
+  transition: opacity var(--ease);
+}
+
+.ing-sheet-mine a:hover { opacity: 0.6; }
+.ing-sheet-mine .muted { font-size: 12px; white-space: nowrap; }
+
+@media (max-width: 720px) {
+  /* A phone gets it as a bottom sheet, above the tab bar. */
+  .ing-sheet {
+    top: auto;
+    left: 0;
+    width: auto;
+    max-height: 82vh;
+    border-left: none;
+    border-top: 1px solid var(--rule);
+    padding-bottom: env(safe-area-inset-bottom, 0);
+    animation: sheet-rise 180ms ease;
+  }
+  .ing-sheet-body { padding: 22px var(--gutter) 36px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ing-sheet { animation: none; }
+}
+
+/* The filter row folds away on a phone; on a desktop it is simply always open. */
+.shelf-tools {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 20px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--rule);
+  margin-bottom: 0;
+}
+
+.shelf-tools .filter-count { margin-left: 0; }
+#toggle-filters { display: none; }
+
+@media (max-width: 720px) {
+  #toggle-filters { display: inline-block; }
+  .filter-bar { display: none; border-top: none; margin-bottom: 0; }
+  .filter-bar.is-open { display: flex; margin-bottom: 24px; }
+  .hide-on-phone { display: none; }
+  .view-head { margin-bottom: 24px; }
+}
+
+/* ============================================================
+   Routine: doing it, rather than building it
+
+   The reading view is the default. Editing controls are absent until asked
+   for, so tonight's routine reads as a list to follow rather than a form.
+   ============================================================ */
+
+.do-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.do-head-right { display: flex; align-items: center; gap: 18px; }
+
+.do-progress {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Morning / evening, defaulting to whichever half of the day it is. */
+.segmented { display: inline-flex; border: 1px solid var(--rule); }
+
+.segmented button {
+  background: none;
+  border: none;
+  border-radius: 0;
+  padding: 10px 18px;
+  min-height: 44px;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  cursor: pointer;
+  transition: background var(--ease), color var(--ease);
+}
+
+.segmented button + button { border-left: 1px solid var(--rule); }
+.segmented button.is-on { background: var(--ink); color: var(--bone); }
+.segmented button:focus-visible { outline: 1px solid var(--amber); outline-offset: -3px; }
+
+.do-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--rule);
+}
+
+.do-row {
+  display: grid;
+  grid-template-columns: 28px 104px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.do-tick {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid var(--rule);
+  background: none;
+  border-radius: 0;
+  cursor: pointer;
+  color: var(--bone);
+  font-size: 14px;
+  line-height: 1;
+  transition: background var(--ease), border-color var(--ease);
+}
+
+.do-tick:hover { border-color: var(--ink); }
+.do-tick:focus-visible { outline: 1px solid var(--amber); outline-offset: 2px; }
+.is-done .do-tick { background: var(--ink); border-color: var(--ink); }
+
+.do-bullet {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--rule);
+  justify-self: center;
+}
+
+.do-step {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.do-name { font-size: 16px; line-height: 1.4; }
+.do-name:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+.is-done .do-name { color: var(--ink-muted); text-decoration: line-through; }
+
+.do-when {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  /* Step label above the name, so a long product name gets the full width
+     instead of wrapping to four lines in a squeezed middle column. */
+  .do-row {
+    grid-template-columns: 28px minmax(0, 1fr);
+    row-gap: 2px;
+    padding: 12px 0;
+  }
+  .do-tick, .do-bullet { grid-row: 1 / 3; }
+  .do-step { grid-column: 2; }
+  .do-name { grid-column: 2; }
+  .do-when { grid-column: 2; }
+  .do-head { margin-bottom: 14px; }
+  .segmented { flex: 1; }
+  .segmented button { flex: 1; }
+}

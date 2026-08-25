@@ -1,7 +1,9 @@
 # Handoff — Skincare Library
 
-State of the work as of 24 August 2026 (third pass — after a UX audit). `README.md` covers how to *use* the app;
-this covers how the code got here, what is proven, and what will bite you.
+State of the work as of 24 August 2026 (fourth pass — targeted follow-ups to
+the UX audit, on the Shelf, Routine and Add pages specifically). `README.md`
+covers how to *use* the app; this covers how the code got here, what is
+proven, and what will bite you.
 
 ## What it is
 
@@ -62,11 +64,23 @@ against a desk. Where the two conflict, the phone wins — that is what the
 
 ## What is built
 
-- **Search, and recency first** — one field over the shelf matching brand,
-  product name *and* ingredient, so "niacinamide" finds everything containing
-  it. "Do I already own this?" had no direct answer before it. Sort defaults to
-  recently added rather than A–Z by brand: the products she is looking for are
-  usually the ones she just bought. `createdAt` was already stored and unused.
+- **Recency first, no search.** Sort still defaults to recently added rather
+  than A–Z by brand — the products she is looking for are usually the ones she
+  just bought, and `createdAt` was already stored and unused. The search field
+  the earlier UX pass added over the shelf (matching brand, name and
+  ingredient) was **removed again on 24 August at explicit request** — the
+  `shelfFilters.query` field, the `hits()` matcher, and the `shelf.search*` /
+  `shelf.noSearchMatch` i18n keys are gone with it, not just hidden. If it
+  comes back, `git log` for `git show a88de62 -- js/views.js` has the original
+  implementation to lift from rather than rewriting it.
+- **The shelf header is one line.** "The Shelf" → **"Your Shelf"**, and
+  `.view-head-compact` (style.css) shrinks the title, the header mark and the
+  bottom margin — used here and on Routine and Add, anywhere the content below
+  the header matters more than the header itself. The tools row above the grid
+  now shows only **the total product count**, on the left; the "X of Y
+  filtered · N on hand" wording is gone. "N finished and not on the shelf" and
+  its Show/Hide toggle moved from above the grid to **below** it, so the grid
+  is the first thing the eye meets.
 - **A phone shelf, not a phone-shaped desktop shelf** — below 720px the 4:5
   photo grid becomes 80px rows (thumbnail, brand, name, stepper), the filters
   fold behind "Filter & sort", and the Add button goes because the tab bar has
@@ -92,6 +106,22 @@ against a desk. Where the two conflict, the phone wins — that is what the
   the view root is exactly what a redraw replaces while it is up. The submit
   button is deliberately tighter to reach: `.form-grid .field` dropped from
   28px to 16px margin, and the button itself grew to match.
+  **Notes has no field here any more** (24 August) — same treatment as size,
+  price and the dates: `saveProduct` carries `p?.notes || ''` through
+  untouched, so editing an older record keeps whatever it said, and the
+  product detail page still shows it when present. Removing it, plus
+  `.view-head-compact` and squaring the dropzone (`.form-grid .dropzone`,
+  4:5 → 1:1, the same move made on the shelf card), gets **"Let AI fill it
+  out" fully on screen on a 375×812 phone with no scrolling** — measured at
+  490–532px, comfortably inside an 812px viewport. Filling the fields —
+  single product or the whole review list — ends with a `scrollIntoView`
+  onto `#product-fields` / `#found`, placed *after* every value is written
+  rather than before: doing it first meant the ingredients textarea growing
+  mid-scroll could shift the layout under a `smooth` animation and leave it
+  short of the target. The automation pane in this project cannot finish a
+  `smooth` scroll at all (rAF starves on an unfocused tab) — verified instead
+  by swapping to `behavior: 'auto'` and checking the element lands exactly at
+  `top: 0`, which it does; a real, focused browser tab has no such problem.
 - **One photograph, several products** — `readProducts()` in ai.js always
   returns an array, and the prompt decides: one pack close up gives one entry
   with its ingredients transcribed; a shelf of bottles gives one entry each and
@@ -119,14 +149,24 @@ against a desk. Where the two conflict, the phone wins — that is what the
   rather than by a migration pass, so old backups still import.
 - **Profiles** — per-person shelf, assessments, routine; switcher in the masthead
 - **Routine reads before it edits.** The default is a companion, not a builder:
-  a Morning/Evening segmented control defaulting to whichever half of the day it
-  is, then the day's steps as an ordered, tickable list. Every row used to carry
-  a Remove button in the reading path with the same weight as the product name.
-  Ticking is only offered for **today** — a routine you did or did not follow on
-  Thursday is not something this app should be keeping — and `getDone()` /
-  `setDone()` in store.js hold one date, discarded when the date rolls over.
-  Editing is behind an Edit affordance, and leaving the day exits it so you are
-  never quietly left in a mode.
+  an AM/PM segmented control defaulting to whichever half of the day it is
+  (labelled **Morning/Evening until 24 August**, when it was changed to AM/PM
+  — reusing the existing `common.am`/`common.pm` keys, not new ones, and left
+  untouched everywhere else including the Assessment page's suggested
+  routine, which still says Morning/Evening on purpose), then the day's steps
+  as an ordered, tickable list. Every row used to carry a Remove button in the
+  reading path with the same weight as the product name. Ticking is only
+  offered for **today** — a routine you did or did not follow on Thursday is
+  not something this app should be keeping — and `getDone()` / `setDone()` in
+  store.js hold one date, discarded when the date rolls over. Editing is
+  behind an Edit affordance — **`.edit-toggle`, a bordered button (24 August),
+  not the plain `link-btn` text it started as**, because next to a filled
+  black AM/PM control a bare link read as a label rather than something to
+  tap. Leaving the day exits edit mode so you are never quietly left in it.
+  The header is now **"Your Weekly Routine"**, `.view-head-compact`, and the
+  "Your week" sub-heading above the day cards is gone — the hint paragraph
+  underneath it now reads "Choose a day to edit your day and night routine,"
+  replacing `routine.yourWeek`, which no longer exists as a key.
 - **Routine** — **the week is the interface.** Seven cards standing across the
   page (`.week-strip`), scrolling sideways below tablet width. One is always
   chosen — today to begin with — and its morning and evening open out directly
@@ -212,6 +252,24 @@ against a desk. Where the two conflict, the phone wins — that is what the
 - **Briefing export** — the no-key path, works everywhere including the shared copy
 
 ## Verified vs not
+
+**Verified 24 August (fourth pass), measured in the running app, both Chinese
+tables checked with `missingKeys()`, no console errors, share build rebuilt
+and still hostname-free:** Shelf — header 41px (desktop) with no search field
+present, "N products" alone on the left with Filter & sort on the right (on
+desktop the toggle is `display:none` and the row is just the count), the
+finished-products hint sits after `#shelf-grid` in the DOM and visually below
+it, Show/Hide still round-trips. Routine — "Your Weekly Routine" with no "Your
+week" heading above the day cards, the hint paragraph reads the new text,
+AM/PM appears in the segmented control, the day editor's two columns and the
+Complete routine columns; `#edit-day` carries `class="edit-toggle"` with a
+visible border. Add — no `#notes` element anywhere, editing a product with an
+existing note preserves it exactly through a real save round-trip (checked
+end to end: field absent → submit → reread from IndexedDB), "Let AI fill it
+out" sits at 490–532px on a 375×812 viewport (fully inside it), and the
+post-fill `scrollIntoView` targets verified correct via the `auto`-behavior
+equivalent — `smooth` itself cannot be observed completing in this project's
+automation pane (see Gotchas).
 
 **Verified by driving the real UI:** routine multi-serum + day scheduling +
 both migrations + reorder + delete cascade, including that per-day conflicts go
@@ -395,7 +453,15 @@ returns zeros, screenshots come back blank, the Clipboard API refuses to write
 because the document is unfocused, and a zero-width container will not scroll.
 None of those are bugs in the app. Verify layout by reading the DOM and computed
 styles, and say plainly when something could not be exercised rather than
-reporting a false pass.
+reporting a false pass. **Nor is it a fair test of `scrollIntoView({behavior:
+'smooth'})`** — added 24 August, the Add page's post-fill scroll: a `smooth`
+call started, waited on for over two seconds, still lands short of its target,
+apparently because `requestAnimationFrame` starves on a tab that never gets a
+real paint cycle. Swapping the same call to `behavior: 'auto'` on the same
+element lands it exactly on `top: 0` every time, which is how the *target* was
+actually verified — the animation itself simply cannot be observed completing
+here. Don't spend time chasing this as an app bug; check the `auto` equivalent
+instead and say so.
 
 **Routine migrations run on read, in `store.getRoutine()`.** There have been two:
 flat product ids to `{step, productId}` entries, then adding `days`. Both detect
@@ -479,6 +545,18 @@ changes, run them all"), including the parts framed as trades against the
 app's restraint — the darker muted ink, the square shelf frame, the phone list
 replacing the photo grid. Read that as a settled preference for reach over
 purity on this app, not as indifference to the look.
+
+Two days later (24 August) asked to remove the shelf search field that same
+audit had introduced. Not a contradiction to flag or relitigate — the audit's
+recommendation was reach-oriented reasoning about the audience, and this was a
+direct instruction about the actual page once it existed. When a later,
+specific instruction conflicts with an earlier general recommendation
+(including one of mine), the specific instruction wins outright; don't restore
+the earlier behaviour or ask whether they're sure. Same session, they also
+wanted the header on three pages shrunk and simplified in ways that pull
+against "give every element room" — a recurring theme is that once a feature
+exists on screen, the next round of feedback is about getting out of the way
+of the content beneath it, not about the feature's merits in the abstract.
 
 Prefers concise answers and low token spend. Generally privacy-conscious, and
 should never be asked to paste an API key anywhere — but on 17 August explicitly

@@ -676,6 +676,12 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
 .form-grid .field { margin-bottom: 16px; }
 .form-grid .field-pair { gap: 24px; }
 
+/* Was 4/5, the same portrait frame the shelf card uses. Here it pushed
+   "Let AI fill it out" off the bottom of a phone screen before the button
+   could even be seen — square keeps the dropzone recognisable and gets the
+   button back into the first screenful. */
+.form-grid .dropzone { aspect-ratio: 1; }
+
 /* The submit button is the point of the page — bigger, and closer to the
    fields above it now that they take less room. */
 .form-grid .btn-row .btn[type="submit"] {
@@ -822,6 +828,30 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
 
 @media (max-width: 720px) {
   .header-art { width: 68px; height: 40px; }
+}
+
+/* A smaller header for pages where what sits below it matters more than the
+   title does — the shelf, the routine, the add form. Same title, same mark,
+   just not spending a third of the first screen on them. */
+.view-head-compact {
+  margin-bottom: 20px;
+}
+
+.view-head-compact .page-title {
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+.view-head-compact .header-art {
+  width: 52px;
+  height: 30px;
+  margin-bottom: -2px;
+}
+
+@media (max-width: 720px) {
+  .view-head-compact { margin-bottom: 16px; }
+  .view-head-compact .page-title { font-size: 20px; }
+  .view-head-compact .header-art { width: 42px; height: 24px; }
 }
 
 /* ---------- disclosure header ----------
@@ -1531,27 +1561,8 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
 }
 
 /* ============================================================
-   Shelf: search, drawn stand-ins, and a phone list
+   Shelf: drawn stand-ins, and a phone list
    ============================================================ */
-
-.shelf-search { margin-bottom: 20px; }
-
-.shelf-search input {
-  width: 100%;
-  background: none;
-  border: none;
-  border-bottom: 1px solid var(--rule);
-  border-radius: 0;
-  padding: 12px 0;
-  font-size: 17px;
-  -webkit-appearance: none;
-  appearance: none;
-  transition: border-color var(--ease);
-}
-
-.shelf-search input::placeholder { color: var(--ink-muted); opacity: 1; }
-.shelf-search input:focus { outline: none; border-bottom-color: var(--ink); }
-.shelf-search input::-webkit-search-cancel-button { cursor: pointer; }
 
 /* The drawn stand-in fills the frame exactly as a photograph would. */
 .shelf-art { width: 100%; height: 100%; display: block; }
@@ -1774,6 +1785,25 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
   color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
 }
+
+/* A bordered button rather than a bare text link: next to the filled AM/PM
+   control, plain link text read as a label, not something to tap. */
+.edit-toggle {
+  background: none;
+  border: 1px solid var(--rule);
+  border-radius: 0;
+  padding: 9px 16px;
+  min-height: 44px;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  cursor: pointer;
+  transition: border-color var(--ease), color var(--ease);
+}
+
+.edit-toggle:hover { border-color: var(--ink); color: var(--ink); }
+.edit-toggle:focus-visible { outline: 1px solid var(--amber); outline-offset: 2px; }
 
 /* Morning / evening, defaulting to whichever half of the day it is. */
 .segmented { display: inline-flex; border: 1px solid var(--rule); }
@@ -2567,14 +2597,11 @@ const en = {
   'common.saving': 'Saving',
 
   /* shelf */
-  'shelf.title': 'The Shelf',
+  'shelf.title': 'Your Shelf',
   'shelf.add': 'Add a product',
   'shelf.addFirst': 'Add the first product',
   'shelf.emptyNamed': '{name}’s shelf is presently empty. Photograph a product, record what is in it, and it will be kept here.',
   'shelf.empty': 'The shelf is presently empty. Photograph a product, record what is in it, and it will be kept here.',
-  'shelf.searchPlaceholder': 'Search your shelf — brand, product or ingredient',
-  'shelf.searchLabel': 'Search your shelf',
-  'shelf.noSearchMatch': 'Nothing on your shelf matches “{q}”.',
   'shelf.filterAndSort': 'Filter & sort',
   'shelf.sortBy': 'Sort',
   'shelf.sortRecent': 'Recently added',
@@ -2582,10 +2609,8 @@ const en = {
   'shelf.filterCategory': 'Category',
   'shelf.filterStatus': 'Status',
   'shelf.filterContains': 'Contains',
-  'shelf.count': '{shown} of {total}',
   'shelf.noMatch': 'Nothing matches that combination.',
   'shelf.noPhoto': 'No photograph',
-  'shelf.onHand': '{n} on hand',
   'shelf.emptiedHidden': '{n} finished and not on the shelf.',
   'shelf.showEmptied': 'Show them',
   'shelf.hideEmptied': 'Hide finished',
@@ -2641,7 +2666,6 @@ const en = {
   'form.addedAndMerged': '{added} products added, and {merged} added to what you already had.',
   'form.brand': 'Brand',
   'form.name': 'Product name',
-  'form.notesPlaceholder': 'How it wears, what it sits well under, whether you would buy it again.',
   'form.ingredientsPlaceholder': 'Paste the list straight from the packaging. Commas are enough.',
   'form.lookUp': 'Look these up online',
   'form.submitAdd': 'Add to the library',
@@ -2690,10 +2714,9 @@ const en = {
   'assess.nothingSuitable': 'Nothing suitable on the shelf',
 
   /* routine */
-  'routine.title': 'Routine',
+  'routine.title': 'Your Weekly Routine',
   'routine.emptyShelf': 'A routine is assembled from what is on the shelf. Add a product first.',
-  'routine.yourWeek': 'Your week',
-  'routine.weekHint': 'Choose a day to see what you are using and change it. What you add belongs to that day alone — the rest of the week keeps whatever it had.',
+  'routine.weekHint': 'Choose a day to edit your day and night routine.',
   'routine.stepsOne': '{n} step',
   'routine.stepsMany': '{n} steps',
   'routine.nothingYet': 'Nothing yet',
@@ -3012,14 +3035,11 @@ const zhHant = {
   'common.lookingUp': '查詢中',
   'common.saving': '儲存中',
 
-  'shelf.title': '產品架',
+  'shelf.title': '你的產品架',
   'shelf.add': '新增產品',
   'shelf.addFirst': '新增第一件產品',
   'shelf.emptyNamed': '{name} 的產品架目前是空的。拍下一件產品、記下它的成分，就會保存在這裡。',
   'shelf.empty': '產品架目前是空的。拍下一件產品、記下它的成分，就會保存在這裡。',
-  'shelf.searchPlaceholder': '搜尋你的產品架 — 品牌、產品或成分',
-  'shelf.searchLabel': '搜尋你的產品架',
-  'shelf.noSearchMatch': '產品架上沒有符合「{q}」的東西。',
   'shelf.filterAndSort': '篩選與排序',
   'shelf.sortBy': '排序',
   'shelf.sortRecent': '最近新增',
@@ -3027,10 +3047,8 @@ const zhHant = {
   'shelf.filterCategory': '類別',
   'shelf.filterStatus': '狀態',
   'shelf.filterContains': '含有',
-  'shelf.count': '{total} 件中的 {shown} 件',
   'shelf.noMatch': '沒有符合這組條件的產品。',
   'shelf.noPhoto': '沒有照片',
-  'shelf.onHand': '共 {n} 件在手',
   'shelf.emptiedHidden': '有 {n} 件已用完，未顯示在架上。',
   'shelf.showEmptied': '顯示它們',
   'shelf.hideEmptied': '隱藏已用完的',
@@ -3084,7 +3102,6 @@ const zhHant = {
   'form.addedAndMerged': '已新增 {added} 件，另有 {merged} 件加到原有的數量上。',
   'form.brand': '品牌',
   'form.name': '產品名稱',
-  'form.notesPlaceholder': '用起來的感覺、適合疊在什麼下面、會不會再買。',
   'form.ingredientsPlaceholder': '直接把包裝上的成分表貼進來，用逗號分隔就可以。',
   'form.lookUp': '上網查成分',
   'form.submitAdd': '加入圖書館',
@@ -3131,10 +3148,9 @@ const zhHant = {
   'assess.missing': '目前缺少的',
   'assess.nothingSuitable': '架上沒有合適的產品',
 
-  'routine.title': '保養流程',
+  'routine.title': '你的每週保養流程',
   'routine.emptyShelf': '保養流程是用架上的產品組成的。請先新增一件產品。',
-  'routine.yourWeek': '你的一週',
-  'routine.weekHint': '選一天，看看那天用什麼、並在這裡調整。你加入的只屬於那一天 — 其餘幾天維持原樣。',
+  'routine.weekHint': '選一天，編輯你的日夜保養流程。',
   'routine.stepsOne': '{n} 個步驟',
   'routine.stepsMany': '{n} 個步驟',
   'routine.nothingYet': '還沒有安排',
@@ -3439,14 +3455,11 @@ const zhHans = {
   'common.lookingUp': '查询中',
   'common.saving': '保存中',
 
-  'shelf.title': '产品架',
+  'shelf.title': '你的产品架',
   'shelf.add': '新增产品',
   'shelf.addFirst': '新增第一件产品',
   'shelf.emptyNamed': '{name} 的产品架目前是空的。拍下一件产品、记下它的成分，就会保存在这里。',
   'shelf.empty': '产品架目前是空的。拍下一件产品、记下它的成分，就会保存在这里。',
-  'shelf.searchPlaceholder': '搜索你的产品架 — 品牌、产品或成分',
-  'shelf.searchLabel': '搜索你的产品架',
-  'shelf.noSearchMatch': '产品架上没有符合「{q}」的东西。',
   'shelf.filterAndSort': '筛选与排序',
   'shelf.sortBy': '排序',
   'shelf.sortRecent': '最近新增',
@@ -3454,10 +3467,8 @@ const zhHans = {
   'shelf.filterCategory': '类别',
   'shelf.filterStatus': '状态',
   'shelf.filterContains': '含有',
-  'shelf.count': '{total} 件中的 {shown} 件',
   'shelf.noMatch': '没有符合这组条件的产品。',
   'shelf.noPhoto': '没有照片',
-  'shelf.onHand': '共 {n} 件在手',
   'shelf.emptiedHidden': '有 {n} 件已用完，未显示在架上。',
   'shelf.showEmptied': '显示它们',
   'shelf.hideEmptied': '隐藏已用完的',
@@ -3511,7 +3522,6 @@ const zhHans = {
   'form.addedAndMerged': '已新增 {added} 件，另有 {merged} 件加到原有的数量上。',
   'form.brand': '品牌',
   'form.name': '产品名称',
-  'form.notesPlaceholder': '用起来的感觉、适合叠在什么下面、会不会再买。',
   'form.ingredientsPlaceholder': '直接把包装上的成分表贴进来，用逗号分隔就可以。',
   'form.lookUp': '上网查成分',
   'form.submitAdd': '加入图书馆',
@@ -3558,10 +3568,9 @@ const zhHans = {
   'assess.missing': '目前缺少的',
   'assess.nothingSuitable': '架上没有合适的产品',
 
-  'routine.title': '护肤流程',
+  'routine.title': '你的每周护肤流程',
   'routine.emptyShelf': '护肤流程是用架上的产品组成的。请先新增一件产品。',
-  'routine.yourWeek': '你的一周',
-  'routine.weekHint': '选一天，看看那天用什么、并在这里调整。你加入的只属于那一天 — 其余几天保持原样。',
+  'routine.weekHint': '选一天，编辑你的日夜护肤流程。',
   'routine.stepsOne': '{n} 个步骤',
   'routine.stepsMany': '{n} 个步骤',
   'routine.nothingYet': '还没有安排',
@@ -5815,7 +5824,7 @@ function wireIngredients(root) {
    Shelf
    ============================================================ */
 
-const shelfFilters = { category: '', status: '', active: '', query: '' };
+const shelfFilters = { category: '', status: '', active: '' };
 /* Recency first: the products she is most likely to be looking for are the
    ones she just bought, and A–Z by brand buried them alphabetically. */
 let shelfSort = 'recent';
@@ -5835,7 +5844,7 @@ async function shelf(root) {
   if (!products.length) {
     const who = (await store.getActiveProfile())?.name;
     root.innerHTML = `
-      <div class="view-head">${headerArt('shelf')}<h1 class="page-title">${esc(t('shelf.title'))}</h1></div>
+      <div class="view-head view-head-compact">${headerArt('shelf')}<h1 class="page-title">${esc(t('shelf.title'))}</h1></div>
       <div class="empty">
         <p>${esc(who ? t('shelf.emptyNamed', { name: who }) : t('shelf.empty'))}</p>
         <a class="btn" href="#/add">${esc(t('shelf.addFirst'))}</a>
@@ -5848,28 +5857,15 @@ async function shelf(root) {
     if (ACTIVE_TAGS.includes(tag)) activesPresent.add(tag);
   }));
 
-  /* "Do I already own this?" is the question this shelf exists to answer, and
-     until now the only way to ask it was to scroll. Matches brand, name and
-     ingredient, so searching "niacinamide" finds everything containing it. */
-  const query = shelfFilters.query.trim().toLowerCase();
-  const hits = p => {
-    if (!query) return true;
-    if (`${p.brand || ''} ${p.name || ''}`.toLowerCase().includes(query)) return true;
-    return (p.ingredients || []).some(i => i.toLowerCase().includes(query));
-  };
-
   const matches = products.filter(p =>
     (!shelfFilters.category || p.category === shelfFilters.category) &&
     (!shelfFilters.status || p.status === shelfFilters.status) &&
-    (!shelfFilters.active || tagsFor(p.ingredients || []).has(shelfFilters.active)) &&
-    hits(p)
+    (!shelfFilters.active || tagsFor(p.ingredients || []).has(shelfFilters.active))
   );
   // Asking for Finished explicitly means you want to see them.
   const keepEmptied = showEmptied || shelfFilters.status === 'finished';
   const visible = keepEmptied ? matches : matches.filter(p => p.quantity > 0);
   const emptiedHidden = matches.length - visible.length;
-
-  const onHand = products.reduce((n, p) => n + p.quantity, 0);
 
   if (shelfSort === 'recent') {
     visible.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '') || byShelfOrder(a, b));
@@ -5878,23 +5874,16 @@ async function shelf(root) {
   const categoriesPresent = [...new Set(products.map(p => p.category).filter(Boolean))].sort();
 
   root.innerHTML = `
-    <div class="view-head">
+    <div class="view-head view-head-compact">
       ${headerArt('shelf')}
       <h1 class="page-title">${esc(t('shelf.title'))}</h1>
       <div class="btn-row hide-on-phone"><a class="btn" href="#/add">${esc(t('shelf.add'))}</a></div>
     </div>
 
-    <div class="shelf-search">
-      <input type="search" id="f-query" value="${esc(shelfFilters.query)}"
-             placeholder="${esc(t('shelf.searchPlaceholder'))}"
-             aria-label="${esc(t('shelf.searchLabel'))}" autocomplete="off">
-    </div>
-
     <div class="shelf-tools">
+      <span class="filter-count">${esc(plural(products.length, 'chrome.countOne', 'chrome.countMany'))}</span>
       <button type="button" class="link-btn" id="toggle-filters"
               aria-expanded="false" aria-controls="filter-bar">${esc(t('shelf.filterAndSort'))}</button>
-      <span class="filter-count">${esc(t('shelf.count', { shown: visible.length, total: products.length }))}
-        · ${esc(t('shelf.onHand', { n: onHand }))}</span>
     </div>
 
     <div class="filter-bar" id="filter-bar">
@@ -5929,14 +5918,15 @@ async function shelf(root) {
     </div>
 
     ${shelfNotice ? `<div class="notice">${esc(shelfNotice)}</div>` : ''}
-    ${emptiedHidden ? `<p class="field-hint" style="margin:-32px 0 32px">
-      ${esc(t('shelf.emptiedHidden', { n: emptiedHidden }))}
-      <button class="link-btn" id="show-emptied">${esc(t('shelf.showEmptied'))}</button></p>` : ''}
-    ${showEmptied && !emptiedHidden ? `<p class="field-hint" style="margin:-32px 0 32px">
-      <button class="link-btn" id="hide-emptied">${esc(t('shelf.hideEmptied'))}</button></p>` : ''}
 
     <div class="shelf" id="shelf-grid"></div>
-    ${visible.length ? '' : `<p class="muted">${esc(query ? t('shelf.noSearchMatch', { q: query }) : t('shelf.noMatch'))}</p>`}`;
+    ${visible.length ? '' : `<p class="muted">${esc(t('shelf.noMatch'))}</p>`}
+
+    ${emptiedHidden ? `<p class="field-hint" style="margin-top:32px">
+      ${esc(t('shelf.emptiedHidden', { n: emptiedHidden }))}
+      <button class="link-btn" id="show-emptied">${esc(t('shelf.showEmptied'))}</button></p>` : ''}
+    ${showEmptied && !emptiedHidden ? `<p class="field-hint" style="margin-top:32px">
+      <button class="link-btn" id="hide-emptied">${esc(t('shelf.hideEmptied'))}</button></p>` : ''}`;
 
   shelfNotice = '';        // said once, on arrival
 
@@ -6011,16 +6001,6 @@ async function shelf(root) {
     filtersOpen = !filtersOpen;
     bar.classList.toggle('is-open', filtersOpen);
     toggle.setAttribute('aria-expanded', String(filtersOpen));
-  };
-
-  const search = root.querySelector('#f-query');
-  search.oninput = () => {
-    shelfFilters.query = search.value;
-    shelf(root).then(() => {
-      // Redrawing replaces the field, so put the cursor back where it was.
-      const again = root.querySelector('#f-query');
-      if (again) { again.focus(); again.setSelectionRange(again.value.length, again.value.length); }
-    });
   };
 
   root.querySelector('#f-sort').onchange = e => { shelfSort = e.target.value; shelf(root); };
@@ -6184,7 +6164,7 @@ async function form(root, { id } = {}) {
   const pendingPhoto = () => (photoJob ? photoJob : Promise.resolve(null));
 
   root.innerHTML = `
-    <div class="view-head">
+    <div class="view-head view-head-compact">
       ${headerArt('add')}
       <h1 class="page-title">${esc(editing ? t('form.editTitle') : t('form.addTitle'))}</h1>
     </div>
@@ -6201,7 +6181,7 @@ async function form(root, { id } = {}) {
         <div id="found" hidden></div>
       </div>
 
-      <div>
+      <div id="product-fields">
         <div class="field-pair">
           <div class="field">
             <label for="brand">${esc(t('form.brand'))}</label>
@@ -6243,11 +6223,6 @@ async function form(root, { id } = {}) {
           </div>
           <div class="field-hint" id="parse-summary"></div>
           <div class="chips" id="parse-chips" style="margin-top:12px"></div>
-        </div>
-
-        <div class="field">
-          <label for="notes">${esc(t('product.notes'))}</label>
-          <textarea id="notes" placeholder="${esc(t('form.notesPlaceholder'))}">${esc(p?.notes)}</textarea>
         </div>
 
         <div class="btn-row">
@@ -6449,6 +6424,8 @@ async function form(root, { id } = {}) {
         </div>
       </div>`;
 
+    foundBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
     const rows = () => [...foundBox.querySelectorAll('.found-row')];
     const kept = () => rows().filter(r => r.querySelector('.found-keep').checked);
     const label = () => {
@@ -6588,6 +6565,11 @@ async function form(root, { id } = {}) {
           const done = await lookupInto(hint, t('form.noListOnPack') + ' ');
           if (!done) hint.textContent = t('form.nothingToLookUp');
         }
+
+        // Scroll only once every field has settled — doing this before the
+        // fills meant the ingredients textarea growing mid-animation could
+        // shift the layout under a smooth scroll and leave it short of target.
+        root.querySelector('#product-fields').scrollIntoView({ behavior: 'smooth', block: 'start' });
       } catch (err) {
         hint.textContent = err.message;
       } finally {
@@ -6617,15 +6599,16 @@ async function form(root, { id } = {}) {
       category: val('#category'),
       status: val('#status'),
       size: capturedSize,
-      // Price, purchase and open dates have no fields on this form; carried
-      // through untouched so editing an older record does not discard them.
+      // Price, purchase/open dates and notes have no fields on this form;
+      // carried through untouched so editing an older record does not discard
+      // them.
       price: p?.price || '',
       purchasedAt: p?.purchasedAt || '',
       openedAt: p?.openedAt || '',
       quantity: Math.max(0, Math.round(Number(val('#quantity')) || 0)),
       paoMonths: p?.paoMonths || '',
       rating: p?.rating || '',
-      notes: root.querySelector('#notes').value.trim(),
+      notes: p?.notes || '',
       ingredients: parseIngredients(ingField.value),
       imageId,
       createdAt: p?.createdAt || new Date().toISOString(),
@@ -6941,7 +6924,7 @@ async function routine(root) {
   let done = await store.getDone();
 
   if (!products.length) {
-    root.innerHTML = `<div class="view-head">${headerArt('routine')}<h1 class="page-title">${esc(t('routine.title'))}</h1></div>
+    root.innerHTML = `<div class="view-head view-head-compact">${headerArt('routine')}<h1 class="page-title">${esc(t('routine.title'))}</h1></div>
       <div class="empty"><p>${esc(t('routine.emptyShelf'))}</p>
       <a class="btn" href="#/add">${esc(t('shelf.add'))}</a></div>`;
     return;
@@ -7129,15 +7112,15 @@ async function routine(root) {
       <div class="do-head">
         <div class="segmented" role="tablist" aria-label="${esc(t('routine.whichHalf'))}">
           <button role="tab" aria-selected="${period === 'am'}" data-period="am"
-                  class="${period === 'am' ? 'is-on' : ''}">${esc(t('common.morning'))}</button>
+                  class="${period === 'am' ? 'is-on' : ''}">${esc(t('common.am'))}</button>
           <button role="tab" aria-selected="${period === 'pm'}" data-period="pm"
-                  class="${period === 'pm' ? 'is-on' : ''}">${esc(t('common.evening'))}</button>
+                  class="${period === 'pm' ? 'is-on' : ''}">${esc(t('common.pm'))}</button>
         </div>
         <div class="do-head-right">
           ${today && used.length
             ? `<span class="do-progress">${esc(t('routine.doneOf', { done: doneCount, total: used.length }))}</span>`
             : ''}
-          <button class="link-btn" id="edit-day">${esc(t('routine.edit'))}</button>
+          <button class="edit-toggle" id="edit-day">${esc(t('routine.edit'))}</button>
         </div>
       </div>
 
@@ -7160,8 +7143,8 @@ async function routine(root) {
         <button class="link-btn" id="done-editing">${esc(t('routine.doneEditing'))}</button>
       </div>
       <div class="routine-cols">
-        ${dayColumn('am', t('common.morning'), day)}
-        ${dayColumn('pm', t('common.evening'), day)}
+        ${dayColumn('am', t('common.am'), day)}
+        ${dayColumn('pm', t('common.pm'), day)}
       </div>
       ${notes.map(n => `<div class="notice" style="margin-top:24px">
           <strong>${esc(severityWord(n.severity))}</strong>
@@ -7238,13 +7221,12 @@ async function routine(root) {
 
   const draw = () => {
     root.innerHTML = `
-      <div class="view-head">
+      <div class="view-head view-head-compact">
         ${headerArt('routine')}
         <h1 class="page-title">${esc(t('routine.title'))}</h1>
       </div>
 
       <div class="block" style="margin-top:0">
-        <h2 class="block-title">${esc(t('routine.yourWeek'))}</h2>
         <p class="muted" style="font-size:13px;margin:0 0 24px">${esc(t('routine.weekHint'))}</p>
         <div class="week-strip">${days().map((label, day) => dayCard(label, day)).join('')}</div>
         ${dayDetail(openDay)}
@@ -7258,8 +7240,8 @@ async function routine(root) {
         </button>
         ${openComplete ? `<div class="day-body" id="complete">
           <div class="routine-cols">
-            ${column('am', t('common.morning'))}
-            ${column('pm', t('common.evening'))}
+            ${column('am', t('common.am'))}
+            ${column('pm', t('common.pm'))}
           </div>
           <div class="btn-row day-save">
             <button class="btn btn-lg" data-save>${esc(t('routine.save'))}</button>

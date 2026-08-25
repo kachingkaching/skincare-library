@@ -668,6 +668,12 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
 .form-grid .field { margin-bottom: 16px; }
 .form-grid .field-pair { gap: 24px; }
 
+/* Was 4/5, the same portrait frame the shelf card uses. Here it pushed
+   "Let AI fill it out" off the bottom of a phone screen before the button
+   could even be seen — square keeps the dropzone recognisable and gets the
+   button back into the first screenful. */
+.form-grid .dropzone { aspect-ratio: 1; }
+
 /* The submit button is the point of the page — bigger, and closer to the
    fields above it now that they take less room. */
 .form-grid .btn-row .btn[type="submit"] {
@@ -814,6 +820,30 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
 
 @media (max-width: 720px) {
   .header-art { width: 68px; height: 40px; }
+}
+
+/* A smaller header for pages where what sits below it matters more than the
+   title does — the shelf, the routine, the add form. Same title, same mark,
+   just not spending a third of the first screen on them. */
+.view-head-compact {
+  margin-bottom: 20px;
+}
+
+.view-head-compact .page-title {
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+.view-head-compact .header-art {
+  width: 52px;
+  height: 30px;
+  margin-bottom: -2px;
+}
+
+@media (max-width: 720px) {
+  .view-head-compact { margin-bottom: 16px; }
+  .view-head-compact .page-title { font-size: 20px; }
+  .view-head-compact .header-art { width: 42px; height: 24px; }
 }
 
 /* ---------- disclosure header ----------
@@ -1523,27 +1553,8 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
 }
 
 /* ============================================================
-   Shelf: search, drawn stand-ins, and a phone list
+   Shelf: drawn stand-ins, and a phone list
    ============================================================ */
-
-.shelf-search { margin-bottom: 20px; }
-
-.shelf-search input {
-  width: 100%;
-  background: none;
-  border: none;
-  border-bottom: 1px solid var(--rule);
-  border-radius: 0;
-  padding: 12px 0;
-  font-size: 17px;
-  -webkit-appearance: none;
-  appearance: none;
-  transition: border-color var(--ease);
-}
-
-.shelf-search input::placeholder { color: var(--ink-muted); opacity: 1; }
-.shelf-search input:focus { outline: none; border-bottom-color: var(--ink); }
-.shelf-search input::-webkit-search-cancel-button { cursor: pointer; }
 
 /* The drawn stand-in fills the frame exactly as a photograph would. */
 .shelf-art { width: 100%; height: 100%; display: block; }
@@ -1766,6 +1777,25 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
   color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
 }
+
+/* A bordered button rather than a bare text link: next to the filled AM/PM
+   control, plain link text read as a label, not something to tap. */
+.edit-toggle {
+  background: none;
+  border: 1px solid var(--rule);
+  border-radius: 0;
+  padding: 9px 16px;
+  min-height: 44px;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  cursor: pointer;
+  transition: border-color var(--ease), color var(--ease);
+}
+
+.edit-toggle:hover { border-color: var(--ink); color: var(--ink); }
+.edit-toggle:focus-visible { outline: 1px solid var(--amber); outline-offset: 2px; }
 
 /* Morning / evening, defaulting to whichever half of the day it is. */
 .segmented { display: inline-flex; border: 1px solid var(--rule); }

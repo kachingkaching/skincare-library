@@ -330,7 +330,7 @@ export function wireIngredients(root) {
    Shelf
    ============================================================ */
 
-const shelfFilters = { category: '', status: '', active: '', query: '' };
+const shelfFilters = { category: '', status: '', active: '' };
 /* Recency first: the products she is most likely to be looking for are the
    ones she just bought, and A–Z by brand buried them alphabetically. */
 let shelfSort = 'recent';
@@ -350,7 +350,7 @@ export async function shelf(root) {
   if (!products.length) {
     const who = (await store.getActiveProfile())?.name;
     root.innerHTML = `
-      <div class="view-head">${headerArt('shelf')}<h1 class="page-title">${esc(t('shelf.title'))}</h1></div>
+      <div class="view-head view-head-compact">${headerArt('shelf')}<h1 class="page-title">${esc(t('shelf.title'))}</h1></div>
       <div class="empty">
         <p>${esc(who ? t('shelf.emptyNamed', { name: who }) : t('shelf.empty'))}</p>
         <a class="btn" href="#/add">${esc(t('shelf.addFirst'))}</a>
@@ -363,28 +363,15 @@ export async function shelf(root) {
     if (ACTIVE_TAGS.includes(tag)) activesPresent.add(tag);
   }));
 
-  /* "Do I already own this?" is the question this shelf exists to answer, and
-     until now the only way to ask it was to scroll. Matches brand, name and
-     ingredient, so searching "niacinamide" finds everything containing it. */
-  const query = shelfFilters.query.trim().toLowerCase();
-  const hits = p => {
-    if (!query) return true;
-    if (`${p.brand || ''} ${p.name || ''}`.toLowerCase().includes(query)) return true;
-    return (p.ingredients || []).some(i => i.toLowerCase().includes(query));
-  };
-
   const matches = products.filter(p =>
     (!shelfFilters.category || p.category === shelfFilters.category) &&
     (!shelfFilters.status || p.status === shelfFilters.status) &&
-    (!shelfFilters.active || tagsFor(p.ingredients || []).has(shelfFilters.active)) &&
-    hits(p)
+    (!shelfFilters.active || tagsFor(p.ingredients || []).has(shelfFilters.active))
   );
   // Asking for Finished explicitly means you want to see them.
   const keepEmptied = showEmptied || shelfFilters.status === 'finished';
   const visible = keepEmptied ? matches : matches.filter(p => p.quantity > 0);
   const emptiedHidden = matches.length - visible.length;
-
-  const onHand = products.reduce((n, p) => n + p.quantity, 0);
 
   if (shelfSort === 'recent') {
     visible.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '') || byShelfOrder(a, b));
@@ -393,23 +380,16 @@ export async function shelf(root) {
   const categoriesPresent = [...new Set(products.map(p => p.category).filter(Boolean))].sort();
 
   root.innerHTML = `
-    <div class="view-head">
+    <div class="view-head view-head-compact">
       ${headerArt('shelf')}
       <h1 class="page-title">${esc(t('shelf.title'))}</h1>
       <div class="btn-row hide-on-phone"><a class="btn" href="#/add">${esc(t('shelf.add'))}</a></div>
     </div>
 
-    <div class="shelf-search">
-      <input type="search" id="f-query" value="${esc(shelfFilters.query)}"
-             placeholder="${esc(t('shelf.searchPlaceholder'))}"
-             aria-label="${esc(t('shelf.searchLabel'))}" autocomplete="off">
-    </div>
-
     <div class="shelf-tools">
+      <span class="filter-count">${esc(plural(products.length, 'chrome.countOne', 'chrome.countMany'))}</span>
       <button type="button" class="link-btn" id="toggle-filters"
               aria-expanded="false" aria-controls="filter-bar">${esc(t('shelf.filterAndSort'))}</button>
-      <span class="filter-count">${esc(t('shelf.count', { shown: visible.length, total: products.length }))}
-        · ${esc(t('shelf.onHand', { n: onHand }))}</span>
     </div>
 
     <div class="filter-bar" id="filter-bar">
@@ -444,14 +424,15 @@ export async function shelf(root) {
     </div>
 
     ${shelfNotice ? `<div class="notice">${esc(shelfNotice)}</div>` : ''}
-    ${emptiedHidden ? `<p class="field-hint" style="margin:-32px 0 32px">
-      ${esc(t('shelf.emptiedHidden', { n: emptiedHidden }))}
-      <button class="link-btn" id="show-emptied">${esc(t('shelf.showEmptied'))}</button></p>` : ''}
-    ${showEmptied && !emptiedHidden ? `<p class="field-hint" style="margin:-32px 0 32px">
-      <button class="link-btn" id="hide-emptied">${esc(t('shelf.hideEmptied'))}</button></p>` : ''}
 
     <div class="shelf" id="shelf-grid"></div>
-    ${visible.length ? '' : `<p class="muted">${esc(query ? t('shelf.noSearchMatch', { q: query }) : t('shelf.noMatch'))}</p>`}`;
+    ${visible.length ? '' : `<p class="muted">${esc(t('shelf.noMatch'))}</p>`}
+
+    ${emptiedHidden ? `<p class="field-hint" style="margin-top:32px">
+      ${esc(t('shelf.emptiedHidden', { n: emptiedHidden }))}
+      <button class="link-btn" id="show-emptied">${esc(t('shelf.showEmptied'))}</button></p>` : ''}
+    ${showEmptied && !emptiedHidden ? `<p class="field-hint" style="margin-top:32px">
+      <button class="link-btn" id="hide-emptied">${esc(t('shelf.hideEmptied'))}</button></p>` : ''}`;
 
   shelfNotice = '';        // said once, on arrival
 
@@ -526,16 +507,6 @@ export async function shelf(root) {
     filtersOpen = !filtersOpen;
     bar.classList.toggle('is-open', filtersOpen);
     toggle.setAttribute('aria-expanded', String(filtersOpen));
-  };
-
-  const search = root.querySelector('#f-query');
-  search.oninput = () => {
-    shelfFilters.query = search.value;
-    shelf(root).then(() => {
-      // Redrawing replaces the field, so put the cursor back where it was.
-      const again = root.querySelector('#f-query');
-      if (again) { again.focus(); again.setSelectionRange(again.value.length, again.value.length); }
-    });
   };
 
   root.querySelector('#f-sort').onchange = e => { shelfSort = e.target.value; shelf(root); };
@@ -699,7 +670,7 @@ export async function form(root, { id } = {}) {
   const pendingPhoto = () => (photoJob ? photoJob : Promise.resolve(null));
 
   root.innerHTML = `
-    <div class="view-head">
+    <div class="view-head view-head-compact">
       ${headerArt('add')}
       <h1 class="page-title">${esc(editing ? t('form.editTitle') : t('form.addTitle'))}</h1>
     </div>
@@ -716,7 +687,7 @@ export async function form(root, { id } = {}) {
         <div id="found" hidden></div>
       </div>
 
-      <div>
+      <div id="product-fields">
         <div class="field-pair">
           <div class="field">
             <label for="brand">${esc(t('form.brand'))}</label>
@@ -758,11 +729,6 @@ export async function form(root, { id } = {}) {
           </div>
           <div class="field-hint" id="parse-summary"></div>
           <div class="chips" id="parse-chips" style="margin-top:12px"></div>
-        </div>
-
-        <div class="field">
-          <label for="notes">${esc(t('product.notes'))}</label>
-          <textarea id="notes" placeholder="${esc(t('form.notesPlaceholder'))}">${esc(p?.notes)}</textarea>
         </div>
 
         <div class="btn-row">
@@ -964,6 +930,8 @@ export async function form(root, { id } = {}) {
         </div>
       </div>`;
 
+    foundBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
     const rows = () => [...foundBox.querySelectorAll('.found-row')];
     const kept = () => rows().filter(r => r.querySelector('.found-keep').checked);
     const label = () => {
@@ -1103,6 +1071,11 @@ export async function form(root, { id } = {}) {
           const done = await lookupInto(hint, t('form.noListOnPack') + ' ');
           if (!done) hint.textContent = t('form.nothingToLookUp');
         }
+
+        // Scroll only once every field has settled — doing this before the
+        // fills meant the ingredients textarea growing mid-animation could
+        // shift the layout under a smooth scroll and leave it short of target.
+        root.querySelector('#product-fields').scrollIntoView({ behavior: 'smooth', block: 'start' });
       } catch (err) {
         hint.textContent = err.message;
       } finally {
@@ -1132,15 +1105,16 @@ export async function form(root, { id } = {}) {
       category: val('#category'),
       status: val('#status'),
       size: capturedSize,
-      // Price, purchase and open dates have no fields on this form; carried
-      // through untouched so editing an older record does not discard them.
+      // Price, purchase/open dates and notes have no fields on this form;
+      // carried through untouched so editing an older record does not discard
+      // them.
       price: p?.price || '',
       purchasedAt: p?.purchasedAt || '',
       openedAt: p?.openedAt || '',
       quantity: Math.max(0, Math.round(Number(val('#quantity')) || 0)),
       paoMonths: p?.paoMonths || '',
       rating: p?.rating || '',
-      notes: root.querySelector('#notes').value.trim(),
+      notes: p?.notes || '',
       ingredients: parseIngredients(ingField.value),
       imageId,
       createdAt: p?.createdAt || new Date().toISOString(),
@@ -1456,7 +1430,7 @@ export async function routine(root) {
   let done = await store.getDone();
 
   if (!products.length) {
-    root.innerHTML = `<div class="view-head">${headerArt('routine')}<h1 class="page-title">${esc(t('routine.title'))}</h1></div>
+    root.innerHTML = `<div class="view-head view-head-compact">${headerArt('routine')}<h1 class="page-title">${esc(t('routine.title'))}</h1></div>
       <div class="empty"><p>${esc(t('routine.emptyShelf'))}</p>
       <a class="btn" href="#/add">${esc(t('shelf.add'))}</a></div>`;
     return;
@@ -1644,15 +1618,15 @@ export async function routine(root) {
       <div class="do-head">
         <div class="segmented" role="tablist" aria-label="${esc(t('routine.whichHalf'))}">
           <button role="tab" aria-selected="${period === 'am'}" data-period="am"
-                  class="${period === 'am' ? 'is-on' : ''}">${esc(t('common.morning'))}</button>
+                  class="${period === 'am' ? 'is-on' : ''}">${esc(t('common.am'))}</button>
           <button role="tab" aria-selected="${period === 'pm'}" data-period="pm"
-                  class="${period === 'pm' ? 'is-on' : ''}">${esc(t('common.evening'))}</button>
+                  class="${period === 'pm' ? 'is-on' : ''}">${esc(t('common.pm'))}</button>
         </div>
         <div class="do-head-right">
           ${today && used.length
             ? `<span class="do-progress">${esc(t('routine.doneOf', { done: doneCount, total: used.length }))}</span>`
             : ''}
-          <button class="link-btn" id="edit-day">${esc(t('routine.edit'))}</button>
+          <button class="edit-toggle" id="edit-day">${esc(t('routine.edit'))}</button>
         </div>
       </div>
 
@@ -1675,8 +1649,8 @@ export async function routine(root) {
         <button class="link-btn" id="done-editing">${esc(t('routine.doneEditing'))}</button>
       </div>
       <div class="routine-cols">
-        ${dayColumn('am', t('common.morning'), day)}
-        ${dayColumn('pm', t('common.evening'), day)}
+        ${dayColumn('am', t('common.am'), day)}
+        ${dayColumn('pm', t('common.pm'), day)}
       </div>
       ${notes.map(n => `<div class="notice" style="margin-top:24px">
           <strong>${esc(severityWord(n.severity))}</strong>
@@ -1753,13 +1727,12 @@ export async function routine(root) {
 
   const draw = () => {
     root.innerHTML = `
-      <div class="view-head">
+      <div class="view-head view-head-compact">
         ${headerArt('routine')}
         <h1 class="page-title">${esc(t('routine.title'))}</h1>
       </div>
 
       <div class="block" style="margin-top:0">
-        <h2 class="block-title">${esc(t('routine.yourWeek'))}</h2>
         <p class="muted" style="font-size:13px;margin:0 0 24px">${esc(t('routine.weekHint'))}</p>
         <div class="week-strip">${days().map((label, day) => dayCard(label, day)).join('')}</div>
         ${dayDetail(openDay)}
@@ -1773,8 +1746,8 @@ export async function routine(root) {
         </button>
         ${openComplete ? `<div class="day-body" id="complete">
           <div class="routine-cols">
-            ${column('am', t('common.morning'))}
-            ${column('pm', t('common.evening'))}
+            ${column('am', t('common.am'))}
+            ${column('pm', t('common.pm'))}
           </div>
           <div class="btn-row day-save">
             <button class="btn btn-lg" data-save>${esc(t('routine.save'))}</button>

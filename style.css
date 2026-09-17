@@ -484,6 +484,72 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
   font-size: 13px;
 }
 
+/* ---------- shelf: category directory ---------- */
+
+/* The shelf's front door — a photograph per category standing in for
+   everything filed under it, with the count read off before you tap in. */
+.cat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+  margin-top: 8px;
+}
+
+.cat-card {
+  display: block;
+  width: 100%;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+
+.cat-frame {
+  position: relative;
+  aspect-ratio: 1;
+  background: var(--bone-deep);
+  overflow: hidden;
+}
+
+.cat-frame img,
+.cat-frame .shelf-art {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: opacity var(--ease);
+}
+
+.cat-card:hover .cat-frame img { opacity: 0.86; }
+.cat-card:focus-visible .cat-frame { outline: 1px solid var(--amber); outline-offset: 2px; }
+
+.cat-scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(27, 26, 23, 0) 50%, rgba(27, 26, 23, 0.62) 100%);
+}
+
+.cat-label {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 12px;
+  color: var(--bone);
+}
+
+.cat-name { font-size: 15px; line-height: 1.3; }
+
+.cat-count {
+  margin-top: 2px;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
 /* ---------- product detail ---------- */
 
 .detail {
@@ -690,6 +756,69 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
   align-items: start;
 }
 
+/* ---------- assessment: hero ---------- */
+
+.skin-hero {
+  max-width: 440px;
+  margin: 0 auto 56px;
+  text-align: center;
+}
+
+.skin-circle-wrap {
+  position: relative;
+  width: 220px;
+  margin: 0 auto 28px;
+}
+
+.skin-circle {
+  width: 220px;
+  height: 220px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  padding: 20px;
+}
+
+.skin-circle img { border-radius: 50%; }
+
+/* The latest reading's top two concerns, standing beside the photo rather
+   than buried in the history below — the same numbers, surfaced earlier. */
+.skin-reading {
+  position: absolute;
+  background: var(--bone);
+  border: 1px solid var(--rule);
+  padding: 7px 12px;
+  box-shadow: 0 6px 16px rgba(27, 26, 23, 0.1);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.skin-reading-0 { top: 6px; right: -50px; }
+.skin-reading-1 { bottom: 14px; left: -50px; }
+
+.skin-reading-label {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.skin-reading-value { font-size: 13px; margin-top: 2px; }
+
+.skin-hero-title {
+  font-size: 26px;
+  line-height: 1.25;
+  margin: 0 0 8px;
+}
+
+.skin-hero-sub {
+  color: var(--ink-muted);
+  margin: 0 0 24px;
+  font-size: 14px;
+}
+
+.assess-question { max-width: 440px; margin: 0 auto 40px; }
+.assess-question .choices { justify-content: center; }
+
 .reading { border-top: 1px solid var(--rule); }
 
 .reading-row {
@@ -768,6 +897,55 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
 
 .picker-row .grow { flex: 1; min-width: 0; }
 .picker-row .picker-step { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-muted); }
+
+/* ---------- settings ---------- */
+
+/* Five sections used to cost 56px apiece before any content — tightened here
+   rather than globally, since other pages still want the full .block gap. */
+.settings-sections .block { margin-top: 48px; }
+.settings-sections .section-title { margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+
+/* The heading's own rule and the picker's would otherwise sit right on top
+   of one another with nothing between them. */
+.settings-sections .picker { border-top: none; }
+
+/* A text input sitting in a button row rather than its own .field — the "add
+   someone" box, inline with its own button instead of stacked above it. */
+.btn-row input[type="text"] {
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--rule);
+  padding: 8px 0;
+  border-radius: 0;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.btn-row input[type="text"]:focus { outline: none; border-bottom-color: var(--ink); }
+
+/* A small "i" standing in for a sentence that only some readers need —
+   native title text, so it costs nothing until someone asks for it. */
+.info-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  padding: 0;
+  border: 1px solid var(--ink-muted);
+  border-radius: 50%;
+  background: none;
+  color: var(--ink-muted);
+  font-size: 10px;
+  font-style: italic;
+  font-family: Georgia, 'Times New Roman', serif;
+  line-height: 1;
+  cursor: help;
+  flex-shrink: 0;
+  transition: border-color var(--ease), color var(--ease);
+}
+
+.info-dot:hover, .info-dot:focus-visible { border-color: var(--ink); color: var(--ink); outline: none; }
 
 .link-btn {
   background: none;
@@ -1244,11 +1422,13 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
    read a label in, so drop a column at a time. */
 @media (max-width: 1240px) {
   .shelf { grid-template-columns: repeat(3, 1fr); }
+  .cat-grid { grid-template-columns: repeat(3, 1fr); }
 }
 
 @media (max-width: 1080px) {
   :root { --gutter: 32px; }
   .shelf { grid-template-columns: repeat(2, 1fr); gap: 48px 32px; }
+  .cat-grid { grid-template-columns: repeat(2, 1fr); gap: 20px; }
   .detail, .form-grid, .assess-grid { grid-template-columns: 1fr; gap: 48px; }
   .detail-frame { position: static; max-width: 480px; }
   .routine-cols { gap: 48px; }
@@ -1265,6 +1445,17 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
   .shelf { grid-template-columns: 1fr; gap: 40px; }
   .page-title { font-size: 26px; }
   .detail-title { font-size: 26px; }
+  /* The floating badges have no room to float on a narrow screen — they drop
+     into the normal flow as a centred pair of chips under the photo instead. */
+  .skin-circle-wrap, .skin-circle { width: 168px; }
+  .skin-circle { height: 168px; }
+  .skin-hero-title { font-size: 22px; }
+  .skin-reading {
+    position: static;
+    display: inline-block;
+    margin: 10px 5px 0;
+    box-shadow: none;
+  }
   .field-pair { grid-template-columns: 1fr; gap: 0; }
   .routine-cols { grid-template-columns: 1fr; }
   .spec { grid-template-columns: 110px 1fr; }
@@ -1280,7 +1471,7 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
   .day-card-name { font-size: 19px; }
   .day-body { padding: 28px 0; }
   .chat-panel { left: var(--gutter); right: var(--gutter); width: auto; height: 70vh; }
-  .chat-launch { right: 12px; bottom: 12px; width: 112px; height: 90px; }
+  .chat-launch { right: 12px; bottom: 12px; width: 96px; height: 78px; }
 }
 
 /* ---------- several products found in one photograph ----------
@@ -1495,6 +1686,32 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
   .tabbar a.is-active { color: var(--ink); box-shadow: inset 0 2px 0 var(--ink); }
   .tabbar a:focus-visible,
   .tabbar button:focus-visible { outline: 1px solid var(--amber); outline-offset: -3px; }
+
+  /* Add is the one thing on this bar you reach for without thinking — raised
+     off the line as a plain circle rather than another text tab. */
+  .tabbar a[data-tab="add"] {
+    width: 52px;
+    height: 52px;
+    min-height: 52px;
+    margin: 0 auto;
+    transform: translateY(-14px);
+    border-radius: 50%;
+    background: var(--amber);
+    color: var(--bone);
+    font-size: 28px;
+    font-weight: 300;
+    letter-spacing: 0;
+    text-transform: none;
+    line-height: 1;
+    border: 3px solid var(--bone);
+    box-shadow: 0 6px 14px rgba(27, 26, 23, 0.25);
+  }
+  .tabbar a[data-tab="add"].is-active,
+  .tabbar a[data-tab="add"]:focus-visible {
+    color: var(--bone);
+    box-shadow: 0 6px 14px rgba(27, 26, 23, 0.25);
+    outline: none;
+  }
 
   /* Room for the bar, and for the chat cloud to sit above it. */
   .view { padding-bottom: 96px; }

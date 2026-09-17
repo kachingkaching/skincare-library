@@ -16,12 +16,12 @@ const count = document.getElementById('colophon-count');
 const TABS = [
   { route: 'shelf', key: 'nav.shelf' },
   { route: 'routine', key: 'nav.routine' },
-  { route: 'add', key: 'nav.add' },
-  { route: 'discoveries', key: 'nav.discoverShort' }
+  { route: 'add', key: 'nav.addShort' },
+  { route: 'assess', key: 'nav.assessShort' }
 ];
 
 const MORE = [
-  { route: 'assess', href: '#/assess', key: 'nav.assess' },
+  { route: 'discoveries', href: '#/discoveries', key: 'nav.discoverShort' },
   { route: 'settings', href: '#/settings', key: 'nav.settings' }
 ];
 

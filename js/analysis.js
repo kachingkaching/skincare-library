@@ -25,21 +25,6 @@ export const questions = () => [
   {
     key: 'concerns', label: t('q.concerns'), multi: true,
     options: CONCERNS.map(c => ({ value: c.key, label: concernLabel(c) }))
-  },
-  {
-    key: 'skinType', label: t('q.skinType'), multi: false,
-    options: ['dry', 'normal', 'combination', 'oily']
-      .map(v => ({ value: v, label: t('q.skinType.' + v) }))
-  },
-  {
-    key: 'sensitivity', label: t('q.sensitivity'), multi: false,
-    options: ['low', 'moderate', 'high']
-      .map(v => ({ value: v, label: t('q.sensitivity.' + v) }))
-  },
-  {
-    key: 'state', label: t('q.state'), multi: false,
-    options: ['settled', 'unsettled', 'irritated']
-      .map(v => ({ value: v, label: t('q.state.' + v) }))
   }
 ];
 
@@ -60,22 +45,6 @@ function readConcerns(answers) {
     note(key, 'marked', t('ev.named'));
   }
 
-  if (answers.skinType === 'dry') {
-    note('dryness', 'moderate', t('ev.dryness'));
-    note('dehydration', 'mild', t('ev.dehydration'));
-  }
-  if (answers.skinType === 'oily' || answers.skinType === 'combination') {
-    note('oiliness', answers.skinType === 'oily' ? 'moderate' : 'mild', t('ev.oiliness'));
-    note('pores', 'mild', t('ev.pores'));
-  }
-  if (answers.sensitivity === 'high') {
-    note('redness', 'moderate', t('ev.redness'));
-  }
-  if (answers.state === 'irritated') {
-    note('barrier', 'marked', t('ev.barrierMarked'));
-  } else if (answers.state === 'unsettled') {
-    note('barrier', 'mild', t('ev.barrierMild'));
-  }
   return [...found.values()]
     .map(c => ({ ...c, label: concernLabel(c.key) }))
     .sort((a, b) => WEIGHT[b.severity] - WEIGHT[a.severity]);

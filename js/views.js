@@ -17,7 +17,6 @@ import {
   concernLabel, ingredientText
 } from './i18n.js';
 import { readProducts, lookupIngredients } from './ai.js';
-import { copyBriefing, downloadBriefing } from './briefing.js';
 import { aiSettings, PROVIDERS, discover } from './ai.js';
 
 /* Everything that talks to a model needs your own key, which only makes sense
@@ -343,6 +342,10 @@ let showEmptied = false;
 /* Set when several products are added at once, shown once on the shelf they
    were added to, then cleared — the work happened on another page. */
 let shelfNotice = '';
+/* Whether the shelf opens on the category directory or the flat list of
+   everything. Choosing a category, or the "All products" tile, drops into
+   the flat list; the back link returns here. */
+let shelfBrowsing = true;
 
 export async function shelf(root) {
   const products = (await store.getProducts()).sort(byShelfOrder);
@@ -379,12 +382,84 @@ export async function shelf(root) {
 
   const categoriesPresent = [...new Set(products.map(p => p.category).filter(Boolean))].sort();
 
-  root.innerHTML = `
+  /* Counted against what a tap on the tile will actually show — an emptied
+     product doesn't keep its category "stocked" any more than it keeps the
+     shelf grid showing it by default. */
+  const catCounts = Object.fromEntries(
+    categoriesPresent.map(c => [c, products.filter(p => p.category === c && p.quantity > 0).length])
+  );
+  const categoriesWithStock = categoriesPresent.filter(c => catCounts[c] > 0);
+
+  /* The directory is the front door; picking a category — or "All
+     products" — drops into the familiar flat, filterable list. */
+  const browsing = shelfBrowsing && !shelfFilters.category;
+
+  const viewHead = `
     <div class="view-head view-head-compact">
       ${headerArt('shelf')}
       <h1 class="page-title">${esc(t('shelf.title'))}</h1>
       <div class="btn-row hide-on-phone"><a class="btn" href="#/add">${esc(t('shelf.add'))}</a></div>
-    </div>
+    </div>`;
+
+  const noticeMarkup = shelfNotice ? `<div class="notice">${esc(shelfNotice)}</div>` : '';
+
+  if (browsing) {
+    root.innerHTML = `
+      ${viewHead}
+      ${noticeMarkup}
+      <div class="cat-grid" id="cat-grid">
+        <button type="button" class="cat-card" data-cat="">
+          <div class="cat-frame">
+            <div class="cat-scrim"></div>
+            <div class="cat-label">
+              <div class="cat-name">${esc(t('shelf.allProducts'))}</div>
+              <div class="cat-count">${esc(plural(products.length, 'chrome.countOne', 'chrome.countMany'))}</div>
+            </div>
+          </div>
+        </button>
+        ${categoriesWithStock.map(c => `
+          <button type="button" class="cat-card" data-cat="${esc(c)}">
+            <div class="cat-frame" data-frame="${esc(c)}">
+              <div class="cat-scrim"></div>
+              <div class="cat-label">
+                <div class="cat-name">${esc(categoryLabel(c))}</div>
+                <div class="cat-count">${esc(plural(catCounts[c], 'chrome.countOne', 'chrome.countMany'))}</div>
+              </div>
+            </div>
+          </button>`).join('')}
+      </div>`;
+
+    shelfNotice = '';        // said once, on arrival
+
+    /* Each tile gets a representative photograph, filled in after the grid is
+       on the page — same reason the flat list fills its images afterwards. */
+    for (const c of categoriesWithStock) {
+      const frame = root.querySelector(`[data-frame="${CSS.escape(c)}"]`);
+      const rep = products.find(p => p.category === c && p.quantity > 0 && p.imageId)
+        || products.find(p => p.category === c && p.quantity > 0);
+      const blob = rep?.imageId ? await store.getImage(rep.imageId) : null;
+      frame.insertAdjacentHTML('afterbegin', blob
+        ? `<img src="${imgUrl(blob)}" alt="">`
+        : productArt({ category: c, brand: c, name: '' }));
+    }
+
+    root.querySelectorAll('.cat-card').forEach(btn => {
+      btn.onclick = () => {
+        const cat = btn.dataset.cat;
+        if (cat) { shelfFilters.category = cat; }
+        else { shelfBrowsing = false; }
+        shelf(root);
+      };
+    });
+    return;
+  }
+
+  root.innerHTML = `
+    ${viewHead}
+
+    ${categoriesWithStock.length ? `<p class="label muted" style="margin:0 0 20px">
+      <button type="button" class="link-btn" id="back-to-categories">${esc(t('shelf.backToCategories'))}</button>
+    </p>` : ''}
 
     <div class="shelf-tools">
       <span class="filter-count">${esc(plural(products.length, 'chrome.countOne', 'chrome.countMany'))}</span>
@@ -423,7 +498,7 @@ export async function shelf(root) {
       </div>
     </div>
 
-    ${shelfNotice ? `<div class="notice">${esc(shelfNotice)}</div>` : ''}
+    ${noticeMarkup}
 
     <div class="shelf" id="shelf-grid"></div>
     ${visible.length ? '' : `<p class="muted">${esc(t('shelf.noMatch'))}</p>`}
@@ -496,6 +571,15 @@ export async function shelf(root) {
   if (showBtn) showBtn.onclick = () => { showEmptied = true; shelf(root); };
   const hideBtn = root.querySelector('#hide-emptied');
   if (hideBtn) hideBtn.onclick = () => { showEmptied = false; shelf(root); };
+
+  const backBtn = root.querySelector('#back-to-categories');
+  if (backBtn) backBtn.onclick = () => {
+    shelfBrowsing = true;
+    shelfFilters.category = '';
+    shelfFilters.status = '';
+    shelfFilters.active = '';
+    shelf(root);
+  };
 
   /* On a phone the four controls cost 180px above the first product, which is
      most of the reason the shelf was unusable standing up. They fold away. */
@@ -678,10 +762,10 @@ export async function form(root, { id } = {}) {
     <form class="form-grid" id="product-form" autocomplete="off">
       <div>
         ${dropzoneMarkup('photo')}
-        <div class="btn-row" style="margin-top:16px">
-          <button type="button" class="btn btn-quiet" id="autofill" ${AI_FEATURES ? '' : 'hidden'}>${esc(t('form.readLabel'))}</button>
+        <div class="btn-row" style="justify-content:center;margin-top:16px">
+          <button type="button" class="btn btn-quiet" id="autofill" style="width:100%" ${AI_FEATURES ? '' : 'hidden'}>${esc(t('form.readLabel'))}</button>
         </div>
-        <p class="field-hint" id="photo-hint">${esc(AI_FEATURES
+        <p class="field-hint" id="photo-hint" style="text-align:center">${esc(AI_FEATURES
           ? t('form.readLabelHint') : t('form.photoHint'))}</p>
         <div id="key-note" hidden></div>
         <div id="found" hidden></div>
@@ -724,14 +808,11 @@ export async function form(root, { id } = {}) {
         <div class="field">
           <label for="ingredients">${esc(t('product.ingredients'))}</label>
           <textarea id="ingredients" placeholder="${esc(t('form.ingredientsPlaceholder'))}">${esc((p?.ingredients || []).join(', '))}</textarea>
-          <div class="btn-row" style="margin-top:12px">
-            <button type="button" class="btn btn-quiet" id="lookup" ${AI_FEATURES ? '' : 'hidden'}>${esc(t('form.lookUp'))}</button>
-          </div>
           <div class="field-hint" id="parse-summary"></div>
           <div class="chips" id="parse-chips" style="margin-top:12px"></div>
         </div>
 
-        <div class="btn-row">
+        <div class="btn-row" style="flex-direction:column;align-items:center;text-align:center">
           <button type="submit" class="btn">${esc(editing ? t('form.submitEdit') : t('form.submitAdd'))}</button>
           <a class="btn btn-quiet" href="${editing ? '#/product/' + esc(id) : '#/'}">${esc(t('common.cancel'))}</a>
           <span class="field-hint" id="form-error" style="margin:0;color:var(--amber)"></span>
@@ -865,24 +946,6 @@ export async function form(root, { id } = {}) {
     keyNote.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   };
   const hasKey = () => Boolean(settings.apiKey);
-
-  /* Look up on demand, without needing a photograph at all. */
-  const lookupBtn = root.querySelector('#lookup');
-  if (lookupBtn) {
-    lookupBtn.onclick = async () => {
-      if (!hasKey()) { explainKey('key.forLookup'); return; }
-      keyNote.hidden = true;
-      const restore = waiting(lookupBtn, t('common.lookingUp'));
-      try {
-        const done = await lookupInto(hint);
-        if (!done) hint.textContent = t('form.needBrandOrName');
-      } catch (err) {
-        hint.textContent = err.message;
-      } finally {
-        restore();
-      }
-    };
-  }
 
   /* ---------- several products in one photograph ----------
 
@@ -1075,7 +1138,9 @@ export async function form(root, { id } = {}) {
         // Scroll only once every field has settled — doing this before the
         // fills meant the ingredients textarea growing mid-animation could
         // shift the layout under a smooth scroll and leave it short of target.
-        root.querySelector('#product-fields').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // Aligned to the bottom rather than the top, so the filled-in fields
+        // and the Add to library button land in view together.
+        root.querySelector('#product-fields').scrollIntoView({ behavior: 'smooth', block: 'end' });
       } catch (err) {
         hint.textContent = err.message;
       } finally {
@@ -1129,7 +1194,7 @@ export async function form(root, { id } = {}) {
    Assessment
    ============================================================ */
 
-function renderResult(result, productsById) {
+function renderResult(result, productsById, photoId) {
   const extras = [];
 
   if (result.degraded) {
@@ -1137,6 +1202,12 @@ function renderResult(result, productsById) {
   }
   if (result.photoUsed && result.photoUsable === false && result.photoNote) {
     extras.push(`<div class="notice">${t('assess.photoHard', { note: esc(result.photoNote) })}</div>`);
+  }
+  // No key at all: the rules engine ran on your answers alone, and a photo
+  // you went to the trouble of adding was kept but never actually read —
+  // silently, unless this says so.
+  if (photoId && result.source === 'rules' && !result.degraded) {
+    extras.push(keyPrompt('key.forAssessPhoto'));
   }
 
   const observations = (result.observations || []).length ? `
@@ -1188,7 +1259,7 @@ function renderResultBody(result, productsById, extras, observations, working, c
     </div>`).join('');
 
   return `
-    <div class="caveat">${esc(result.caveat)}</div>
+    <h2 class="block-title">${esc(t('assess.resultsHeader'))}</h2>
     ${extras}
     ${observations}
 
@@ -1223,7 +1294,9 @@ function renderResultBody(result, productsById, extras, observations, working, c
     ${result.gaps.length ? `<div class="block">
       <h2 class="section-title">${esc(t('assess.missing'))}</h2>
       ${result.gaps.map(g => `<div class="notice"><strong>${esc(g.category)}</strong> — ${esc(g.reason)}</div>`).join('')}
-    </div>` : ''}`;
+    </div>` : ''}
+
+    <div class="caveat">${esc(result.caveat)}</div>`;
 }
 
 export async function assess(root, { id } = {}) {
@@ -1247,7 +1320,7 @@ export async function assess(root, { id } = {}) {
       <div class="assess-grid">
         <div>${blob ? `<div class="shelf-frame"><img src="${imgUrl(blob)}" alt="Skin, ${esc(fmtStamp(record.date))}"></div>`
           : `<div class="shelf-frame"><span class="no-image">${esc(t('shelf.noPhoto'))}</span></div>`}</div>
-        <div>${renderResult(record.result, productsById)}</div>
+        <div>${renderResult(record.result, productsById, record.photoId)}</div>
       </div>`;
     root.querySelector('#del-assessment').onclick = async () => {
       if (!confirm(t('assess.confirmRemove'))) return;
@@ -1278,34 +1351,55 @@ export async function assess(root, { id } = {}) {
       </div>
     </div>` : '';
 
+  /* The most recent reading, surfaced as a couple of floating badges beside
+     the photo — the same numbers the reading below already carries, not new
+     ones. A first-time visitor has no readings, so no badges: the hero is
+     the whole page until there is something to show. */
+  const SEV_WEIGHT = { marked: 3, moderate: 2, mild: 1 };
+  const latest = history[0];
+  const topConcerns = latest
+    ? [...latest.result.concerns].sort((a, b) => SEV_WEIGHT[b.severity] - SEV_WEIGHT[a.severity]).slice(0, 2)
+    : [];
+  const readingBadge = (c, i) => `
+    <div class="skin-reading skin-reading-${i}">
+      <div class="skin-reading-label">${esc(c.label)}</div>
+      <div class="skin-reading-value">${esc(severityLabel(c.severity))}</div>
+    </div>`;
+
   root.innerHTML = `
     <div class="view-head">
       ${headerArt('assess')}
       <h1 class="page-title">${esc(t('assess.title'))}</h1>
     </div>
-    <div class="assess-grid">
-      <div>
-        ${dropzoneMarkup('skin-photo', t('assess.photoPrompt'))}
+
+    <div class="skin-hero">
+      <div class="skin-circle-wrap">
+        <div class="skin-circle dropzone" id="skin-photo">
+          <p>${esc(t('assess.photoPromptShort'))}</p>
+          <input type="file" accept="image/*">
+        </div>
+        ${topConcerns.map(readingBadge).join('')}
       </div>
-      <div>
-        <form id="assess-form">
-          ${questions().map(q => `
-            <div class="field">
-              <label>${esc(q.label)}</label>
-              <div class="choices">
-                ${q.options.map((o, i) => `
-                  <input type="${q.multi ? 'checkbox' : 'radio'}" name="${esc(q.key)}"
-                         id="${esc(q.key)}-${i}" value="${esc(o.value)}"${!q.multi && i === 0 ? ' checked' : ''}>
-                  <label for="${esc(q.key)}-${i}">${esc(o.label)}</label>`).join('')}
-              </div>
-            </div>`).join('')}
-          <div class="btn-row">
-            <button type="submit" class="btn btn-lg assess-submit">${esc(t('assess.submit'))}</button>
-            <span class="field-hint" style="margin:0">${esc(t('assess.staysHere'))}</span>
-          </div>
-        </form>
+      <h2 class="skin-hero-title">${esc(t('assess.heroTitle'))}</h2>
+      <p class="skin-hero-sub">${esc(t('assess.heroSub'))}</p>
+      <div class="btn-row" style="flex-direction:column;align-items:center;text-align:center">
+        <button type="submit" form="assess-form" class="btn btn-lg assess-submit">${esc(t('assess.submit'))}</button>
+        <span class="field-hint" style="margin:0">${esc(t('assess.staysHere'))}</span>
       </div>
     </div>
+
+    <form id="assess-form" class="assess-question">
+      ${questions().map(q => `
+        <div class="field">
+          <label>${esc(q.label)}</label>
+          <div class="choices">
+            ${q.options.map((o, i) => `
+              <input type="${q.multi ? 'checkbox' : 'radio'}" name="${esc(q.key)}"
+                     id="${esc(q.key)}-${i}" value="${esc(o.value)}"${!q.multi && i === 0 ? ' checked' : ''}>
+              <label for="${esc(q.key)}-${i}">${esc(o.label)}</label>`).join('')}
+          </div>
+        </div>`).join('')}
+    </form>
     <div id="assess-result"></div>
     ${historyMarkup}`;
 
@@ -1343,7 +1437,7 @@ export async function assess(root, { id } = {}) {
         const photo = await store.getImage(record.photoId);
         body.innerHTML = `
           ${photo ? `<div class="history-photo"><img src="${imgUrl(photo)}" alt=""></div>` : ''}
-          ${renderResult(record.result, productsById)}
+          ${renderResult(record.result, productsById, record.photoId)}
           <div class="btn-row" style="margin-bottom:32px">
             <button class="btn btn-quiet btn-danger" data-forget="${esc(id)}">${esc(t('assess.removeRecord'))}</button>
           </div>`;
@@ -1398,7 +1492,7 @@ export async function assess(root, { id } = {}) {
       await store.saveAssessment(record);
 
       const out = root.querySelector('#assess-result');
-      out.innerHTML = `<div class="block">${renderResult(result, productsById)}
+      out.innerHTML = `<div class="block">${renderResult(result, productsById, record.photoId)}
         <div class="btn-row">
           <button class="btn" id="adopt">${esc(t('assess.adopt'))}</button>
           <span class="field-hint" style="margin:0" id="adopt-note">${esc(t('assess.archived'))}</span>
@@ -2148,73 +2242,12 @@ export async function settings(root) {
   root.innerHTML = `
     <div class="view-head">${headerArt('settings')}<h1 class="page-title">${esc(t('set.title'))}</h1></div>
 
-    <div class="prose">
-      <h2 class="section-title">${esc(t('set.language'))}</h2>
-      <p class="muted">${esc(t('set.languageNote'))}</p>
-      <div class="choices" style="margin-top:20px">
-        ${LANGS.map(l => `
-          <input type="radio" name="lang" id="lang-${esc(l.id)}" value="${esc(l.id)}"${l.id === lang() ? ' checked' : ''}>
-          <label for="lang-${esc(l.id)}">${esc(l.label)}</label>`).join('')}
-      </div>
-    </div>
-
-    <div class="prose block">
-      <h2 class="section-title">${esc(t('set.profiles'))}</h2>
-      <p class="muted">${esc(t('set.profilesNote'))}</p>
-
-      <div class="picker" style="margin-top:24px">
-        ${profiles.map(p => {
-          const tally = tallies[p.id] || { products: 0, assessments: 0 };
-          return `<div class="picker-row">
-            <span class="grow">
-              <input type="text" class="profile-name" data-id="${esc(p.id)}" value="${esc(p.name)}"
-                     aria-label="${esc(t('set.profileName'))}">
-            </span>
-            <span class="picker-step">${esc(plural(tally.products, 'set.productsOne', 'set.productsMany'))} · ${esc(plural(tally.assessments, 'set.readingsOne', 'set.readingsMany'))}</span>
-            ${p.id === activeId ? `<span class="picker-step" style="color:var(--amber)">${esc(t('set.showing'))}</span>` : ''}
-            ${profiles.length > 1 ? `<button class="link-btn" data-remove="${esc(p.id)}">${esc(t('common.remove'))}</button>` : ''}
-          </div>`;
-        }).join('')}
-      </div>
-
-      <div class="field" style="max-width:360px;margin-top:32px">
-        <label for="new-profile">${esc(t('set.addSomeone'))}</label>
-        <input type="text" id="new-profile" placeholder="${esc(t('set.theirName'))}" autocomplete="off">
-      </div>
-      <div class="btn-row">
-        <button class="btn" id="add-profile">${esc(t('set.addProfile'))}</button>
-        <span class="field-hint" style="margin:0" id="profile-note"></span>
-      </div>
-    </div>
-
-    <div class="prose block">
-      <h2 class="section-title">${esc(t('set.yourLibrary'))}</h2>
-      <p class="muted">${esc(t('set.libraryNote', {
-        products: allProducts.length, assessments: allAssessments.length, profiles: profiles.length }))}</p>
-      <div class="btn-row" style="margin:24px 0 8px">
-        <button class="btn" id="export">${esc(t('set.export'))}</button>
-        <button class="btn btn-quiet" id="import-btn">${esc(t('set.import'))}</button>
-        <input type="file" id="import" accept="application/json" style="display:none">
-      </div>
-      <p class="field-hint" id="backup-note"></p>
-    </div>
-
-    <div class="prose block">
-      <h2 class="section-title">${esc(t('set.askAnother'))}</h2>
-      <p class="muted">${esc(t('set.askAnotherNote'))}</p>
-      <div class="btn-row" style="margin-top:24px">
-        <button class="btn" id="copy-briefing">${esc(t('set.copyBriefing'))}</button>
-        <button class="btn btn-quiet" id="download-briefing">${esc(t('set.downloadBriefing'))}</button>
-        <span class="field-hint" style="margin:0" id="briefing-note"></span>
-      </div>
-    </div>
-
-    ${AI_FEATURES ? `<div class="prose block">
+    <div class="settings-sections">
+    ${AI_FEATURES ? `<div class="prose">
       <h2 class="section-title">${esc(t('set.connecting'))}</h2>
-      <p class="muted">${esc(t('set.connectingNote'))}</p>
-      <p class="muted">${t('set.privacyNote')}</p>
+      <p class="muted">${t('set.connectingNote')}</p>
 
-      <div class="field-pair" style="max-width:640px;margin-top:24px">
+      <div class="field-pair" style="max-width:640px;margin-top:16px">
         <div class="field">
           <label for="provider">${esc(t('set.provider'))}</label>
           <select id="provider">
@@ -2235,15 +2268,64 @@ export async function settings(root) {
         <button class="btn btn-quiet" id="clear-key">${esc(t('set.removeKey'))}</button>
         <span class="field-hint" style="margin:0" id="key-note"></span>
       </div>
-      <p class="field-hint">${t('set.keyHint')}</p>
     </div>` : ''}
 
     <div class="prose block">
-      <h2 class="section-title">${esc(t('set.erase'))}</h2>
-      <p class="muted">${esc(t('set.eraseNote'))}</p>
-      <div class="btn-row" style="margin-top:16px">
-        <button class="btn btn-quiet btn-danger" id="wipe">${esc(t('set.eraseAll'))}</button>
+      <h2 class="section-title">${esc(t('set.language'))}</h2>
+      <div class="choices">
+        ${LANGS.map(l => `
+          <input type="radio" name="lang" id="lang-${esc(l.id)}" value="${esc(l.id)}"${l.id === lang() ? ' checked' : ''}>
+          <label for="lang-${esc(l.id)}">${esc(l.label)}</label>`).join('')}
       </div>
+    </div>
+
+    <div class="prose block">
+      <h2 class="section-title">${esc(t('set.yourLibrary'))}
+        <button type="button" class="info-dot" title="${esc(t('set.libraryTip'))}" aria-label="${esc(t('set.libraryTip'))}">i</button>
+      </h2>
+      <p class="muted">${esc(t('set.libraryNote', {
+        products: allProducts.length, assessments: allAssessments.length, profiles: profiles.length }))}</p>
+      <div class="btn-row" style="margin:16px 0 0">
+        <button class="btn" id="export">${esc(t('set.export'))}</button>
+        <button class="btn btn-quiet" id="import-btn">${esc(t('set.import'))}</button>
+        <input type="file" id="import" accept="application/json" style="display:none">
+        <span class="field-hint" style="margin:0" id="backup-note"></span>
+      </div>
+    </div>
+
+    <div class="prose block">
+      <h2 class="section-title">${esc(t('set.profiles'))}
+        <button type="button" class="info-dot" title="${esc(t('set.profilesNote'))}" aria-label="${esc(t('set.profilesNote'))}">i</button>
+      </h2>
+
+      <div class="picker">
+        ${profiles.map(p => {
+          const tally = tallies[p.id] || { products: 0, assessments: 0 };
+          return `<div class="picker-row">
+            <span class="grow">
+              <input type="text" class="profile-name" data-id="${esc(p.id)}" value="${esc(p.name)}"
+                     aria-label="${esc(t('set.profileName'))}">
+            </span>
+            <span class="picker-step">${esc(plural(tally.products, 'set.productsOne', 'set.productsMany'))} · ${esc(plural(tally.assessments, 'set.readingsOne', 'set.readingsMany'))}</span>
+            ${p.id === activeId ? `<span class="picker-step" style="color:var(--amber)">${esc(t('set.showing'))}</span>` : ''}
+            ${profiles.length > 1 ? `<button class="link-btn" data-remove="${esc(p.id)}">${esc(t('common.remove'))}</button>` : ''}
+          </div>`;
+        }).join('')}
+      </div>
+
+      <div class="btn-row" style="margin-top:16px">
+        <input type="text" id="new-profile" placeholder="${esc(t('set.addSomeone'))}" autocomplete="off" style="flex:0 1 50%;min-width:0">
+        <button class="btn btn-quiet" id="add-profile">${esc(t('set.addProfile'))}</button>
+        <span class="field-hint" style="margin:0" id="profile-note"></span>
+      </div>
+    </div>
+
+    <div class="prose block">
+      <h2 class="section-title">${esc(t('set.erase'))}</h2>
+      <div class="btn-row">
+        <button class="btn btn-quiet btn-danger" id="wipe" title="${esc(t('set.eraseNote'))}">${esc(t('set.eraseAll'))}</button>
+      </div>
+    </div>
     </div>`;
 
   const note = root.querySelector('#backup-note');
@@ -2259,27 +2341,6 @@ export async function settings(root) {
     };
   });
 
-  root.querySelector('#copy-briefing').onclick = async () => {
-    const briefingNote = root.querySelector('#briefing-note');
-    try {
-      const { copied, text } = await copyBriefing();
-      const words = text.split(/\s+/).length;
-      briefingNote.textContent = copied
-        ? t('set.briefingCopied', { n: words })
-        : t('set.briefingClipboardFailed');
-    } catch (err) {
-      briefingNote.textContent = err.message;
-    }
-  };
-
-  root.querySelector('#download-briefing').onclick = async () => {
-    try {
-      await downloadBriefing();
-      root.querySelector('#briefing-note').textContent = t('set.briefingSaved');
-    } catch (err) {
-      root.querySelector('#briefing-note').textContent = err.message;
-    }
-  };
   const redraw = async () => { await profileBar(); await settings(root); };
 
   root.querySelector('#add-profile').onclick = async () => {
